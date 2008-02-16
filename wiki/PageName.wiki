@@ -1,0 +1,17 @@
+#labels Featured,Phase-Design
+#What's Supported
+
+= Introduction =
+
+This is a list of the things that are supported so far.
+
+= Details =
+
+  * @ManyToOne - object references. Stores id reference to another object in another Domain
+  * @OneToMany (java.util.List only) - Collection support. Please be careful with collections, usually better to just query for what you want rather than attaching via collections.
+  * @MappedSuperClass - Useful for a common ID and timestamping class.
+  * @Lob - stores lobs in S3 so make it as big as you want (up to 5GB).
+  * Integer and Long - no problems, all good.
+  * Double - pads to 20 digits on each side of the decimal by default so fine for a lot of cases, but if you plan to use Double's, let us know so we can work it out perfectly. SimpleDB makes it hard to work with these numbers because it treats everything as a String.
+  * BigDecimal - same problems as Double
+  * String
