@@ -8,6 +8,7 @@
   * @MappedSuperClass - Useful for a common ID and timestamping class.
   * @Lob - stores lobs in S3 so make it as big as you want (up to 5GB).
   * @Id - MUST be a string
+  * JPA Queries - see [JPAQuery] page
   * Integer and Long - no problems, all good.
   * Double - pads to 20 digits on each side of the decimal by default so fine for a lot of cases, but if you plan to use Double's, let us know so we can work it out perfectly. SimpleDB makes it hard to work with these numbers because it treats everything as a String.
   * BigDecimal - same problems as Double
