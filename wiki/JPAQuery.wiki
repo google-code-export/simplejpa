@@ -1,0 +1,20 @@
+#summary All about querying with SimpleJPA
+#labels Featured,Phase-Support
+
+= Introduction =
+
+SimpleJPA queries are a subset of the JPA spec due to the limitations of SimpleDB. Keep in mind that many things can be accomplished by doing things in a different way.
+
+= Limitations =
+
+  * Can only query on a single object type, no joins. 
+  * Can only filter the query on properties of the object type specified in FROM. Cannot filter on properties referenced objects.
+
+= Examples =
+
+{{{
+ query = entityManager.createQuery("select o from MyTestObject o where o.income = :income and o.age = :age");
+        query.setParameter("income", 50507.0);
+        query.setParameter("age", 12);
+        List<MyTestObject> obs = query.getResultList();
+}}}
