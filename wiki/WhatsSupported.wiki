@@ -1,5 +1,7 @@
+#summary Supported Features
 #labels Featured,Phase-Design
-# This is a list of things that are supported so far.
+
+This is a list of things that are supported so far.
 
 = Details =
 
