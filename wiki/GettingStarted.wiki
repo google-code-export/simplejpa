@@ -1,0 +1,92 @@
+#summary Getting Started with SimpleJPA
+#labels Featured,Phase-Support
+
+= Introduction =
+
+Here's how to get started using SimpleJPA. 
+
+= Dependencies =
+
+The latest releases of:
+
+  * commons-lang - get all commons libs at http://commons.apache.org/downloads/index.html
+  * commons-beanutils
+  * commons-logging (jets3t)
+  * commons-codec (jets3t)
+  * commons-httpclient (jets3t)
+  * typica - http://code.google.com/p/typica/
+  * jets3t - http://jets3t.s3.amazonaws.com/downloads.html
+  * cglib-nodep - http://sourceforge.net/project/showfiles.php?group_id=56933
+  * ejb3-persistence-api - ??
+  * scannotation - http://scannotation.sourceforge.net/
+  * javassist (scannotation) - http://www.csg.is.titech.ac.jp/~chiba/javassist/
+
+= Setup =
+
+Create a file called sdb.properties and put on the classpath.
+Add your Amazon access key and secret key like:
+
+{{{
+accessKey = AAAAAAAAAAAAAAAAAAAAAAA
+secretKey = SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
+}}}
+
+= Now the Code =
+
+== Create an EntityManagerFactory ==
+{{{
+// Create EntityManagerFactory. This should be a global object that you reuse.
+private static EntityManagerFactoryImpl factory = new EntityManagerFactoryImpl("persistenceUnitName", null);
+// now load sdb.properties (todo: change to persistence.xml)
+factory.loadProps(); 
+}}}
+
+== Get EntityManager's from the Factory ==
+
+{{{
+// Get an EntityManager from the factory. This is a short term object that you'll use for some processing then throw away
+EntityManager em = factory.createEntityManager();
+}}}
+
+== Persisting an object ==
+
+Lets create a very simple object to store. 
+{{{
+@Entity
+public class MyTestObject {
+    private String id;
+    private String name;
+
+    @Id
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+   
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+}
+}}}
+
+Now to persist it:
+
+{{{
+MyObject ob = new MyObject();
+ob.setName("Scooby doo");
+em.persist(ob);
+}}}
+
+That's it!
+
+= Querying =
+
+See [JPAQuery]
