@@ -7,7 +7,7 @@ Here's how to get started using SimpleJPA.
 
 = Dependencies =
 
-Need the latest releases of:
+Need the latest releases of (I'll try to package these up into the release if I can figure out the licensing compatability):
 
   * commons-lang - get all commons libs at http://commons.apache.org/downloads/index.html
   * commons-beanutils
@@ -94,3 +94,8 @@ That's it!
 = Querying =
 
 See [JPAQuery]
+
+= Deleting =
+
+MyObject ob...
+em.remove(ob);
