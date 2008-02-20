@@ -1,0 +1,33 @@
+#summary How to use SimpleJPA in a web application.
+#labels Featured,Phase-Support
+
+The only thing different here is the initial setup, you need to provide a list of jars from your WEB-INF/lib as well as the path to WEB-INF/classes since these aren't on the default java.class.path.
+
+= How To Add Extra Webapp Class Paths =
+
+This method will get you all the paths you need.
+{{{
+    private static Set<String> getLibPaths(ServletContext servletContext) {
+        String basePath = servletContext.getRealPath("");
+        Set<String> libPathsLocked = servletContext.getResourcePaths("/WEB-INF/lib");
+        Set<String> libPaths = new HashSet<String>();
+        for (String s : libPathsLocked) {
+            // need to prefix with full path
+            libPaths.add(basePath + s);
+        }
+        String path = servletContext.getRealPath("/WEB-INF/classes");
+        if (path != null) {
+            File fp = new File(path);
+            if (fp.exists()) libPaths.add(path);
+        }
+        return libPaths;
+    }
+}}}
+
+This isn't in the SimpleJPA package because it adds a dependency on the servlet api.
+
+Now all you need to do is create your EntityManagerFactory with the following constructor:
+
+{{{
+entityManagerFactory = new EntityManagerFactoryImpl(persistenceUnitName, null, libPaths);
+}}}
