@@ -12,16 +12,16 @@ SimpleJPA queries are a subset of the JPA spec due to the limitations of SimpleD
 = Examples =
 
 {{{
- query = entityManager.createQuery("select o from MyTestObject o where o.income = :income and o.age = :age");
-        query.setParameter("income", 50507.0);
-        query.setParameter("age", 12);
-        List<MyTestObject> obs = query.getResultList();
+query = entityManager.createQuery("select o from MyTestObject o where o.income = :income and o.age = :age");
+query.setParameter("income", 50507.0);
+query.setParameter("age", 12);
+List<MyTestObject> obs = query.getResultList();
 }}}
 
 Can also query down object graph (1 level only right now):
 
 {{{
- query = entityManager.createQuery("select o from MyTestObject o where o.someOtherObject.name = :name");
-        query.setParameter("name", "finnigan");
-        List<MyTestObject> obs = query.getResultList();
+query = entityManager.createQuery("select o from MyTestObject o where o.someOtherObject.name = :name");
+query.setParameter("name", "finnigan");
+List<MyTestObject> obs = query.getResultList();
 }}}
