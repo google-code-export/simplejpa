@@ -96,6 +96,21 @@ That's it!
 See [JPAQuery]
 
 = Deleting =
-
+{{{
 MyObject ob...
 em.remove(ob);
+}}}
+
+= Close the EntityManager when you're done =
+
+This is done after you've completed a set of tasks, such as displaying a web page. It ensures that caches get cleaned up and no memory gets wasted.
+
+{{{
+em.close();
+}}}
+
+= Close the EntityManagerFactory before you shutdown your app =
+
+{{{
+factory.close();
+}}}
