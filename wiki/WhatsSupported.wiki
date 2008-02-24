@@ -7,6 +7,7 @@ This is a list of things that are supported so far.
 
   * @ManyToOne - object references. Stores id reference to another object in another Domain
   * @OneToMany (java.util.List only and must be generified) - Collection support. Please be careful with collections, usually better to just query for what you want rather than attaching via collections.
+  * @Inheritance - Only SINGLE_TABLE supported (only one that makes sense).
   * @MappedSuperClass - Useful for a common ID and timestamping class.
   * @Lob - stores lobs in S3 so make it as big as you want (up to 5GB).
   * @Id - MUST be a string
