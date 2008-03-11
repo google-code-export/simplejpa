@@ -221,7 +221,7 @@ public class EntityManagerSimpleJPA implements EntityManager {
 
     }
 
-    Class ensureClassIsEntity(String className) {
+    public Class ensureClassIsEntity(String className) {
         String fullClassName = factory.getEntityMap().get(className);
         if (fullClassName == null) {
             throw new PersistenceException("Object not marked as an Entity: " + className);
@@ -416,7 +416,7 @@ public class EntityManagerSimpleJPA implements EntityManager {
      * @param atts
      * @return
      */
-    <T> T buildObject(Class<T> tClass, Object id, List<ItemAttribute> atts) {
+    public <T> T buildObject(Class<T> tClass, Object id, List<ItemAttribute> atts) {
         T newInstance = (T) cacheGet(cacheKey(tClass, id));
         if (newInstance != null) return newInstance;
         AnnotationInfo ai = getAnnotationInfo(tClass);
@@ -556,7 +556,7 @@ public class EntityManagerSimpleJPA implements EntityManager {
         return "set" + StringUtils.capitalize(fieldName);
     }
 
-    String attributeName(Method getter) {
+    public String attributeName(Method getter) {
         return StringUtils.uncapitalize(getter.getName().substring(3));
     }
 
