@@ -1,11 +1,10 @@
 package com.spaceprogram.simplejpa.query;
 
-import com.spaceprogram.simplejpa.util.AmazonSimpleDBUtil;
-import com.spaceprogram.simplejpa.query.JPAQuery;
-import com.spaceprogram.simplejpa.EntityManagerSimpleJPA;
 import com.spaceprogram.simplejpa.AnnotationInfo;
+import com.spaceprogram.simplejpa.EntityManagerSimpleJPA;
 import com.spaceprogram.simplejpa.ItemAndAttributes;
 import com.spaceprogram.simplejpa.ItemCallable;
+import com.spaceprogram.simplejpa.util.AmazonSimpleDBUtil;
 import com.xerox.amazonws.sdb.*;
 import org.apache.commons.lang.NotImplementedException;
 
@@ -16,10 +15,10 @@ import javax.persistence.TemporalType;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.util.*;
-import java.util.regex.Pattern;
-import java.util.regex.Matcher;
-import java.util.logging.Logger;
 import java.util.concurrent.*;
+import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Need to support the following:
