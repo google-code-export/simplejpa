@@ -1,6 +1,9 @@
 #summary Hierarchical layout of wiki content
 #labels Phase-Support,Featured
 
+  * WhatsSupported
+  * GettingStarted
+  * WebApplications
   * [JPAQuery JPAQuery]
   * DatabaseNamingConventions
  
