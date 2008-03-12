@@ -25,3 +25,5 @@ query = entityManager.createQuery("select o from MyTestObject o where o.someOthe
 query.setParameter("name", "finnigan");
 List<MyTestObject> obs = query.getResultList();
 }}}
+
+But keep in mind, querying down the graph can be slow because it will query for the id's down the graph, then apply them to the top level query.
