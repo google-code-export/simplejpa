@@ -1,5 +1,5 @@
 #summary Hierarchical layout of wiki content
-#labels Phase-Support
+#labels Phase-Support,Featured
 
   * [JPAQuery JPAQuery]
   * DatabaseNamingConventions
