@@ -1,0 +1,22 @@
+#summary This is how SimpleJPA will name items in SimpleDB
+#labels Phase-Support
+
+= Domain =
+
+The domain will be named with the following scheme: 
+
+{{{
+factory.getPersistenceUnitName() + "-" + className;
+}}}
+
+The PersistenceUnitName is what is passed in when constructing the EntityManagerFactory.
+
+{{{
+className = object.getClass().getSimpleName()
+}}}
+
+This will use the root class name if it is an inheritance hierarchy.
+
+= Fields/Attributes =
+
+These will be named the same as the field itself unless you use @Column(name = "somethingElse" - NOTE: @Column not yet supported).
