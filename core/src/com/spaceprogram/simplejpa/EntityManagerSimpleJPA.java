@@ -218,10 +218,10 @@ public class EntityManagerSimpleJPA implements EntityManager {
         AnnotationInfo ai = getAnnotationInfo(o);
         String domainName = getDomainName(o.getClass());
         factory.setupDbDomain(domainName);
-
     }
 
     public Class ensureClassIsEntity(String className) {
+        className = stripEnhancerClass(className);
         String fullClassName = factory.getEntityMap().get(className);
         if (fullClassName == null) {
             throw new PersistenceException("Object not marked as an Entity: " + className);
@@ -253,11 +253,18 @@ public class EntityManagerSimpleJPA implements EntityManager {
      * @return
      */
     private Class stripEnhancerClass(Class c) {
-        int enhancedIndex = c.getName().indexOf("$$EnhancerByCGLIB");
-        if (enhancedIndex != -1) {
-            c = getClass(c.getName().substring(0, enhancedIndex));
-        }
+        String className = c.getName();
+        className = stripEnhancerClass(className);
+        c = getClass(className);
         return c;
+    }
+
+    private String stripEnhancerClass(String className) {
+        int enhancedIndex = className.indexOf("$$EnhancerByCGLIB");
+        if (enhancedIndex != -1) {
+            className = className.substring(0, enhancedIndex);
+        }
+        return className;
     }
 
     /**
@@ -430,16 +437,14 @@ public class EntityManagerSimpleJPA implements EntityManager {
                 if (getter.getAnnotation(ManyToOne.class) != null) {
                     // lazy it up
                     String identifierForManyToOne = getIdentifierForManyToOne(getter, atts);
+                    logger.fine("identifierForManyToOne=" + identifierForManyToOne);
                     if (identifierForManyToOne == null) {
                         continue;
                     }
-                    Class retType = getter.getReturnType();
-                    String setterName = getSetterFromGetter(getter);
-                    Method setter = tClass.getMethod(setterName, retType);
                     // todo: stick a cache in here and check the cache for the instance before creating the lazy loader.
-                    Object toSet = newLazyLoadingInstance(retType, identifierForManyToOne);
-//                    logger.fine("toset=" + toSet);
-                    setter.invoke(newInstance, toSet);
+                    logger.finer("creating new lazy loading instance for getter " + getter.getName() + " of class " + tClass.getSimpleName() + " with id " + id);
+//                    Object toSet = newLazyLoadingInstance(retType, identifierForManyToOne);
+                    owi.getInterceptor().putLobKey(attName, identifierForManyToOne);
                 } else if (getter.getAnnotation(OneToMany.class) != null) {
                     OneToMany annotation = getter.getAnnotation(OneToMany.class);
                     ParameterizedType type = (ParameterizedType) getter.getGenericReturnType();
@@ -597,6 +602,7 @@ public class EntityManagerSimpleJPA implements EntityManager {
                 val = null;
             }
             if (val != null) {
+                // todo: getConstructor throws a NoSuchMethodException here, should ensure that these are second class object fields
                 Constructor forNewField = retType.getConstructor(val.getClass());
                 if (forNewField == null) {
                     throw new PersistenceException("No constructor for field type: " + retType + " that can take a " + val.getClass());
