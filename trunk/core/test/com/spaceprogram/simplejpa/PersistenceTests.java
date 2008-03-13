@@ -67,18 +67,32 @@ public class PersistenceTests {
     @Test
     public void saveObject() throws IOException {
         EntityManager em = factory.createEntityManager();
-        MyTestObject object = makeTestObjects(em);
+
+        MyTestObject object = new MyTestObject();
+        object.setName("Scooby doo");
+        object.setAge(100);
         em.persist(object);
+        String id = object.getId();
+
+        MyTestObject2 myObject2 = new MyTestObject2("shaggy", 131);
+        object.setMyTestObject2(myObject2);
+        em.persist(myObject2);
+        em.persist(object); // had to resave to get object2's id
+        em.close();
+
+        em = factory.createEntityManager();
 
         object = em.find(MyTestObject.class, object.getId());
         Assert.assertEquals("Scooby doo", object.getName());
+        Assert.assertEquals(id, object.getId());
+        Assert.assertEquals(myObject2.getName(), object.getMyTestObject2().getName());
 
         // now delete object
         em.remove(object);
+        em.remove(myObject2);
 
         // and make sure it's gone
         object = em.find(MyTestObject.class, object.getId());
-        System.out.println("object=" + object);
         Assert.assertNull(object);
         em.close();
     }
@@ -355,7 +369,7 @@ public class PersistenceTests {
             Assert.assertEquals(object1.getId(), found.getId());
             Assert.assertTrue(object1.getClass().isAssignableFrom(found.getClass()));
             Assert.assertEquals(object1.getField(), found.getField());
-            }
+        }
         {
             MyInheritanceObject2 found = em.find(MyInheritanceObject2.class, object2.getId());
             Assert.assertEquals(object2.getId(), found.getId());
@@ -392,7 +406,7 @@ public class PersistenceTests {
     public void testDifferentSyntax() {
         EntityManager em = factory.createEntityManager();
 
-         Query query;
+        Query query;
         List<MyTestObject> obs;
 
         MyTestObject originalObject = makeTestObjects(em);

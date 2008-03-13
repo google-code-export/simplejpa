@@ -25,6 +25,7 @@ public class QueryTests {
         split = QueryImpl.splitWhere(query.getFilter());
         Assert.assertEquals(11, split.size());
         Assert.assertEquals("o.myTestObject2.id = :id2 and 1 = 1 OR o.myTestObject2.name = 'larry' ", toString(split));
+        
     }
 
     private String toString(List<String> split) {

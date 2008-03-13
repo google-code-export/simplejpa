@@ -158,7 +158,7 @@ public class QueryImpl implements Query {
         return ret;
     }
 
-    private StringBuilder toAmazonQuery(Class tClass, JPAQuery q) {
+    public StringBuilder toAmazonQuery(Class tClass, JPAQuery q) {
         StringBuilder sb = new StringBuilder();
         String where = q.getFilter();
         where = where.trim();
@@ -235,7 +235,7 @@ public class QueryImpl implements Query {
             logger.fine("paramValue=" + paramValue);
             Method refIdMethod = refAi.getIdMethod();
             if (em.attributeName(refIdMethod).equals(field)) {
-                System.out.println("Querying using id field, no second query required.");
+                logger.fine("Querying using id field, no second query required.");
                 appendFilter(sb, em.foreignKey(refObjectField), comparator, paramValue);
             } else {
                 // no id method, so query for other object(s) first, then apply the returned value to the original query.
