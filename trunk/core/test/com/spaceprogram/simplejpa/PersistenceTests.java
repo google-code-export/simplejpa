@@ -351,7 +351,7 @@ public class PersistenceTests {
 
         MyInheritanceObject2 object2 = new MyInheritanceObject2();
         object2.setField("field value 2");
-        object2.setFieldInSubClass("sub class field 2");
+        object2.setFieldInSubClass2("sub class field 2");
         em.persist(object2);
 
         MyInheritanceObject3 object3 = new MyInheritanceObject3();
@@ -375,7 +375,7 @@ public class PersistenceTests {
             Assert.assertEquals(object2.getId(), found.getId());
             Assert.assertTrue(object2.getClass().isAssignableFrom(found.getClass()));
             Assert.assertEquals(object2.getField(), found.getField());
-            Assert.assertEquals(object2.getFieldInSubClass(), found.getFieldInSubClass());
+            Assert.assertEquals(object2.getFieldInSubClass2(), found.getFieldInSubClass2());
         }
         {
             MyInheritanceObject3 found = em.find(MyInheritanceObject3.class, object3.getId());
@@ -386,19 +386,33 @@ public class PersistenceTests {
         }
         em.close();
 
-        em = factory.createEntityManager();
-        Query query = em.createQuery("select o from MyInheritanceObject2 o where o.field = :field");
-        query.setParameter("field", object2.getField());
-        List<MyInheritanceObject2> obs2 = query.getResultList();
-        Assert.assertEquals(1, obs2.size());
-        for (MyInheritanceObject2 found : obs2) {
-            System.out.println("ob2=" + found);
-            Assert.assertTrue(object2.getClass().isAssignableFrom(found.getClass()));
-            Assert.assertEquals(object2.getField(), found.getField());
-            Assert.assertEquals(object2.getFieldInSubClass(), found.getFieldInSubClass());
+        {
+            em = factory.createEntityManager();
+            Query query = em.createQuery("select o from MyInheritanceObject2 o where o.field = :field");
+            query.setParameter("field", object2.getField());
+            List<MyInheritanceObject2> obs2 = query.getResultList();
+            Assert.assertEquals(1, obs2.size());
+            for (MyInheritanceObject2 found : obs2) {
+                System.out.println("ob2=" + found);
+                Assert.assertTrue(object2.getClass().isAssignableFrom(found.getClass()));
+                Assert.assertEquals(object2.getField(), found.getField());
+                Assert.assertEquals(object2.getFieldInSubClass2(), found.getFieldInSubClass2());
+            }
+            em.close();
         }
 
-        em.close();
+        {
+            // now query on root class to make sure we get all objects back
+            em = factory.createEntityManager();
+            Query query = em.createQuery("select o from MyInheritanceObject1 o ");
+            List<MyInheritanceObject1> obs2 = query.getResultList();
+            Assert.assertEquals(3, obs2.size());
+            for (MyInheritanceObject1 found : obs2) {
+                System.out.println("ob=" + found);
+                Assert.assertTrue(MyInheritanceObject1.class.isAssignableFrom(found.getClass()));
+            }
+            em.close();
+        }
     }
 
 

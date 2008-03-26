@@ -20,7 +20,7 @@ import java.util.logging.Logger;
 public class LazyInterceptor implements MethodInterceptor {
     private static Logger logger = Logger.getLogger(LazyInterceptor.class.getName());
     private EntityManagerSimpleJPA em;
-    private Map<String, String> lobKeys;
+    private Map<String, String> foreignKeys;
 
     public LazyInterceptor(EntityManagerSimpleJPA em) {
 
@@ -37,15 +37,15 @@ public class LazyInterceptor implements MethodInterceptor {
             }
             if (method.getAnnotation(ManyToOne.class) != null) {
                 logger.finer("intercepting many to one");
-                if (lobKeys != null) {
-                    String lobKey = lobKeys.get(em.attributeName(method));
-                    logger.finer("ManyToOne key=" + lobKey);
-                    if (lobKey == null) {
+                if (foreignKeys != null) {
+                    String foreignKey = foreignKeys.get(em.attributeName(method));
+                    logger.finer("ManyToOne key=" + foreignKey);
+                    if (foreignKey == null) {
                         return null;
                     }
                     Class retType = method.getReturnType();
-                    logger.fine("loading ManyToOne object for type=" + retType + " with id=" + lobKey);
-                    Object toSet = em.find(retType, lobKey);
+                    logger.fine("loading ManyToOne object for type=" + retType + " with id=" + foreignKey);
+                    Object toSet = em.find(retType, foreignKey);
                     logger.fine("got object for ManyToOne=" + toSet);
                     String setterName = em.getSetterFromGetter(method);
                     Method setter = obj.getClass().getMethod(setterName, retType);
@@ -54,8 +54,8 @@ public class LazyInterceptor implements MethodInterceptor {
             } else if (method.getAnnotation(Lob.class) != null) {
                 System.out.println("intercepting lob");
 //                Object ob = proxy.invoke(obj, null);
-                if (lobKeys != null) {
-                    String lobKey = lobKeys.get(em.attributeName(method));
+                if (foreignKeys != null) {
+                    String lobKey = foreignKeys.get(em.attributeName(method));
                     System.out.println("lobKey=" + lobKey);
                     if (lobKey == null) {
                         return null;
@@ -73,8 +73,8 @@ public class LazyInterceptor implements MethodInterceptor {
         return proxy.invokeSuper(obj, args);
     }
 
-    public void putLobKey(String attName, String lobKeyVal) {
-        if (lobKeys == null) lobKeys = new HashMap<String, String>();
-        lobKeys.put(attName, lobKeyVal);
+    public void putForeignKey(String attributeName, String foreignKeyVal) {
+        if (foreignKeys == null) foreignKeys = new HashMap<String, String>();
+        foreignKeys.put(attributeName, foreignKeyVal);
     }
 }

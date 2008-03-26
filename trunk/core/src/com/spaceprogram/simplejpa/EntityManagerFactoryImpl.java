@@ -39,7 +39,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     /** properties file values */
     private Map props;
     /** Stores annotation info about our entities for easy retrieval when needed */
-    private Map<String, AnnotationInfo> annotationMap = new HashMap<String, AnnotationInfo>();
+    private AnnotationManager annotationManager = new AnnotationManager();
     /** for all the concurrent action */
     private ExecutorService executor;
     /** Also the prefix that will be applied to each Domain */
@@ -121,6 +121,8 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
                     // also add simple name to it
                     String simpleName = entity.substring(entity.lastIndexOf(".") + 1);
                     entityMap.put(simpleName, entity);
+                    Class c = getAnnotationManager().getClass(entity);
+                    getAnnotationManager().putAnnotationInfo(c);
                 }
             }
             System.out.println("Finished scanning for entity classes.");
@@ -166,10 +168,6 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 
     public Map<String, String> getEntityMap() {
         return entityMap;
-    }
-
-    public Map<String, AnnotationInfo> getAnnotationMap() {
-        return annotationMap;
     }
 
     public Map getProps() {
@@ -240,5 +238,9 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         SimpleDB db = new SimpleDB((String) props.get("accessKey"), (String) props.get("secretKey"));
         db.setSignatureVersion(0); // TEMPORARY UNTIL SDB FIXES THE UNICODE PROBLEM FOR REST QUERIES
         return db;
+    }
+
+    public AnnotationManager getAnnotationManager() {
+        return annotationManager;
     }
 }
