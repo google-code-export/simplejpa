@@ -16,6 +16,7 @@ public class AnnotationInfo {
     private Map<String, Method> getterMap = new HashMap();
     private String discriminatorValue;
     private Class rootClass;
+    private Class mainClass;
 
     public void setClassAnnotations(Annotation[] classAnnotations) {
         this.classAnnotations = classAnnotations;
@@ -61,5 +62,13 @@ public class AnnotationInfo {
 
     public Class getRootClass() {
         return rootClass;
+    }
+
+    public void setMainClass(Class mainClass) {
+        this.mainClass = mainClass;
+    }
+
+    public Class getMainClass() {
+        return mainClass;
     }
 }

@@ -54,7 +54,7 @@ public class EntityManagerSimpleJPA implements EntityManager {
         checkEntity(o);
 //        SimpleDB db = getSimpleDb();
         try {
-            AnnotationInfo ai = getAnnotationInfo(o);
+            AnnotationInfo ai = factory.getAnnotationManager().getAnnotationInfo(o);
             Domain domain;
             if (ai.getRootClass() != null) {
                 domain = getDomain(ai.getRootClass());
@@ -82,7 +82,7 @@ public class EntityManagerSimpleJPA implements EntityManager {
                 String attName = attributeName(getter);
                 if (ob == null) {
                     attsToDelete.add(new ItemAttribute(attName, null, true));
-                    // todo: what about lob keys?  need to delete from s3
+                    // todo: what about lobs?  need to delete from s3
                     continue;
                 }
                 if (getter.getAnnotation(ManyToOne.class) != null) {
@@ -95,6 +95,7 @@ public class EntityManagerSimpleJPA implements EntityManager {
                     // store in s3
                     S3Service s3 = null;
                     try {
+                        // todo: need to make sure we only store to S3 if it's changed, too slow.
                         logger.fine("putting lob to s3");
                         s3 = getS3Service();
                         S3Bucket bucket = s3.createBucket(s3bucketName()); // todo: only do this once per EMFactory
@@ -187,7 +188,7 @@ public class EntityManagerSimpleJPA implements EntityManager {
      * @throws InvocationTargetException
      */
     public String getId(Object o) {
-        AnnotationInfo ai = getAnnotationInfo(o);
+        AnnotationInfo ai = factory.getAnnotationManager().getAnnotationInfo(o);
         if (ai == null) return null; // todo: should it throw?
         String id = null;
         try {
@@ -206,7 +207,7 @@ public class EntityManagerSimpleJPA implements EntityManager {
     }
 
     private String getRootClassName(Class<? extends Object> aClass) {
-        AnnotationInfo ai = getAnnotationInfo(aClass);
+        AnnotationInfo ai = factory.getAnnotationManager().getAnnotationInfo(aClass);
         String className = ai.getRootClass().getSimpleName();
         return className;
     }
@@ -215,130 +216,22 @@ public class EntityManagerSimpleJPA implements EntityManager {
         String className = o.getClass().getName();
         ensureClassIsEntity(className);
         // now if it the reflection data hasn't been cached, do it now
-        AnnotationInfo ai = getAnnotationInfo(o);
+        AnnotationInfo ai = factory.getAnnotationManager().getAnnotationInfo(o);
         String domainName = getDomainName(o.getClass());
         factory.setupDbDomain(domainName);
     }
 
     public Class ensureClassIsEntity(String className) {
-        className = stripEnhancerClass(className);
+        className = factory.getAnnotationManager().stripEnhancerClass(className);
         String fullClassName = factory.getEntityMap().get(className);
         if (fullClassName == null) {
             throw new PersistenceException("Object not marked as an Entity: " + className);
         }
-        Class tClass = getClass(fullClassName);
-        AnnotationInfo ai = getAnnotationInfo(tClass); // sets up metadata if not already done
+        Class tClass = factory.getAnnotationManager().getClass(fullClassName);
+        AnnotationInfo ai = factory.getAnnotationManager().getAnnotationInfo(tClass); // sets up metadata if not already done
         return tClass;
     }
 
-    public AnnotationInfo getAnnotationInfo(Object o) {
-        Class c = o.getClass();
-        AnnotationInfo ai = getAnnotationInfo(c);
-        return ai;
-    }
-
-    public AnnotationInfo getAnnotationInfo(Class c) {
-        c = stripEnhancerClass(c);
-        AnnotationInfo ai = factory.getAnnotationMap().get(c.getName());
-        if (ai == null) {
-            ai = putAnnotationInfo(c);
-        }
-        return ai;
-    }
-
-    /**
-     * This strips the cglib class name out of the enhanced classes.
-     *
-     * @param c
-     * @return
-     */
-    private Class stripEnhancerClass(Class c) {
-        String className = c.getName();
-        className = stripEnhancerClass(className);
-        c = getClass(className);
-        return c;
-    }
-
-    private String stripEnhancerClass(String className) {
-        int enhancedIndex = className.indexOf("$$EnhancerByCGLIB");
-        if (enhancedIndex != -1) {
-            className = className.substring(0, enhancedIndex);
-        }
-        return className;
-    }
-
-    /**
-     * Gets all the annotation info for a particular class and puts it in our annotation info cache.
-     *
-     * @param c
-     * @return
-     */
-    private AnnotationInfo putAnnotationInfo(Class c) {
-        AnnotationInfo ai;
-        ai = new AnnotationInfo();
-        ai.setClassAnnotations(c.getAnnotations());
-        Class superClass = c;
-        Class useInheritance = null;
-        while ((superClass = superClass.getSuperclass()) != null) {
-            MappedSuperclass mappedSuperclass = (MappedSuperclass) superClass.getAnnotation(MappedSuperclass.class);
-            Entity entity = (Entity) superClass.getAnnotation(Entity.class);
-            Inheritance inheritance = (Inheritance) superClass.getAnnotation(Inheritance.class);
-            // apparently
-            if (mappedSuperclass != null || entity != null) {
-//                logger.fine("MappedSuperclass=" + superClass.getName());
-                Method[] methods = superClass.getDeclaredMethods();
-                putMethods(ai, methods);
-                if (entity != null) {
-                    // need discriminator column
-                    if (inheritance == null) {
-                        throw new PersistenceException("Must use the @Inheritance annotation on " + superClass.getName() + " when using inherited entities.");
-                    } else {
-                        useInheritance = superClass;
-                    }
-                }
-            }
-        }
-        Inheritance inheritance = (Inheritance) c.getAnnotation(Inheritance.class);
-        if (inheritance != null) {
-            // todo: throw if inheritance found in superclasses, should only be on root class
-            useInheritance = c;
-        }
-        if (useInheritance != null) {
-            ai.setRootClass(useInheritance);
-            DiscriminatorValue dv = (DiscriminatorValue) c.getAnnotation(DiscriminatorValue.class);
-            String discriminatorValue;
-            if (dv != null) {
-                discriminatorValue = dv.value();
-                if (discriminatorValue == null) {
-                    throw new PersistenceException("You must specify a value for @DiscriminatorValue on " + c.getName());
-                }
-            } else {
-                discriminatorValue = c.getSimpleName();
-            }
-            ai.setDiscriminatorValue(discriminatorValue);
-        } else {
-            ai.setRootClass(c);
-        }
-        Method[] methods = c.getDeclaredMethods();
-        putMethods(ai, methods);
-        if (ai.getIdMethod() == null) {
-            throw new PersistenceException("No ID method specified for: " + c.getName());
-        }
-        factory.getAnnotationMap().put(c.getName(), ai);
-        return ai;
-    }
-
-    private void putMethods(AnnotationInfo ai, Method[] methods) {
-        for (Method method : methods) {
-//            logger.fine("method=" + method.getName());
-            if (!method.getName().startsWith("get")) continue;
-            Id id = method.getAnnotation(Id.class);
-            if (id != null) ai.setIdMethod(method);
-            Transient transientM = method.getAnnotation(Transient.class);
-            if (transientM != null) continue; // we don't save this one
-            ai.addGetter(method);
-        }
-    }
 
     public SimpleDB getSimpleDb() {
         return factory.getSimpleDb();
@@ -397,7 +290,7 @@ public class EntityManagerSimpleJPA implements EntityManager {
      * @throws SDBException
      */
     public <T> Domain getDomain(Class<T> c) throws SDBException {
-        c = stripEnhancerClass(c);
+        c = factory.getAnnotationManager().stripEnhancerClass(c);
         String domainName = getDomainName(c);
         return getDomain(domainName);
     }
@@ -426,9 +319,21 @@ public class EntityManagerSimpleJPA implements EntityManager {
     public <T> T buildObject(Class<T> tClass, Object id, List<ItemAttribute> atts) {
         T newInstance = (T) cacheGet(cacheKey(tClass, id));
         if (newInstance != null) return newInstance;
-        AnnotationInfo ai = getAnnotationInfo(tClass);
+        AnnotationInfo ai = factory.getAnnotationManager().getAnnotationInfo(tClass);
         try {
 //            newInstance = tClass.newInstance();
+            // check for DTYPE to see if it's a subclass, must be a faster way to do this you'd think?
+            for (ItemAttribute att : atts) {
+                if(att.getName().equals("DTYPE")){
+                    System.out.println("dtype=" + att.getValue());
+                    ai = factory.getAnnotationManager().getAnnotationInfoByDiscriminator(att.getValue());
+                    tClass = ai.getMainClass();
+                    // check cache again with new class
+                    newInstance = (T) cacheGet(cacheKey(tClass, id));
+                    if (newInstance != null) return newInstance;
+                    break;
+                }
+            }
             ObjectWithInterceptor owi = newEnancedInstance(tClass);
             newInstance = (T) owi.getBean();
             Collection<Method> getters = ai.getGetters();
@@ -444,7 +349,7 @@ public class EntityManagerSimpleJPA implements EntityManager {
                     // todo: stick a cache in here and check the cache for the instance before creating the lazy loader.
                     logger.finer("creating new lazy loading instance for getter " + getter.getName() + " of class " + tClass.getSimpleName() + " with id " + id);
 //                    Object toSet = newLazyLoadingInstance(retType, identifierForManyToOne);
-                    owi.getInterceptor().putLobKey(attName, identifierForManyToOne);
+                    owi.getInterceptor().putForeignKey(attName, identifierForManyToOne);
                 } else if (getter.getAnnotation(OneToMany.class) != null) {
                     OneToMany annotation = getter.getAnnotation(OneToMany.class);
                     ParameterizedType type = (ParameterizedType) getter.getGenericReturnType();
@@ -452,7 +357,7 @@ public class EntityManagerSimpleJPA implements EntityManager {
                     Type[] types = type.getActualTypeArguments();
                     Class typeInList = (Class) types[0];
                     // todo: should this return null if there are no elements??
-                    LazyList lazyList = new LazyList(this, newInstance, annotation.mappedBy(), id, typeInList, getAnnotationInfo(typeInList));
+                    LazyList lazyList = new LazyList(this, newInstance, annotation.mappedBy(), id, typeInList, factory.getAnnotationManager().getAnnotationInfo(typeInList));
                     Class retType = getter.getReturnType();
                     // todo: assuming List for now, handle other collection types
                     String setterName = getSetterFromGetter(getter);
@@ -462,7 +367,7 @@ public class EntityManagerSimpleJPA implements EntityManager {
                     // handled in Proxy
                     String lobKeyVal = getValueToSet(atts, lobKeyAttributeName(getter));
                     logger.fine("lobkeyval to set on interceptor=" + lobKeyVal + " - fromatt=" + lobKeyAttributeName(getter));
-                    if (lobKeyVal != null) owi.getInterceptor().putLobKey(attName, lobKeyVal);
+                    if (lobKeyVal != null) owi.getInterceptor().putForeignKey(attName, lobKeyVal);
                 } else {
                     String val = getValueToSet(atts, attName);
                     if (val != null) {
@@ -518,7 +423,7 @@ public class EntityManagerSimpleJPA implements EntityManager {
     }
 
     public String cacheKey(Class tClass, Object id) {
-        return stripEnhancerClass(tClass).getName() + "_" + id;
+        return factory.getAnnotationManager().stripEnhancerClass(tClass).getName() + "_" + id;
     }
 
     private String getIdentifierForManyToOne(Method getter, List<ItemAttribute> atts) {
@@ -661,15 +566,6 @@ public class EntityManagerSimpleJPA implements EntityManager {
         return new QueryImpl(this, q);
     }
 
-    Class getClass(String obClass) {
-        try {
-            Class c = Class.forName(obClass);
-            return c;
-        } catch (ClassNotFoundException e) {
-            throw new PersistenceException(e);
-        }
-    }
-
     public Query createNamedQuery(String s) {
         throw new NotImplementedException("TODO");
     }
@@ -763,5 +659,9 @@ public class EntityManagerSimpleJPA implements EntityManager {
                 System.out.println("\t=" + att.getName() + "=" + att.getValue());
             }
         }
+    }
+
+    public AnnotationManager getAnnotationManager() {
+        return factory.getAnnotationManager();
     }
 }

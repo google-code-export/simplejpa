@@ -65,7 +65,7 @@ public class QueryImpl implements Query {
             } else {
                 amazonQuery = null;
             }
-            AnnotationInfo ai = em.getAnnotationInfo(tClass);
+            AnnotationInfo ai = em.getAnnotationManager().getAnnotationInfo(tClass);
             if(ai.getDiscriminatorValue() != null){
                 if(amazonQuery == null || amazonQuery.length() == 0) {
                     amazonQuery = new StringBuilder();
@@ -204,7 +204,7 @@ public class QueryImpl implements Query {
     }
 
     private Boolean appendCondition(Class tClass, StringBuilder sb, String field, String comparator, String param) {
-        AnnotationInfo ai = em.getAnnotationInfo(tClass);
+        AnnotationInfo ai = em.getAnnotationManager().getAnnotationInfo(tClass);
 
         String fieldSplit[] = field.split("\\.");
         if (fieldSplit.length == 1) {
@@ -228,7 +228,7 @@ public class QueryImpl implements Query {
 //            System.out.println("field=" + field);
             Method getterForReference = ai.getGetter(refObjectField);
             Class refType = getterForReference.getReturnType();
-            AnnotationInfo refAi = em.getAnnotationInfo(refType);
+            AnnotationInfo refAi = em.getAnnotationManager().getAnnotationInfo(refType);
             Method getterForField = refAi.getGetter(field);
 //            System.out.println("getter=" + getterForField);
             String paramValue = getParamValueAsStringForAmazonQuery(param, getterForField);
