@@ -7,5 +7,11 @@ The SimpleEntityManager interface extends on the base EntityManager interface to
 
 = Details =
 
-See javadoc at: 
+To use the SimpleEntityManager interface, simply cast the EntityManager you normally use to SimpleEntityManager, eg:
+
+{{{
+SimpleEntityManager em = (SimpleEntityManager) factory.createEntityManager();
+}}}
+
+See javadoc at for details on the new methods:
 http://code.google.com/p/simplejpa/source/browse/trunk/core/src/com/spaceprogram/simplejpa/SimpleEntityManager.java
