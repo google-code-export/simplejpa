@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 /**
  * User: treeder
@@ -65,7 +66,7 @@ public class PersistenceTests {
     }
 
     @Test
-    public void saveObject() throws IOException {
+    public void persistObject() throws IOException {
         EntityManager em = factory.createEntityManager();
 
         MyTestObject object = new MyTestObject();
@@ -96,6 +97,35 @@ public class PersistenceTests {
         Assert.assertNull(object);
         em.close();
     }
+
+
+    @Test
+    public void persistAsync() throws IOException, ExecutionException, InterruptedException {
+        SimpleEntityManager em = (SimpleEntityManager) factory.createEntityManager();
+
+        MyTestObject object = new MyTestObject();
+        object.setName("Scooby doo");
+        object.setAge(100);
+        Future future = em.persistAsync(object);
+        future.get();
+        String id = object.getId();
+        em.close();
+
+        em = (SimpleEntityManager) factory.createEntityManager();
+
+        object = em.find(MyTestObject.class, object.getId());
+        Assert.assertEquals("Scooby doo", object.getName());
+        Assert.assertEquals(id, object.getId());
+
+        // now delete object
+        em.remove(object);
+
+        // and make sure it's gone
+        object = em.find(MyTestObject.class, object.getId());
+        Assert.assertNull(object);
+        em.close();
+    }
+
 
     int counter = 0;
 

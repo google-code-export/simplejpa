@@ -52,11 +52,12 @@ public class MyTestObject2 {
     public void setId(String id) {
         this.id = id;
     }
+
     public String toString() {
         return new ReflectionToStringBuilder(this).toString();
     }
 
-    @ManyToOne  
+    @ManyToOne
     public MyTestObject getMyTestObject() {
         return myTestObject;
     }
