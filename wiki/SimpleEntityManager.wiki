@@ -1,0 +1,11 @@
+#summary The extended EntityManager interface to add extra functionality and performance enhancements for databases like SimpleDB.
+#labels Phase-Support
+
+= Introduction =
+
+The SimpleEntityManager interface extends on the base EntityManager interface to add extra functionality and performance enhancements for databases like SimpleDB.
+
+= Details =
+
+See javadoc at: 
+http://code.google.com/p/simplejpa/source/browse/trunk/core/src/com/spaceprogram/simplejpa/SimpleEntityManager.java
