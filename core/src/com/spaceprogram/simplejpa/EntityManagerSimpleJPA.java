@@ -161,15 +161,10 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
     }
 
     public String getDomainName(Class<? extends Object> aClass) {
-        String className = getRootClassName(aClass);
-        return factory.getPersistenceUnitName() + "-" + className;
+        return factory.getDomainName(aClass);
     }
 
-    private String getRootClassName(Class<? extends Object> aClass) {
-        AnnotationInfo ai = factory.getAnnotationManager().getAnnotationInfo(aClass);
-        String className = ai.getRootClass().getSimpleName();
-        return className;
-    }
+    
 
     private void checkEntity(Object o) {
         String className = o.getClass().getName();
@@ -241,17 +236,42 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         }
     }
 
-    public Future rename(Class tClass, String oldAttributeName, String newAttributeName) {
+    public void rename(Class tClass, String oldAttributeName, String newAttributeName) {
         // get list of all items in the domain
         try {
             Domain domain = getDomain(tClass);
-            QueryResult result = domain.listItems();
-            List<Item> items = result.getItemList();
-            result.getNextToken();
+            QueryResult result;
+            List<Item> items;
+            int i = 0;
+            String nextToken = null;
+            while(i == 0 || nextToken != null) {
+                result = executeQueryForRename(oldAttributeName, newAttributeName, domain, nextToken);
+                items = result.getItemList();
+                putAndDelete(oldAttributeName, newAttributeName, items);
+                nextToken = result.getNextToken();
+                i++;
+            }
         } catch (SDBException e) {
             e.printStackTrace();
         }
-        return null;
+    }
+
+    private QueryResult executeQueryForRename(String oldAttributeName, String newAttributeName, Domain domain, String nextToken) throws SDBException {
+        QueryResult result = domain.listItems("['" + oldAttributeName + "' starts-with ''] intersection not ['" + newAttributeName + "' starts-with ''] ", null, 100);
+        return result;
+    }
+
+    private void putAndDelete(String oldAttributeName, String newAttributeName, List<Item> items) throws SDBException {
+        for (Item item : items) {
+            List<ItemAttribute> oldAtts = item.getAttributes(oldAttributeName);
+            if(oldAtts.size() > 0){
+                ItemAttribute oldAtt = oldAtts.get(0);
+                List<ItemAttribute> atts= new ArrayList<ItemAttribute>();
+                atts.add(new ItemAttribute(newAttributeName, oldAtt.getValue(), true));
+                item.putAttributes(atts);
+                item.deleteAttributes(oldAtts);
+            }
+        }
     }
 
     /**
@@ -263,21 +283,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
      */
     public <T> Domain getDomain(Class<T> c) throws SDBException {
         c = factory.getAnnotationManager().stripEnhancerClass(c);
-        String domainName = getDomainName(c);
-        return getDomain(domainName);
-    }
-
-    /**
-     * Gets the typica domain for a domain name.
-     *
-     * @param domainName
-     * @return
-     * @throws SDBException
-     */
-    public Domain getDomain(String domainName) throws SDBException {
-        SimpleDB db = getSimpleDb();
-        Domain domain = db.getDomain(domainName);
-        return domain;
+        return factory.getDomain(c);
     }
 
     /**
@@ -652,4 +658,6 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
     public EntityManagerFactoryImpl getFactory() {
         return factory;
     }
+
+
 }

@@ -30,6 +30,7 @@ public interface SimpleEntityManager extends EntityManager {
      * @param o
      * @return
      */
-    public Future persistAsync(Object o);
+    Future persistAsync(Object o);
 
+    void rename(Class tClass, String oldAttributeName, String newAttributeName);
 }

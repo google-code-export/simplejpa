@@ -202,26 +202,43 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         this.persistenceUnitName = persistenceUnitName;
     }
 
-    public void setupDbDomain(String domainName) {
+    public Domain setupDbDomain(String domainName) {
         try {
-            Domain d = getDomain(domainName);
-            if (d == null) {
+            Domain domain = getDomain(domainName);
+            if (domain == null) {
                 System.out.println("creating domain");
                 SimpleDB db = getSimpleDb();
-                Domain domain = db.createDomain(domainName);
+                domain = db.createDomain(domainName);
                 domainsList.add(domain);
                 domainMap.put(domain.getName(), domain);
             }
+            return domain;
         } catch (SDBException e) {
             throw new PersistenceException("Could not create SimpleDB domain.", e);
         }
     }
 
-    private synchronized Domain getDomain(String domainName) {
+     public synchronized Domain getDomain(String domainName) {
         if (domainsList == null) {
             getAllDomains();
         }
         return domainMap.get(domainName);
+    }
+
+    public synchronized Domain getDomain(Class c) {
+      return getDomain(getDomainName(c));
+    }
+
+    public Domain getOrCreateDomain(String domainName) {
+        Domain d = getDomain(domainName);
+        if(d == null){
+            d = setupDbDomain(domainName);
+        }
+        return d;
+    }
+
+    public Domain getOrCreateDomain(Class c) {
+        return getOrCreateDomain(getDomainName(c));
     }
 
     private synchronized List<Domain> getAllDomains() {
@@ -263,5 +280,15 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 
     public AnnotationManager getAnnotationManager() {
         return annotationManager;
+    }
+
+    public String getDomainName(Class<? extends Object> aClass) {
+        String className = getRootClassName(aClass);
+        return getPersistenceUnitName() + "-" + className;
+    }
+    private String getRootClassName(Class<? extends Object> aClass) {
+        AnnotationInfo ai = getAnnotationManager().getAnnotationInfo(aClass);
+        String className = ai.getRootClass().getSimpleName();
+        return className;
     }
 }
