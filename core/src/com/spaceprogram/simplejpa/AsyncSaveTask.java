@@ -35,7 +35,6 @@ public class AsyncSaveTask implements Callable {
     private String id;
 
     public AsyncSaveTask(EntityManagerSimpleJPA entityManager, Object o, String id) {
-
         this.entityManager = entityManager;
         this.o = o;
         this.id = id;
@@ -87,8 +86,7 @@ public class AsyncSaveTask implements Callable {
                     String s3ObjectId = entityManager.s3ObjectId(id, getter);
                     S3Object s3Object = new S3Object(bucket, s3ObjectId);
                     ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                    ObjectOutputStream out;
-                    out = new ObjectOutputStream(bos);
+                    ObjectOutputStream out = new ObjectOutputStream(bos);
                     out.writeObject(ob);
                     s3Object.setDataInputStream(new ByteArrayInputStream(bos.toByteArray()));
                     s3Object = s3.putObject(bucket, s3Object);
@@ -105,9 +103,13 @@ public class AsyncSaveTask implements Callable {
             }
         }
         // and now finally send it for storage
+        long start = System.currentTimeMillis();
         item.putAttributes(atts);
+        logger.fine("putAttributes time=" + (System.currentTimeMillis() - start));
         if (attsToDelete.size() > 0) {
+            start = System.currentTimeMillis();
             item.deleteAttributes(attsToDelete);
+            logger.fine("deleteAttributes time=" + (System.currentTimeMillis() - start));     
         }
     }
 

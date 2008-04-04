@@ -1,9 +1,6 @@
 package com.spaceprogram.simplejpa.query;
 
-import com.spaceprogram.simplejpa.AnnotationInfo;
-import com.spaceprogram.simplejpa.EntityManagerSimpleJPA;
-import com.spaceprogram.simplejpa.ItemAndAttributes;
-import com.spaceprogram.simplejpa.ItemCallable;
+import com.spaceprogram.simplejpa.*;
 import com.spaceprogram.simplejpa.util.AmazonSimpleDBUtil;
 import com.xerox.amazonws.sdb.*;
 import org.apache.commons.lang.NotImplementedException;
@@ -22,15 +19,15 @@ import java.util.regex.Pattern;
 
 /**
  * Need to support the following:
- *
- *
-    * - Navigation operator (.) DONE
-    * - Arithmetic operators: +, - unary *, / multiplication and division +, - addition and subtraction
-    * - Comparison operators : =, >, >=, <, <=, <> (not equal), [NOT] BETWEEN, [NOT] LIKE, [NOT] IN, IS [NOT] NULL, IS [NOT] EMPTY, [NOT] MEMBER [OF]
-    * - Logical operators: NOT AND OR
- *
+ * <p/>
+ * <p/>
+ * - Navigation operator (.) DONE
+ * - Arithmetic operators: +, - unary *, / multiplication and division +, - addition and subtraction
+ * - Comparison operators : =, >, >=, <, <=, <> (not equal), [NOT] BETWEEN, [NOT] LIKE, [NOT] IN, IS [NOT] NULL, IS [NOT] EMPTY, [NOT] MEMBER [OF]
+ * - Logical operators: NOT AND OR
+ * <p/>
  * see: http://docs.solarmetric.com/full/html/ejb3_langref.html#ejb3_langref_where
- *
+ * <p/>
  * User: treeder
  * Date: Feb 8, 2008
  * Time: 7:33:20 PM
@@ -59,15 +56,15 @@ public class QueryImpl implements Query {
             StringBuilder amazonQuery;
             if (q.getFilter() != null) {
                 amazonQuery = toAmazonQuery(tClass, q);
-                if(amazonQuery == null){
+                if (amazonQuery == null) {
                     return new ArrayList();
                 }
             } else {
                 amazonQuery = null;
             }
             AnnotationInfo ai = em.getAnnotationManager().getAnnotationInfo(tClass);
-            if(ai.getDiscriminatorValue() != null){
-                if(amazonQuery == null || amazonQuery.length() == 0) {
+            if (ai.getDiscriminatorValue() != null) {
+                if (amazonQuery == null || amazonQuery.length() == 0) {
                     amazonQuery = new StringBuilder();
                 } else {
                     amazonQuery.append(" intersection ");
@@ -75,41 +72,12 @@ public class QueryImpl implements Query {
                 appendFilter(amazonQuery, "DTYPE", "=", ai.getDiscriminatorValue());
             }
             logger.fine("amazonQuery [" + tClass.getName() + "]= " + amazonQuery);
+            String qToSend = amazonQuery != null ? amazonQuery.toString() : null;
             em.incrementQueryCount();
-            QueryResult qr;
-            if(amazonQuery == null){
-                qr = d.listItems();
-            } else {
-                qr = d.listItems(amazonQuery.toString());
-            }
-            List<Item> items = qr.getItemList();
-            logger.fine("results.size=" + items.size());
-            // Check cache first, then fetch the leftovers
-            List ret = new ArrayList();
-            int cacheHits = 0;
-            List<Item> itemsToGet = new ArrayList<Item>();
-            for (Item item : items) {
-                Object oFromCache = em.cacheGet(em.cacheKey(tClass, item.getIdentifier()));
-                if (oFromCache != null) {
-                    ret.add(oFromCache);
-                    cacheHits++;
-                } else {
-                    itemsToGet.add(item);
-                }
-            }
-            logger.fine("cacheHits=" + cacheHits);
-            // now only go get the new stuff
-            List<ItemAndAttributes> itemsAndAtts = getAttributesFromSdb(itemsToGet, em.getExecutor());
-            // todo: there is a chance here that the object was deleted and we got it back in the item id list, so need to check if atts are null, and if so, do not build object
-            logger.fine("results2.size= " + itemsAndAtts.size());
-            // now build up the real objects
-            for (ItemAndAttributes itemsAndAtt : itemsAndAtts) {
-                ret.add(em.buildObject(tClass, itemsAndAtt.getItem().getIdentifier(), itemsAndAtt.getAtts()));
-            }
-            return ret;
+            return new LazyList(em, tClass, qToSend);
         } catch (SDBException e) {
             if (e.getMessage() != null && e.getMessage().contains("The specified domain does not exist")) {
-                return Collections.EMPTY_LIST; // no need to throw here
+                return new ArrayList(); // no need to throw here
             }
             throw new PersistenceException(e);
         } catch (Exception e) {
@@ -174,13 +142,14 @@ public class QueryImpl implements Query {
                     sb.append(" intersection ");
                 }
             }
-            if(i > 0){
+            if (i > 0) {
                 i++;
             }
 //            System.out.println("sbbefore=" + sb);
             aok = appendCondition(tClass, sb, split.get(i), split.get(i + 1), split.get(i + 2));
 //            System.out.println("sbafter=" + sb);
-            if(aok == null) return null; // todo: only return null if it's an AND query, or's should still continue, but skip the intersection part
+            if (aok == null)
+                return null; // todo: only return null if it's an AND query, or's should still continue, but skip the intersection part
         }
         logger.fine("query=" + sb);
         return sb;
@@ -191,7 +160,7 @@ public class QueryImpl implements Query {
         Pattern pattern = Pattern.compile(conditionRegex, Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(where);
         int lastIndex = 0;
-        while(matcher.find()){
+        while (matcher.find()) {
             String s = where.substring(lastIndex, matcher.start()).trim();
 //            System.out.println(s);
 //            System.out.println("matcher found: " + matcher.group() + " at " + matcher.start() + " to " + matcher.end());
@@ -214,7 +183,7 @@ public class QueryImpl implements Query {
             } catch (Exception e) {
 //                e.printStackTrace();
             }*/
-            if(field.equals(param)){
+            if (field.equals(param)) {
                 return false;
             }
         } else if (fieldSplit.length == 2) {
@@ -261,7 +230,7 @@ public class QueryImpl implements Query {
         }
         logger.fine("field=" + field);
         Method getterForField = ai.getGetter(field);
-        if(getterForField == null){
+        if (getterForField == null) {
             throw new PersistenceException("No getter for field: " + field);
         }
         String paramValue = getParamValueAsStringForAmazonQuery(param, getterForField);
@@ -314,7 +283,7 @@ public class QueryImpl implements Query {
 
     private String paramName(String param) {
         int colon = param.indexOf(":");
-        if(colon == -1) return null;
+        if (colon == -1) return null;
         String paramName = param.substring(colon + 1);
         return paramName;
     }
@@ -324,7 +293,8 @@ public class QueryImpl implements Query {
         int count = 0;
         for (Object param : params) {
             if (count > 0) {
-                sb.append(" OR ");
+                sb.append("]").append(" intersection ").append("[");
+//                sb.append(" OR ");
             }
             sb.append("'").append(field).append("' ").append(comparator).append(" '").append(param).append("'");
             count++;

@@ -22,7 +22,6 @@ import java.util.concurrent.Future;
 public class PersistenceTests {
     private static EntityManagerFactoryImpl factory;
 
-
     @BeforeClass
     public static void setupEntityManagerFactory() throws IOException {
         factory = new EntityManagerFactoryImpl("testunit", null);
@@ -98,7 +97,6 @@ public class PersistenceTests {
         em.close();
     }
 
-
     @Test
     public void persistAsync() throws IOException, ExecutionException, InterruptedException {
         SimpleEntityManager em = (SimpleEntityManager) factory.createEntityManager();
@@ -126,7 +124,6 @@ public class PersistenceTests {
         em.close();
     }
 
-
     int counter = 0;
 
     private MyTestObject makeTestObjects(EntityManager em) {
@@ -150,6 +147,7 @@ public class PersistenceTests {
         MyTestObject2 ob2 = new MyTestObject2("shaggy1", counter++);
         em.persist(ob2);
         object.setMyTestObject2(ob2);
+
         ob2 = new MyTestObject2("shaggy2", counter++);
         ob2.setMyTestObject(object);
         em.persist(ob2);
@@ -170,13 +168,10 @@ public class PersistenceTests {
         EntityManager em = factory.createEntityManager();
         Query query;
         List<MyTestObject> obs;
-        MyTestObject originalObject = null;
-
-        originalObject = makeTestObjects(em);
+        MyTestObject originalObject = makeTestObjects(em);
 
         // no params
         query = em.createQuery("select o from " + MyTestObject.class.getName() + " o");
-        query.setParameter("age", 12);
         obs = query.getResultList();
         Assert.assertEquals(2, obs.size());
         for (MyTestObject ob : obs) {
@@ -189,7 +184,6 @@ public class PersistenceTests {
                 }
             }
         }
-
 
         query = em.createQuery("select o from " + MyTestObject.class.getName() + " o where o.age = :age");
         query.setParameter("age", 12);
@@ -213,7 +207,6 @@ public class PersistenceTests {
         Assert.assertEquals(originalObject.getSomeDouble(), obs.get(0).getSomeDouble());
         Assert.assertEquals(originalObject.getSomeBigDecimal(), obs.get(0).getSomeBigDecimal());
         Assert.assertEquals(originalObject.getBigString(), obs.get(0).getBigString());
-        System.out.println("bigstring=" + obs.get(0).getBigString());
         Assert.assertEquals(originalObject.getAge(), obs.get(0).getAge());
         Assert.assertEquals(1, obs.get(0).getMyList().size());
         Assert.assertEquals(originalObject.getMyList().get(0).getName(), obs.get(0).getMyList().get(0).getName());
@@ -245,7 +238,6 @@ public class PersistenceTests {
         query.setParameter("age", 12);
         obs = query.getResultList();
         Assert.assertEquals(0, obs.size());
-
 
         em.close();
     }
@@ -303,6 +295,11 @@ public class PersistenceTests {
 
     }
 
+    /**
+     * THIS FAILS IF TOO MANY OBJECTS COME BACK FOR THE SUB QUERY! MIGHT WANT TO JUST DISALLOW QUERYING DOWN COLLECTIONS IN A GRAPH.
+     *
+javax.persistence.PersistenceException: com.xerox.amazonws.sdb.SDBException: Client error : Too many predicates in the filter expression.
+     */
     @Test
     public void queryDownGraph() {
         EntityManagerSimpleJPA em = (EntityManagerSimpleJPA) factory.createEntityManager();
@@ -367,7 +364,6 @@ public class PersistenceTests {
                 }
             }
         }
-
         em.close();
     }
 
@@ -445,7 +441,6 @@ public class PersistenceTests {
         }
     }
 
-
     @Test
     public void testDifferentSyntax() {
         EntityManager em = factory.createEntityManager();
@@ -469,7 +464,40 @@ public class PersistenceTests {
                 }
             }
         }
+        em.close();
+    }
 
+    @Test
+    public void testMoreThanMaxPerQuery() {
+        EntityManager em = factory.createEntityManager();
+
+        Query query;
+        List<MyTestObject> obs;
+
+        int numItems = 120;
+        for(int i = 0; i < 120; i++){
+            MyTestObject object = new MyTestObject();
+            object.setName("Scooby doo");
+            object.setAge(100);
+            System.out.println("persisting " + i);
+            em.persist(object);
+        }
+
+        System.out.println("querying for all objects...");
+        query = em.createQuery("select o from MyTestObject o ");
+        obs = query.getResultList();
+        System.out.println("asserting size...");
+        Assert.assertEquals(numItems, obs.size());
+        /*for (MyTestObject ob : obs) {
+            System.out.println(ob);
+            if (ob.getMyList() != null) {
+                System.out.println("list not null: " + ob.getMyList().getClass());
+                List<MyTestObject2> ob2s = ob.getMyList();
+                for (MyTestObject2 ob2 : ob2s) {
+                    System.out.println("ob2=" + ob2);
+                }
+            }
+        }*/
         em.close();
     }
 
