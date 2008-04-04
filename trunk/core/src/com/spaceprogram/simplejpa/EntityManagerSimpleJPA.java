@@ -257,7 +257,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
     }
 
     private QueryResult executeQueryForRename(String oldAttributeName, String newAttributeName, Domain domain, String nextToken) throws SDBException {
-        QueryResult result = domain.listItems("['" + oldAttributeName + "' starts-with ''] intersection not ['" + newAttributeName + "' starts-with ''] ", null, 100);
+        QueryResult result = domain.listItems("['" + oldAttributeName + "' starts-with ''] intersection not ['" + newAttributeName + "' starts-with ''] ", nextToken, 100);
         return result;
     }
 
