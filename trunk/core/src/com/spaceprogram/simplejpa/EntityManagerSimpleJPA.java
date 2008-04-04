@@ -54,8 +54,12 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
     public void persist(Object o) {
 
         try {
+            long start = System.currentTimeMillis();
             String id = prePersist(o); // could probably move this inside the AsyncSaveTask
+            logger.fine("prePersist time=" + (System.currentTimeMillis() - start));
+            start = System.currentTimeMillis();
             new AsyncSaveTask(this, o, id).call();
+            logger.fine("persistOnly time=" + (System.currentTimeMillis() - start));
         } catch (SDBException e) {
             throw new PersistenceException("Could not get SimpleDb Domain", e);
         } catch (Exception e) {
@@ -87,6 +91,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         Future future = getExecutor().submit(new AsyncSaveTask(this, o, id));
         return future;
     }
+
 
     public <T> T merge(T t) {
         // todo: should probably behave a bit different
@@ -236,6 +241,19 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         }
     }
 
+    public Future rename(Class tClass, String oldAttributeName, String newAttributeName) {
+        // get list of all items in the domain
+        try {
+            Domain domain = getDomain(tClass);
+            QueryResult result = domain.listItems();
+            List<Item> items = result.getItemList();
+            result.getNextToken();
+        } catch (SDBException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     /**
      * Gets the Typica Domain for a class.
      *
@@ -311,7 +329,8 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
                     Type[] types = type.getActualTypeArguments();
                     Class typeInList = (Class) types[0];
                     // todo: should this return null if there are no elements??
-                    LazyList lazyList = new LazyList(this, newInstance, annotation.mappedBy(), id, typeInList, factory.getAnnotationManager().getAnnotationInfo(typeInList));
+//                    LazyList lazyList = new LazyList(this, newInstance, annotation.mappedBy(), id, typeInList, factory.getAnnotationManager().getAnnotationInfo(typeInList));                  
+                    LazyList lazyList = new LazyList(this, typeInList, oneToManyQuery(annotation.mappedBy(), id, typeInList));
                     Class retType = getter.getReturnType();
                     // todo: assuming List for now, handle other collection types
                     String setterName = getSetterFromGetter(getter);
@@ -334,6 +353,16 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         }
         cachePut(cacheKey(tClass, id), newInstance);
         return newInstance;
+    }
+
+    private String oneToManyQuery(String foreignKeyFieldName, Object id, Class typeInList) {
+        AnnotationInfo ai = factory.getAnnotationManager().getAnnotationInfo(typeInList);
+        String query = "['" + foreignKey(foreignKeyFieldName) + "' = '" + id + "']";
+        if (ai.getDiscriminatorValue() != null) {
+            query += " intersection ['DTYPE' = '" + ai.getDiscriminatorValue() + "']";
+        }
+        logger.fine("OneToMany query=" + query);
+        return query;
     }
 
     private String getValueToSet(List<ItemAttribute> atts, String propertyName) {

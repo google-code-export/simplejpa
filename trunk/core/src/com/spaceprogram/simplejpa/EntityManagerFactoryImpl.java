@@ -22,30 +22,47 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- *
  * User: treeder
  * Date: Feb 10, 2008
  * Time: 6:20:23 PM
  */
 public class EntityManagerFactoryImpl implements EntityManagerFactory {
     private static Logger logger = Logger.getLogger(EntityManagerFactoryImpl.class.getName());
-    /** Whether or not the factory has been closed */
+    /**
+     * Whether or not the factory has been closed
+     */
     private boolean closed = false;
-    /** This is a set of all the objects we found that are marked as @Entity */
+    /**
+     * This is a set of all the objects we found that are marked as @Entity
+     */
     private Set<String> entities;
-    /** quick access to the entities */
+    /**
+     * quick access to the entities
+     */
     private Map<String, String> entityMap = new HashMap<String, String>();
-    /** properties file values */
+    /**
+     * properties file values
+     */
     private Map props;
-    /** Stores annotation info about our entities for easy retrieval when needed */
+    /**
+     * Stores annotation info about our entities for easy retrieval when needed
+     */
     private AnnotationManager annotationManager = new AnnotationManager();
-    /** for all the concurrent action */
+    /**
+     * for all the concurrent action
+     */
     private ExecutorService executor;
-    /** Also the prefix that will be applied to each Domain */
+    /**
+     * Also the prefix that will be applied to each Domain
+     */
     private String persistenceUnitName;
-    /** cache all the domains in sdb */
+    /**
+     * cache all the domains in sdb
+     */
     private List<Domain> domainsList;
-    /** same as domainsList, but map access */
+    /**
+     * same as domainsList, but map access
+     */
     private Map<String, Domain> domainMap = new HashMap<String, Domain>();
 
     /**
@@ -66,8 +83,9 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 
     /**
      * Use this if you want to construct this directly.
+     *
      * @param persistenceUnitName used to prefix the SimpleDB domains
-     * @param props should have accessKey and secretKey
+     * @param props               should have accessKey and secretKey
      */
     public EntityManagerFactoryImpl(String persistenceUnitName, Map props) {
         this.persistenceUnitName = persistenceUnitName;
@@ -80,7 +98,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
      *
      * @param persistenceUnitName
      * @param props
-     * @param libsToScan a set of 
+     * @param libsToScan          a set of
      */
     public EntityManagerFactoryImpl(String persistenceUnitName, Map props, Set<String> libsToScan) {
         this.persistenceUnitName = persistenceUnitName;
@@ -125,7 +143,6 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
                 }
             }
             System.out.println("Finished scanning for entity classes.");
-
             executor = Executors.newFixedThreadPool(50);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -135,6 +152,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 
     /**
      * Call this to load the props from a file in the root of our classpath called: sdb.properties
+     *
      * @throws IOException
      */
     public void loadProps() throws IOException {
@@ -144,7 +162,6 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     }
 
     /**
-     *
      * @return a new EntityManager for you to use.
      */
     public EntityManager createEntityManager() {
@@ -189,8 +206,11 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         try {
             Domain d = getDomain(domainName);
             if (d == null) {
+                System.out.println("creating domain");
                 SimpleDB db = getSimpleDb();
-                db.createDomain(domainName);
+                Domain domain = db.createDomain(domainName);
+                domainsList.add(domain);
+                domainMap.put(domain.getName(), domain);
             }
         } catch (SDBException e) {
             throw new PersistenceException("Could not create SimpleDB domain.", e);
@@ -209,6 +229,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
             return domainsList;
         }
         try {
+            System.out.println("getting all domains");
             SimpleDB db = getSimpleDb();
             ListDomainsResult listDomainsResult = db.listDomains();
             domainsList = listDomainsResult.getDomainList();
@@ -216,6 +237,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
             while (listDomainsResult.getNextToken() != null) {
                 listDomainsResult = db.listDomains(listDomainsResult.getNextToken());
                 domainsList.addAll(listDomainsResult.getDomainList());
+                putDomainsInMap(domainsList);
             }
         } catch (SDBException e) {
             throw new PersistenceException(e);
