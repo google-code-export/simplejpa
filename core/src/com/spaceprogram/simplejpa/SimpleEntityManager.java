@@ -27,10 +27,20 @@ public interface SimpleEntityManager extends EntityManager {
      *    ex.getCause().printStackTrace();
      * }
      *
-     * @param o
-     * @return
+     * @param o the object to persist.
+     * @return the Future representing the persist task.
      */
     Future persistAsync(Object o);
 
-    void rename(Class tClass, String oldAttributeName, String newAttributeName);
+    /**
+     * This method will rename an attribute in SimpleDB by iterating through EVERY element in the Domain
+     * putting the old attribute value to the new attribute name, then deleting the old one.
+     *
+     * This can take a long time to complete if the Domain is large.
+     * 
+     * @param domainClass specifies the Domain
+     * @param oldAttributeName the attribute name you want values moved from
+     * @param newAttributeName the attribute name you want values moved to
+     */
+    void rename(Class domainClass, String oldAttributeName, String newAttributeName);
 }
