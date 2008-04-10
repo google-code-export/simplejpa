@@ -98,6 +98,62 @@ public class PersistenceTests {
     }
 
     @Test
+    public void persistThenModify() throws IOException, InterruptedException {
+        EntityManagerSimpleJPA em = (EntityManagerSimpleJPA) factory.createEntityManager();
+
+        MyTestObject object = new MyTestObject();
+        object.setName("Scooby doo");
+        object.setAge(100);
+        em.persist(object);
+        String id = object.getId();
+
+        MyTestObject2 myObject2 = new MyTestObject2("shaggy", 131);
+        object.setMyTestObject2(myObject2);
+        em.persist(myObject2);
+        em.persist(object); // had to resave to get object2's id
+        em.close();
+
+        Thread.sleep(1000);
+
+        em = (EntityManagerSimpleJPA) factory.createEntityManager();
+        object = em.find(MyTestObject.class, object.getId());
+        Assert.assertEquals("Scooby doo", object.getName());
+        Assert.assertEquals(id, object.getId());
+        System.out.println("myobject2=" + myObject2);
+        System.out.println("object22= " + object.getMyTestObject2());
+        Assert.assertEquals(myObject2.getName(), object.getMyTestObject2().getName());
+        Assert.assertEquals(new Integer(100), object.getAge());
+
+        object.setIncome(null);
+        object = em.merge(object); // should not delete attributes because income was always null
+        Assert.assertEquals(0, em.getOpStats().getAttsDeleted());
+
+        object.setAge(null);
+        object = em.merge(object);
+        Assert.assertEquals(1, em.getOpStats().getAttsDeleted());
+        em.close();
+
+        Thread.sleep(1000);
+
+        em = (EntityManagerSimpleJPA) factory.createEntityManager();
+        object = em.find(MyTestObject.class, object.getId());
+        Assert.assertEquals("Scooby doo", object.getName());
+        Assert.assertEquals(id, object.getId());
+        Assert.assertEquals(myObject2.getName(), object.getMyTestObject2().getName());
+        System.out.println("new age=" + object.getAge());
+        Assert.assertNull(object.getAge());
+
+        // now delete object
+        em.remove(object);
+        em.remove(myObject2);
+
+        // and make sure it's gone
+        object = em.find(MyTestObject.class, object.getId());
+        Assert.assertNull(object);
+        em.close();
+    }
+
+    @Test
     public void persistAsync() throws IOException, ExecutionException, InterruptedException {
         SimpleEntityManager em = (SimpleEntityManager) factory.createEntityManager();
 
@@ -297,8 +353,8 @@ public class PersistenceTests {
 
     /**
      * THIS FAILS IF TOO MANY OBJECTS COME BACK FOR THE SUB QUERY! MIGHT WANT TO JUST DISALLOW QUERYING DOWN COLLECTIONS IN A GRAPH.
-     *
-javax.persistence.PersistenceException: com.xerox.amazonws.sdb.SDBException: Client error : Too many predicates in the filter expression.
+     * <p/>
+     * javax.persistence.PersistenceException: com.xerox.amazonws.sdb.SDBException: Client error : Too many predicates in the filter expression.
      */
     @Test
     public void queryDownGraph() {
@@ -475,7 +531,7 @@ javax.persistence.PersistenceException: com.xerox.amazonws.sdb.SDBException: Cli
         List<MyTestObject> obs;
 
         int numItems = 120;
-        for(int i = 0; i < 120; i++){
+        for (int i = 0; i < 120; i++) {
             MyTestObject object = new MyTestObject();
             object.setName("Scooby doo");
             object.setAge(100);
