@@ -46,20 +46,16 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
      */
     public static final BigDecimal OFFSET_VALUE = new BigDecimal(Long.MIN_VALUE).negate();
     private int queryCount;
+    private OpStats opStats;
 
     EntityManagerSimpleJPA(EntityManagerFactoryImpl factory) {
         this.factory = factory;
     }
 
     public void persist(Object o) {
-
+        resetLastOpStats();
         try {
-            long start = System.currentTimeMillis();
-            String id = prePersist(o); // could probably move this inside the AsyncSaveTask
-            logger.fine("prePersist time=" + (System.currentTimeMillis() - start));
-            start = System.currentTimeMillis();
-            new AsyncSaveTask(this, o, id).call();
-            logger.fine("persistOnly time=" + (System.currentTimeMillis() - start));
+            new AsyncSaveTask(this, o).call();
         } catch (SDBException e) {
             throw new PersistenceException("Could not get SimpleDb Domain", e);
         } catch (Exception e) {
@@ -67,28 +63,13 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         }
     }
 
-
-    /**
-     * Checks that object is an entity and assigns an ID.
-     *
-     * @param o
-     * @return
-     */
-    private String prePersist(Object o) {
-        checkEntity(o);
-        // create id if required
-        String id = getId(o);
-        if (id == null) {
-            id = UUID.randomUUID().toString();
-        }
-        AnnotationInfo ai = factory.getAnnotationManager().getAnnotationInfo(o);
-        setFieldValue(o.getClass(), o, ai.getIdMethod(), id);
-        return id;
+    private void resetLastOpStats() {
+        opStats = new OpStats();
     }
 
+
     public Future persistAsync(Object o) {
-        String id = prePersist(o);
-        Future future = getExecutor().submit(new AsyncSaveTask(this, o, id));
+        Future future = getExecutor().submit(new AsyncSaveTask(this, o));
         return future;
     }
 
@@ -164,9 +145,8 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         return factory.getDomainName(aClass);
     }
 
-    
 
-    private void checkEntity(Object o) {
+    void checkEntity(Object o) {
         String className = o.getClass().getName();
         ensureClassIsEntity(className);
         // now if it the reflection data hasn't been cached, do it now
@@ -244,7 +224,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
             List<Item> items;
             int i = 0;
             String nextToken = null;
-            while(i == 0 || nextToken != null) {
+            while (i == 0 || nextToken != null) {
                 result = executeQueryForRename(oldAttributeName, newAttributeName, domain, nextToken);
                 items = result.getItemList();
                 putAndDelete(oldAttributeName, newAttributeName, items);
@@ -264,9 +244,9 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
     private void putAndDelete(String oldAttributeName, String newAttributeName, List<Item> items) throws SDBException {
         for (Item item : items) {
             List<ItemAttribute> oldAtts = item.getAttributes(oldAttributeName);
-            if(oldAtts.size() > 0){
+            if (oldAtts.size() > 0) {
                 ItemAttribute oldAtt = oldAtts.get(0);
-                List<ItemAttribute> atts= new ArrayList<ItemAttribute>();
+                List<ItemAttribute> atts = new ArrayList<ItemAttribute>();
                 atts.add(new ItemAttribute(newAttributeName, oldAtt.getValue(), true));
                 item.putAttributes(atts);
                 item.deleteAttributes(oldAtts);
@@ -450,13 +430,16 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
     String getSetterFromGetter(Method getter) {
         return setterName(attributeName(getter));
     }
+    String getGetterFromSetter(Method setter) {
+        return getterName(attributeName(setter));
+    }
 
     private String setterName(String fieldName) {
         return "set" + StringUtils.capitalize(fieldName);
     }
 
-    public String attributeName(Method getter) {
-        return StringUtils.uncapitalize(getter.getName().substring(3));
+    public String attributeName(Method getterOrSetter) {
+        return StringUtils.uncapitalize(getterOrSetter.getName().substring(3));
     }
 
     static <T> String getterName(String fieldName) {
@@ -471,7 +454,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
      * @param getter
      * @param val
      */
-    private <T> void setFieldValue(Class tClass, T newInstance, Method getter, String val) {
+    <T> void setFieldValue(Class tClass, T newInstance, Method getter, String val) {
         try {
             // need param type
             String attName = attributeName(getter);
@@ -660,4 +643,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
     }
 
 
+    public OpStats getOpStats() {
+        return opStats;
+    }
 }

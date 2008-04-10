@@ -47,7 +47,6 @@ public class AnnotationInfo {
         return getterMap.get(getterName);
     }
 
-
     public void setDiscriminatorValue(String discriminatorValue) {
         this.discriminatorValue = discriminatorValue;
     }

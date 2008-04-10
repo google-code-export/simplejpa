@@ -206,7 +206,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         try {
             Domain domain = getDomain(domainName);
             if (domain == null) {
-                System.out.println("creating domain");
+                System.out.println("creating domain: " + domainName);
                 SimpleDB db = getSimpleDb();
                 domain = db.createDomain(domainName);
                 domainsList.add(domain);
