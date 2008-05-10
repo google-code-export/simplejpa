@@ -110,17 +110,18 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     private void init(Set<String> libsToScan) {
         try {
             System.out.println("Scanning for entity classes...");
-            URL[] urls;
+            URL[] urls = ClasspathUrlFinder.findClassPaths();
             if (libsToScan != null) {
-                urls = new URL[libsToScan.size()];
+                URL[] urls2 = new URL[urls.length + libsToScan.size()];
+                System.arraycopy(urls, 0, urls2, 0, urls.length);
+//                urls = new URL[libsToScan.size()];
                 int count = 0;
                 for (String s : libsToScan) {
                     logger.fine("libinset=" + s);
-                    urls[count] = new File(s).toURL();
+                    urls2[count + urls.length] = new File(s).toURL();
                     count++;
                 }
-            } else {
-                urls = ClasspathUrlFinder.findClassPaths();
+                urls = urls2;
             }
             if (logger.isLoggable(Level.FINE)) {
                 logger.fine("classpath urls:");
