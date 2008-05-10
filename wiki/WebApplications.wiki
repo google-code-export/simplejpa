@@ -31,3 +31,5 @@ Now all you need to do is create your EntityManagerFactory with the following co
 {{{
 entityManagerFactory = new EntityManagerFactoryImpl(persistenceUnitName, null, libPaths);
 }}}
+
+TODO: Explain SimpleJPAUtil usage.
