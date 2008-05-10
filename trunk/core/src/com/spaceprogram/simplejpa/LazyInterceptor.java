@@ -57,7 +57,7 @@ public class LazyInterceptor implements MethodInterceptor {
             Object valueToSet = args[0];
             if (valueToSet == null) {
                 Method getter = em.getFactory().getAnnotationManager().getAnnotationInfo(obj).getGetter(attributeName);
-                MethodProxy getterProxy = MethodProxy.find(obj.getClass(), new Signature(em.getGetterFromSetter(method), Type.getType(getter.getReturnType()), new Type[]{}));
+                MethodProxy getterProxy = MethodProxy.find(obj.getClass(), new Signature(em.getGetterNameFromSetter(method), Type.getType(getter.getReturnType()), new Type[]{}));
                 Object ret = getterProxy.invokeSuper(obj, null);
                 if (ret != null) {
                     nulledFields.put(attributeName, ret);
@@ -80,7 +80,7 @@ public class LazyInterceptor implements MethodInterceptor {
                 logger.fine("loading ManyToOne object for type=" + retType + " with id=" + foreignKey);
                 Object toSet = em.find(retType, foreignKey);
                 logger.fine("got object for ManyToOne=" + toSet);
-                String setterName = em.getSetterFromGetter(method);
+                String setterName = em.getSetterNameFromGetter(method);
                 Method setter = obj.getClass().getMethod(setterName, retType);
                 setter.invoke(obj, toSet);
             }
@@ -94,7 +94,7 @@ public class LazyInterceptor implements MethodInterceptor {
                 Class retType = method.getReturnType();
                 Object toSet = em.getObjectFromS3(lobKey);
                 // System.out.println("toset=" + toSet);
-                String setterName = em.getSetterFromGetter(method);
+                String setterName = em.getSetterNameFromGetter(method);
                 Method setter = obj.getClass().getMethod(setterName, retType);
                 setter.invoke(obj, toSet);
             }

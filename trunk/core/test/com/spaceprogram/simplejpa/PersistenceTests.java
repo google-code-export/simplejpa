@@ -544,16 +544,28 @@ public class PersistenceTests {
         obs = query.getResultList();
         System.out.println("asserting size...");
         Assert.assertEquals(numItems, obs.size());
-        /*for (MyTestObject ob : obs) {
-            System.out.println(ob);
-            if (ob.getMyList() != null) {
-                System.out.println("list not null: " + ob.getMyList().getClass());
-                List<MyTestObject2> ob2s = ob.getMyList();
-                for (MyTestObject2 ob2 : ob2s) {
-                    System.out.println("ob2=" + ob2);
-                }
-            }
-        }*/
+
+        em.close();
+    }
+
+    @Test
+    public void persistObjectWithEnum() throws IOException {
+        EntityManager em = factory.createEntityManager();
+
+        MyTestObject object = new MyTestObject();
+        object.setMyEnumOrdinal(MyEnum.me);
+        object.setMyEnumString(MyEnum.i);
+        em.persist(object);
+        String id = object.getId();
+        em.close();
+
+        em = factory.createEntityManager();
+        object = em.find(MyTestObject.class, id);
+        Assert.assertEquals(MyEnum.me, object.getMyEnumOrdinal());
+        Assert.assertEquals(MyEnum.i, object.getMyEnumString());
+
+        // now delete object
+        em.remove(object);
         em.close();
     }
 

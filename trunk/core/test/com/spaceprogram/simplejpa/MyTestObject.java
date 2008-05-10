@@ -29,6 +29,8 @@ public class MyTestObject extends MySuperClass {
     private String bigString;
     private MyTestObject3 myTestObject3;
     private Set<String> multiValueProperty;
+    private MyEnum myEnumOrdinal;
+    private MyEnum myEnumString;
 
 
     public void setName(String name) {
@@ -48,7 +50,7 @@ public class MyTestObject extends MySuperClass {
     }
 
     public String toString() {
-      /*  return new ReflectionToStringBuilder(this){
+        /*  return new ReflectionToStringBuilder(this){
             protected boolean accept(Field field) {
                 if(field.getType().isArray() || Collection.class.isAssignableFrom(field.getType())){
                     return false;
@@ -118,7 +120,7 @@ public class MyTestObject extends MySuperClass {
     }
 
     public void addToMyList(MyTestObject2 myTestObject2) {
-        if(myList == null) myList = new ArrayList<MyTestObject2>();
+        if (myList == null) myList = new ArrayList<MyTestObject2>();
         myList.add(myTestObject2);
     }
 
@@ -158,4 +160,23 @@ public class MyTestObject extends MySuperClass {
     public void setMultiValueProperty(Set<String> multiValueProperty) {
         this.multiValueProperty = multiValueProperty;
     }
+
+    @Enumerated
+    public MyEnum getMyEnumOrdinal() {
+        return myEnumOrdinal;
+    }
+
+    public void setMyEnumOrdinal(MyEnum myEnumOrdinal) {
+        this.myEnumOrdinal = myEnumOrdinal;
+    }
+
+    @Enumerated(EnumType.STRING)
+    public MyEnum getMyEnumString() {
+        return myEnumString;
+    }
+
+    public void setMyEnumString(MyEnum myEnumString) {
+        this.myEnumString = myEnumString;
+    }
+
 }

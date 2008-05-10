@@ -11,13 +11,11 @@ import org.jets3t.service.S3ServiceException;
 import org.jets3t.service.model.S3Bucket;
 import org.jets3t.service.model.S3Object;
 
-import javax.persistence.Lob;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
+import javax.persistence.*;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.ObjectOutputStream;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -135,18 +133,43 @@ public class AsyncSaveTask implements Callable {
                 em.getOpStats().s3Put(System.currentTimeMillis() - start3);
                 logger.fine("setting lobkeyattribute=" + em.lobKeyAttributeName(getter) + " - " + s3ObjectId);
                 atts.add(new ItemAttribute(em.lobKeyAttributeName(getter), s3ObjectId, true));
+            } else if (getter.getAnnotation(Enumerated.class) != null) {
+                Enumerated enumerated = getter.getAnnotation(Enumerated.class);
+                Class retType = getter.getReturnType();
+                EnumType enumType = enumerated.value();
+                String toSet = null;
+                if (enumType == EnumType.STRING) {
+                    toSet = ob.toString();
+                } else { // ordinal
+                    Object[] enumConstants = retType.getEnumConstants();
+                    for (int i = 0; i < enumConstants.length; i++) {
+                        Object enumConstant = enumConstants[i];
+                        if (enumConstant.toString().equals(ob.toString())) {
+                            toSet = Integer.toString(i);
+                            break;
+                        }
+                    }
+                }
+                if(toSet == null){
+                    // should never happen
+                    throw new PersistenceException("Enum value is null, couldn't find ordinal match: " + ob);
+                }
+                atts.add(new ItemAttribute(em.attributeName(getter), toSet, true));
             } else {
                 String toSet = ob != null ? em.padOrConvertIfRequired(ob) : "";
                 // todo: throw an exception if this is going to exceed maximum size, suggest using @Lob
                 atts.add(new ItemAttribute(em.attributeName(getter), toSet, true));
             }
         }
+
         // and now finally send it for storage
         long start2 = System.currentTimeMillis();
         item.putAttributes(atts);
         long duration2 = System.currentTimeMillis() - start2;
         logger.fine("putAttributes time=" + (duration2));
         em.getOpStats().attsPut(atts.size(), duration2);
+
+        // Check for nulled attributes so we can send a delete call
         if (interceptor != null && interceptor.getNulledFields() != null && interceptor.getNulledFields().size() > 0) {
             List<ItemAttribute> attsToDelete = new ArrayList<ItemAttribute>();
             for (String s : interceptor.getNulledFields().keySet()) {
@@ -154,7 +177,7 @@ public class AsyncSaveTask implements Callable {
             }
             start2 = System.currentTimeMillis();
             item.deleteAttributes(attsToDelete);
-             // todo: what about lobs?  need to delete from s3
+            // todo: what about lobs?  need to delete from s3
             duration2 = System.currentTimeMillis() - start2;
             logger.fine("deleteAttributes time=" + (duration2));
             em.getOpStats().attsDeleted(attsToDelete.size(), duration2);
