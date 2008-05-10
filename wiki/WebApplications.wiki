@@ -11,9 +11,11 @@ This method will get you all the paths you need.
         String basePath = servletContext.getRealPath("");
         Set<String> libPathsLocked = servletContext.getResourcePaths("/WEB-INF/lib");
         Set<String> libPaths = new HashSet<String>();
-        for (String s : libPathsLocked) {
-            // need to prefix with full path
-            libPaths.add(basePath + s);
+        if(libPathsLocked != null){
+            for (String s : libPathsLocked) {
+                // need to prefix with full path
+                libPaths.add(basePath + s);
+            }
         }
         String path = servletContext.getRealPath("/WEB-INF/classes");
         if (path != null) {
