@@ -319,7 +319,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
                     LazyList lazyList = new LazyList(this, typeInList, oneToManyQuery(annotation.mappedBy(), id, typeInList));
                     Class retType = getter.getReturnType();
                     // todo: assuming List for now, handle other collection types
-                    String setterName = getSetterFromGetter(getter);
+                    String setterName = getSetterNameFromGetter(getter);
                     Method setter = tClass.getMethod(setterName, retType);
                     setter.invoke(newInstance, lazyList);
                 } else if (getter.getAnnotation(Lob.class) != null) {
@@ -327,6 +327,24 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
                     String lobKeyVal = getValueToSet(atts, lobKeyAttributeName(getter));
                     logger.fine("lobkeyval to set on interceptor=" + lobKeyVal + " - fromatt=" + lobKeyAttributeName(getter));
                     if (lobKeyVal != null) owi.getInterceptor().putForeignKey(attName, lobKeyVal);
+                } else if (getter.getAnnotation(Enumerated.class) != null) {
+                    Enumerated enumerated = getter.getAnnotation(Enumerated.class);
+                    Class retType = getter.getReturnType();
+                    EnumType enumType = enumerated.value();
+                    String val = getValueToSet(atts, attName);
+                    Object enumVal = null;
+                    if (enumType == EnumType.STRING) {
+                        Object[] enumConstants = retType.getEnumConstants();
+                        for (Object enumConstant : enumConstants) {
+                            if (enumConstant.toString().equals(val)) {
+                                enumVal = enumConstant;
+                            }
+                        }
+                    } else { // ordinal
+                        enumVal = retType.getEnumConstants()[Integer.parseInt(val)];
+                    }
+                    Method setMethod = getSetterFromGetter(tClass, getter, retType);
+                    setMethod.invoke(newInstance, enumVal);
                 } else {
                     String val = getValueToSet(atts, attName);
                     if (val != null) {
@@ -427,10 +445,15 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
                 });
     }
 
-    String getSetterFromGetter(Method getter) {
+    private Method getSetterFromGetter(Class tClass, Method getter, Class retType) throws NoSuchMethodException {
+        return tClass.getMethod(getSetterNameFromGetter(getter), retType);
+    }
+
+    String getSetterNameFromGetter(Method getter) {
         return setterName(attributeName(getter));
     }
-    String getGetterFromSetter(Method setter) {
+
+    String getGetterNameFromSetter(Method setter) {
         return getterName(attributeName(setter));
     }
 
