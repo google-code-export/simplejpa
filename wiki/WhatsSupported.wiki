@@ -17,3 +17,5 @@ This is a list of things that are supported so far.
   * BigDecimal - same problems as Double
   * String
   * no primitives yet! Please use wrappers only for now.
+  * @Enumerated (ordinal and string)
+  * @Column (name only)
