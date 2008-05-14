@@ -19,36 +19,8 @@ import java.util.concurrent.Future;
  * Date: Feb 8, 2008
  * Time: 1:03:57 PM
  */
-public class PersistenceTests {
-    private static EntityManagerFactoryImpl factory;
+public class PersistenceTests extends BaseTestClass {
 
-    @BeforeClass
-    public static void setupEntityManagerFactory() throws IOException {
-        factory = new EntityManagerFactoryImpl("testunit", null);
-        factory.loadProps();
-
-        /*
-        This doesn't work when not packaged in jar or something.
-        (EntityManagerFactoryImpl) Persistence.createEntityManagerFactory("persistenceSDB");*/
-    }
-
-    @AfterClass
-    public static void tearDownEntityManagerFactory() {
-        factory.close();
-    }
-
-    @After
-    public void deleteAll() throws SDBException {
-        EntityManagerSimpleJPA em = (EntityManagerSimpleJPA) factory.createEntityManager();
-        SimpleDB db = em.getSimpleDb();
-        Domain d = db.getDomain(em.getDomainName(MyTestObject.class));
-        db.deleteDomain(d);
-        d = db.getDomain(em.getDomainName(MyTestObject2.class));
-        db.deleteDomain(d);
-        d = db.getDomain(em.getDomainName(MyInheritanceObject1.class));
-        db.deleteDomain(d);
-        em.close();
-    }
 
     @Test
     public void listAllObjects() throws IOException, SDBException, ExecutionException, InterruptedException {
@@ -525,7 +497,7 @@ public class PersistenceTests {
 
     @Test
     public void testMoreThanMaxPerQuery() {
-        EntityManager em = factory.createEntityManager();
+        EntityManagerSimpleJPA em = (EntityManagerSimpleJPA) factory.createEntityManager();
 
         Query query;
         List<MyTestObject> obs;
@@ -536,7 +508,7 @@ public class PersistenceTests {
             object.setName("Scooby doo");
             object.setAge(100);
             System.out.println("persisting " + i);
-            em.persist(object);
+            em.persistAsync(object);
         }
 
         System.out.println("querying for all objects...");
@@ -547,6 +519,7 @@ public class PersistenceTests {
 
         em.close();
     }
+
 
     @Test
     public void persistObjectWithEnum() throws IOException {
