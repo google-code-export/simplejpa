@@ -80,8 +80,8 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         return t;
     }
 
-    String lobKeyAttributeName(Method getter) {
-        return attributeName(getter) + "-lobkey";
+    String lobKeyAttributeName(String columnName, Method getter) {
+        return columnName != null ? columnName : attributeName(getter) + "-lobkey";
     }
 
     String s3ObjectId(String id, Method getter) {
@@ -275,120 +275,9 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
      * @return
      */
     public <T> T buildObject(Class<T> tClass, Object id, List<ItemAttribute> atts) {
-        T newInstance = (T) cacheGet(cacheKey(tClass, id));
-        if (newInstance != null) return newInstance;
-        AnnotationInfo ai = factory.getAnnotationManager().getAnnotationInfo(tClass);
-        try {
-//            newInstance = tClass.newInstance();
-            // check for DTYPE to see if it's a subclass, must be a faster way to do this you'd think?
-            for (ItemAttribute att : atts) {
-                if (att.getName().equals("DTYPE")) {
-                    System.out.println("dtype=" + att.getValue());
-                    ai = factory.getAnnotationManager().getAnnotationInfoByDiscriminator(att.getValue());
-                    tClass = ai.getMainClass();
-                    // check cache again with new class
-                    newInstance = (T) cacheGet(cacheKey(tClass, id));
-                    if (newInstance != null) return newInstance;
-                    break;
-                }
-            }
-            ObjectWithInterceptor owi = newEnancedInstance(tClass);
-            newInstance = (T) owi.getBean();
-            Collection<Method> getters = ai.getGetters();
-            for (Method getter : getters) {
-                String attName = attributeName(getter);
-                if (getter.getAnnotation(ManyToOne.class) != null) {
-                    // lazy it up
-                    String identifierForManyToOne = getIdentifierForManyToOne(getter, atts);
-                    logger.fine("identifierForManyToOne=" + identifierForManyToOne);
-                    if (identifierForManyToOne == null) {
-                        continue;
-                    }
-                    // todo: stick a cache in here and check the cache for the instance before creating the lazy loader.
-                    logger.finer("creating new lazy loading instance for getter " + getter.getName() + " of class " + tClass.getSimpleName() + " with id " + id);
-//                    Object toSet = newLazyLoadingInstance(retType, identifierForManyToOne);
-                    owi.getInterceptor().putForeignKey(attName, identifierForManyToOne);
-                } else if (getter.getAnnotation(OneToMany.class) != null) {
-                    OneToMany annotation = getter.getAnnotation(OneToMany.class);
-                    ParameterizedType type = (ParameterizedType) getter.getGenericReturnType();
-//                    logger.fine("type for manytoone=" + type + " " + type.getClass().getName()  + " " + type.getRawType() + " " + type.getOwnerType());
-                    Type[] types = type.getActualTypeArguments();
-                    Class typeInList = (Class) types[0];
-                    // todo: should this return null if there are no elements??
-//                    LazyList lazyList = new LazyList(this, newInstance, annotation.mappedBy(), id, typeInList, factory.getAnnotationManager().getAnnotationInfo(typeInList));                  
-                    LazyList lazyList = new LazyList(this, typeInList, oneToManyQuery(annotation.mappedBy(), id, typeInList));
-                    Class retType = getter.getReturnType();
-                    // todo: assuming List for now, handle other collection types
-                    String setterName = getSetterNameFromGetter(getter);
-                    Method setter = tClass.getMethod(setterName, retType);
-                    setter.invoke(newInstance, lazyList);
-                } else if (getter.getAnnotation(Lob.class) != null) {
-                    // handled in Proxy
-                    String lobKeyVal = getValueToSet(atts, lobKeyAttributeName(getter));
-                    logger.fine("lobkeyval to set on interceptor=" + lobKeyVal + " - fromatt=" + lobKeyAttributeName(getter));
-                    if (lobKeyVal != null) owi.getInterceptor().putForeignKey(attName, lobKeyVal);
-                } else if (getter.getAnnotation(Enumerated.class) != null) {
-                    Enumerated enumerated = getter.getAnnotation(Enumerated.class);
-                    Class retType = getter.getReturnType();
-                    EnumType enumType = enumerated.value();
-                    String val = getValueToSet(atts, attName);
-                    Object enumVal = null;
-                    if (enumType == EnumType.STRING) {
-                        Object[] enumConstants = retType.getEnumConstants();
-                        for (Object enumConstant : enumConstants) {
-                            if (enumConstant.toString().equals(val)) {
-                                enumVal = enumConstant;
-                            }
-                        }
-                    } else { // ordinal
-                        enumVal = retType.getEnumConstants()[Integer.parseInt(val)];
-                    }
-                    Method setMethod = getSetterFromGetter(tClass, getter, retType);
-                    setMethod.invoke(newInstance, enumVal);
-                } else {
-                    String val = getValueToSet(atts, attName);
-                    if (val != null) {
-                        setFieldValue(tClass, newInstance, getter, val);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            throw new PersistenceException(e);
-        }
-        cachePut(cacheKey(tClass, id), newInstance);
-        return newInstance;
+        return ObjectBuilder.buildObject(this, tClass, id, atts);
     }
 
-    private String oneToManyQuery(String foreignKeyFieldName, Object id, Class typeInList) {
-        AnnotationInfo ai = factory.getAnnotationManager().getAnnotationInfo(typeInList);
-        String query = "['" + foreignKey(foreignKeyFieldName) + "' = '" + id + "']";
-        if (ai.getDiscriminatorValue() != null) {
-            query += " intersection ['DTYPE' = '" + ai.getDiscriminatorValue() + "']";
-        }
-        logger.fine("OneToMany query=" + query);
-        return query;
-    }
-
-    private String getValueToSet(List<ItemAttribute> atts, String propertyName) {
-        for (ItemAttribute att : atts) {
-            String attName = att.getName();
-            if (attName.equals(propertyName)) {
-                String val = att.getValue();
-                return val;
-            }
-        }
-        return null;
-    }
-
-    private ObjectWithInterceptor newEnancedInstance(Class tClass) {
-        LazyInterceptor interceptor = new LazyInterceptor(this);
-        Enhancer e = new Enhancer();
-        e.setSuperclass(tClass);
-        e.setCallback(interceptor);
-        Object bean = e.create();
-        ObjectWithInterceptor cwi = new ObjectWithInterceptor(bean, interceptor);
-        return cwi;
-    }
 
     public Object cacheGet(String key) {
         logger.fine("getting item from cache with cachekey=" + key);
@@ -397,7 +286,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         return o;
     }
 
-    private void cachePut(String key, Object newInstance) {
+    public void cachePut(String key, Object newInstance) {
         logger.fine("putting item in cache with cachekey=" + key + " - " + newInstance);
         cache.put(key, newInstance);
     }
@@ -413,15 +302,6 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         return factory.getAnnotationManager().stripEnhancerClass(tClass).getName() + "_" + id;
     }
 
-    private String getIdentifierForManyToOne(Method getter, List<ItemAttribute> atts) {
-        String fk = foreignKey(getter);
-        for (ItemAttribute att : atts) {
-            if (att.getName().equals(fk)) {
-                return att.getValue();
-            }
-        }
-        return null;
-    }
 
     public String foreignKey(Method getter) {
         return foreignKey(attributeName(getter));
@@ -445,7 +325,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
                 });
     }
 
-    private Method getSetterFromGetter(Class tClass, Method getter, Class retType) throws NoSuchMethodException {
+    public Method getSetterFromGetter(Class tClass, Method getter, Class retType) throws NoSuchMethodException {
         return tClass.getMethod(getSetterNameFromGetter(getter), retType);
     }
 

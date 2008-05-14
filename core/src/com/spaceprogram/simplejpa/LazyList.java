@@ -4,6 +4,7 @@ import com.xerox.amazonws.sdb.*;
 import org.apache.commons.collections.list.GrowthList;
 
 import javax.persistence.PersistenceException;
+import java.io.Serializable;
 import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,7 +17,7 @@ import java.util.logging.Logger;
  * Date: Feb 10, 2008
  * Time: 9:06:16 PM
  */
-public class LazyList extends AbstractList {
+public class LazyList extends AbstractList implements Serializable {
     private static Logger logger = Logger.getLogger(LazyList.class.getName());
     private EntityManagerSimpleJPA em;
 //    private Object instance;
@@ -111,9 +112,14 @@ public class LazyList extends AbstractList {
         }
 
 //        genericReturnType.getOwnerType()
-        Domain domain = null;
+        Domain domain;
         try {
             domain = em.getDomain(ai.getRootClass());
+            if(domain == null){
+                logger.warning("Domain does not exist for " + ai.getRootClass());
+                numPagesLoaded = 1;
+                return;
+            }
             // Now we'll load up all the items up to the page specified
             for (int i = numPagesLoaded; i <= page; i++) {
                 logger.fine("loading items for list. Page=" + i);
