@@ -110,7 +110,14 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     private void init(Set<String> libsToScan) {
         try {
             System.out.println("Scanning for entity classes...");
-            URL[] urls = ClasspathUrlFinder.findClassPaths();
+            URL[] urls;
+            try {
+                urls = ClasspathUrlFinder.findClassPaths();
+            } catch (Exception e) {
+                System.err.println("CAUGHT");
+                e.printStackTrace();
+                urls = new URL[0];
+            }
             if (libsToScan != null) {
                 URL[] urls2 = new URL[urls.length + libsToScan.size()];
                 System.arraycopy(urls, 0, urls2, 0, urls.length);
@@ -219,7 +226,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         }
     }
 
-     public synchronized Domain getDomain(String domainName) {
+    public synchronized Domain getDomain(String domainName) {
         if (domainsList == null) {
             getAllDomains();
         }
@@ -227,12 +234,12 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     }
 
     public synchronized Domain getDomain(Class c) {
-      return getDomain(getDomainName(c));
+        return getDomain(getDomainName(c));
     }
 
     public Domain getOrCreateDomain(String domainName) {
         Domain d = getDomain(domainName);
-        if(d == null){
+        if (d == null) {
             d = setupDbDomain(domainName);
         }
         return d;
@@ -287,6 +294,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         String className = getRootClassName(aClass);
         return getPersistenceUnitName() + "-" + className;
     }
+
     private String getRootClassName(Class<? extends Object> aClass) {
         AnnotationInfo ai = getAnnotationManager().getAnnotationInfo(aClass);
         String className = ai.getRootClass().getSimpleName();

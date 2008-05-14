@@ -41,14 +41,14 @@ public class AnnotationManager {
      * @param c
      * @return
      */
-    public Class stripEnhancerClass(Class c) {
+    public static Class stripEnhancerClass(Class c) {
         String className = c.getName();
         className = stripEnhancerClass(className);
         c = getClass(className);
         return c;
     }
 
-    Class getClass(String obClass) {
+    public static Class getClass(String obClass) {
         try {
             Class c = Class.forName(obClass);
             return c;
@@ -58,7 +58,7 @@ public class AnnotationManager {
     }
 
 
-    public String stripEnhancerClass(String className) {
+    public static String stripEnhancerClass(String className) {
         int enhancedIndex = className.indexOf("$$EnhancerByCGLIB");
         if (enhancedIndex != -1) {
             className = className.substring(0, enhancedIndex);

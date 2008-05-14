@@ -5,10 +5,7 @@ import com.spaceprogram.simplejpa.util.AmazonSimpleDBUtil;
 import com.xerox.amazonws.sdb.*;
 import org.apache.commons.lang.NotImplementedException;
 
-import javax.persistence.FlushModeType;
-import javax.persistence.PersistenceException;
-import javax.persistence.Query;
-import javax.persistence.TemporalType;
+import javax.persistence.*;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.util.*;
@@ -200,6 +197,7 @@ public class QueryImpl implements Query {
             AnnotationInfo refAi = em.getAnnotationManager().getAnnotationInfo(refType);
             Method getterForField = refAi.getGetter(field);
 //            System.out.println("getter=" + getterForField);
+            String columnName = AsyncSaveTask.getColumnName(getterForField);
             String paramValue = getParamValueAsStringForAmazonQuery(param, getterForField);
             logger.fine("paramValue=" + paramValue);
             Method refIdMethod = refAi.getIdMethod();
@@ -236,8 +234,9 @@ public class QueryImpl implements Query {
         String paramValue = getParamValueAsStringForAmazonQuery(param, getterForField);
         logger.fine("paramValue=" + paramValue);
         logger.fine("comp=[" + comparator + "]");
-
-        appendFilter(sb, field, comparator, paramValue);
+        String columnName = AsyncSaveTask.getColumnName(getterForField);
+        if(columnName == null) columnName = field;
+        appendFilter(sb, columnName, comparator, paramValue);
         return true;
     }
 
