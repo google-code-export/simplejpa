@@ -1,13 +1,12 @@
 package com.spaceprogram.simplejpa;
 
+import com.spaceprogram.simplejpa.util.ConcurrentRetriever;
 import com.xerox.amazonws.sdb.*;
 import org.apache.commons.collections.list.GrowthList;
 
 import javax.persistence.PersistenceException;
 import java.io.Serializable;
-import java.util.AbstractList;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.logging.Logger;
 
 /**
@@ -20,7 +19,7 @@ import java.util.logging.Logger;
 public class LazyList extends AbstractList implements Serializable {
     private static Logger logger = Logger.getLogger(LazyList.class.getName());
     private EntityManagerSimpleJPA em;
-//    private Object instance;
+    //    private Object instance;
     //    private String fieldName;
     //    private Object id;
     private Class genericReturnType;
@@ -32,8 +31,17 @@ public class LazyList extends AbstractList implements Serializable {
     private List backingList = new GrowthList();
     private int numRetrieved = 0;
     private String nextToken;
-    private int maxResults = 100; // same as amazon default
+    private int maxToRetrievePerRequest = 100; // same as amazon default
     private int numPagesLoaded;
+    /**
+     * map to remember which pages have been loaded already.
+     */
+    private Map<Integer, Integer> materializedPages = new HashMap<Integer, Integer>();
+    /**
+     * Max results based on the query sent in.
+     * todo: implement using this
+     */
+    private Integer maxResults;
 
     public LazyList() {
         super();
@@ -77,37 +85,52 @@ public class LazyList extends AbstractList implements Serializable {
     }
 
     public Object get(int i) {
-        loadItems(i / maxResults);
+        loadItems(i / maxToRetrievePerRequest, true);
         logger.fine("getting from lazy list at index=" + i);
         Object o;
         if (backingList.size() > i) {
             o = backingList.get(i);
             if (o != null) {
-                logger.fine("object already loaded: " + o);
+                logger.fine("object already loaded in backing list: " + o);
                 return o;
             }
         }
         // else we load the atts
         Item item = items.get(i);
-        o = em.cacheGet(em.cacheKey(genericReturnType, item.getIdentifier()));
+        o = checkCache(item);
         if (o != null) {
-            logger.fine("cache hit in lazy list");
+            logger.fine("cache hit in lazy list: " + o);
+            putInBackingList(i, o);
             return o;
         }
         try {
             List<ItemAttribute> atts = item.getAttributes();
             o = em.buildObject(genericReturnType, item.getIdentifier(), atts);
-            backingList.set(i, o);
+            putInBackingList(i, o);
             return o;
         } catch (SDBException e) {
             throw new PersistenceException(e);
         }
     }
 
-    private synchronized void loadItems(int page) {
-        if (numPagesLoaded > page) return;
+    private Object checkCache(Item item) {
+        Object o;
+        o = em.cacheGet(em.cacheKey(genericReturnType, item.getIdentifier()));
+        return o;
+    }
+
+    private void putInBackingList(int i, Object o) {
+        backingList.set(i, o);
+    }
+
+    private synchronized void loadItems(int page, boolean materializeObjectsInPage) {
+        if (numPagesLoaded > page) {
+            if (materializeObjectsInPage) materializeObjectsInPage(page);
+            return;
+        }
         if (numPagesLoaded > 0 && nextToken == null) {
             // no more results to get
+            if (materializeObjectsInPage) materializeObjectsInPage(page);
             return;
         }
 
@@ -115,7 +138,7 @@ public class LazyList extends AbstractList implements Serializable {
         Domain domain;
         try {
             domain = em.getDomain(ai.getRootClass());
-            if(domain == null){
+            if (domain == null) {
                 logger.warning("Domain does not exist for " + ai.getRootClass());
                 numPagesLoaded = 1;
                 return;
@@ -129,12 +152,16 @@ public class LazyList extends AbstractList implements Serializable {
                 QueryResult qr;
                 try {
                     logger.fine("query for lazylist=" + query);
-                    qr = domain.listItems(query, nextToken, maxResults);
-                    logger.fine("got items for lazylist=" + qr.getItemList().size());
-                    items.addAll(qr.getItemList());
+                    qr = domain.listItems(query, nextToken, maxToRetrievePerRequest);
+                    List<Item> itemList = qr.getItemList();
+                    logger.fine("got items for lazylist=" + itemList.size());
+                    items.addAll(itemList);
+                    numRetrieved += itemList.size();
                     nextToken = qr.getNextToken();
-                    numRetrieved += qr.getItemList().size();
                     numPagesLoaded++;
+                    if (materializeObjectsInPage) {
+                        materializeObjectsInPage(page);
+                    }
                 } catch (SDBException e) {
                     if (e.getMessage() != null && e.getMessage().contains("The specified domain does not exist")) {
                         items = new ArrayList<Item>(); // no need to throw here
@@ -152,12 +179,53 @@ public class LazyList extends AbstractList implements Serializable {
         }
     }
 
+    private void materializeObjectsInPage(int page) {
+        if (materializedPages.get(page) != null) {
+            return;
+        }
+        int start = page * maxToRetrievePerRequest;
+        int end = start + maxToRetrievePerRequest;
+        if (end > items.size()) end = items.size();
+        List<Item> itemList = this.items.subList(start, end);
+        if (itemList.size() != 0) {
+            // todo: could send this off asyncronously and only block when asking for a particular item.
+            try {
+                // check cache first to make sure we haven't already got these
+                List<Item> itemsToGet = new ArrayList<Item>();
+                for (Item item : itemList) {
+                    Object o = checkCache(item);
+                    if (o == null) {
+                        itemsToGet.add(item);
+                    } else {
+                        System.out.println("found item in cache while materializing. All good.");
+                    }
+                }
+                System.out.println("Loading " + itemList.size() + " asynchronously.");
+                List<ItemAndAttributes> attributes = ConcurrentRetriever.getAttributesFromSdb(itemList, em.getExecutor());
+                for (ItemAndAttributes ia : attributes) {
+                    Object o = em.buildObject(genericReturnType, ia.getItem().getIdentifier(), ia.getAtts());
+                    System.out.println("should be in cache now: " + o);
+                    // now it will be in the cache too, so next call get get() on this list will first get it from the cache
+                }
+                materializedPages.put(page, itemList.size());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
 
     private void loadAllItems() {
         int page = 0;
         while (nextToken != null || numPagesLoaded == 0) {
-            loadItems(page);
+            loadItems(page, false);
             page++;
         }
     }
+
+
+    public void setMaxResults(Integer maxResults) {
+        this.maxResults = maxResults;
+    }
+
 }

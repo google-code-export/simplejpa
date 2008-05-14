@@ -4,6 +4,7 @@ import com.spaceprogram.simplejpa.query.JPAQuery;
 import com.spaceprogram.simplejpa.query.JPAQueryParser;
 import com.spaceprogram.simplejpa.query.QueryImpl;
 import com.spaceprogram.simplejpa.util.AmazonSimpleDBUtil;
+import com.spaceprogram.simplejpa.util.ConcurrentRetriever;
 import com.xerox.amazonws.sdb.*;
 import net.sf.cglib.proxy.Enhancer;
 import net.sf.cglib.proxy.LazyLoader;
@@ -17,10 +18,17 @@ import org.jets3t.service.model.S3Object;
 import org.jets3t.service.security.AWSCredentials;
 
 import javax.persistence.*;
-import java.io.*;
-import java.lang.reflect.*;
+import java.io.BufferedInputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.math.BigDecimal;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -46,7 +54,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
      */
     public static final BigDecimal OFFSET_VALUE = new BigDecimal(Long.MIN_VALUE).negate();
     private int queryCount;
-    private OpStats opStats;
+    private OpStats opStats = new OpStats();
 
     EntityManagerSimpleJPA(EntityManagerFactoryImpl factory) {
         this.factory = factory;
@@ -526,7 +534,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
     public void listAllObjectsRaw(Class c) throws SDBException, ExecutionException, InterruptedException {
         Domain d = getDomain(c);
         QueryResult qr = d.listItems();
-        List<ItemAndAttributes> ia = QueryImpl.getAttributesFromSdb(qr.getItemList(), getExecutor());
+        List<ItemAndAttributes> ia = ConcurrentRetriever.getAttributesFromSdb(qr.getItemList(), getExecutor());
         for (ItemAndAttributes itemAndAttributes : ia) {
             System.out.println("item=" + itemAndAttributes.getItem().getIdentifier());
             List<ItemAttribute> atts = itemAndAttributes.getAtts();

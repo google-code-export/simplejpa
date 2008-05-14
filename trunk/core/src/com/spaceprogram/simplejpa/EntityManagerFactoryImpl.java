@@ -64,6 +64,8 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
      * same as domainsList, but map access
      */
     private Map<String, Domain> domainMap = new HashMap<String, Domain>();
+    
+    private int numExecutorThreads = 50;
 
     /**
      * This one is generally called via the PersistenceProvider.
@@ -151,7 +153,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
                 }
             }
             System.out.println("Finished scanning for entity classes.");
-            executor = Executors.newFixedThreadPool(50);
+            executor = Executors.newFixedThreadPool(numExecutorThreads);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

@@ -80,19 +80,21 @@ public class ObjectBuilder {
                     Class retType = getter.getReturnType();
                     EnumType enumType = enumerated.value();
                     String val = getValueToSet(atts, attName, columnName);
-                    Object enumVal = null;
-                    if (enumType == EnumType.STRING) {
-                        Object[] enumConstants = retType.getEnumConstants();
-                        for (Object enumConstant : enumConstants) {
-                            if (enumConstant.toString().equals(val)) {
-                                enumVal = enumConstant;
+                    if(val != null){
+                        Object enumVal = null;
+                        if (enumType == EnumType.STRING) {
+                            Object[] enumConstants = retType.getEnumConstants();
+                            for (Object enumConstant : enumConstants) {
+                                if (enumConstant.toString().equals(val)) {
+                                    enumVal = enumConstant;
+                                }
                             }
+                        } else { // ordinal
+                            enumVal = retType.getEnumConstants()[Integer.parseInt(val)];
                         }
-                    } else { // ordinal
-                        enumVal = retType.getEnumConstants()[Integer.parseInt(val)];
+                        Method setMethod = em.getSetterFromGetter(tClass, getter, retType);
+                        setMethod.invoke(newInstance, enumVal);
                     }
-                    Method setMethod = em.getSetterFromGetter(tClass, getter, retType);
-                    setMethod.invoke(newInstance, enumVal);
                 } else {
                     String val = getValueToSet(atts, attName, columnName);
                     if (val != null) {

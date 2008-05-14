@@ -1,15 +1,21 @@
 package com.spaceprogram.simplejpa.query;
 
-import com.spaceprogram.simplejpa.*;
+import com.spaceprogram.simplejpa.AnnotationInfo;
+import com.spaceprogram.simplejpa.AsyncSaveTask;
+import com.spaceprogram.simplejpa.EntityManagerSimpleJPA;
+import com.spaceprogram.simplejpa.LazyList;
 import com.spaceprogram.simplejpa.util.AmazonSimpleDBUtil;
-import com.xerox.amazonws.sdb.*;
+import com.xerox.amazonws.sdb.Domain;
+import com.xerox.amazonws.sdb.SDBException;
 import org.apache.commons.lang.NotImplementedException;
 
-import javax.persistence.*;
+import javax.persistence.FlushModeType;
+import javax.persistence.PersistenceException;
+import javax.persistence.Query;
+import javax.persistence.TemporalType;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.util.*;
-import java.util.concurrent.*;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -34,9 +40,9 @@ public class QueryImpl implements Query {
     private EntityManagerSimpleJPA em;
     private JPAQuery q;
     private Map<String, Object> paramMap = new HashMap<String, Object>();
-    private static boolean parallel = true;
 
     public static String conditionRegex = "(<>)|(>=)|=|>|(<=)|\\band\\b|\\bor\\b"; //"[(<>)(>=)=>(<=)]+|and|or";
+    private Integer maxResults;
 
     public QueryImpl(EntityManagerSimpleJPA em, JPAQuery q) {
         this.em = em;
@@ -71,7 +77,9 @@ public class QueryImpl implements Query {
             logger.fine("amazonQuery [" + tClass.getName() + "]= " + amazonQuery);
             String qToSend = amazonQuery != null ? amazonQuery.toString() : null;
             em.incrementQueryCount();
-            return new LazyList(em, tClass, qToSend);
+            LazyList ret = new LazyList(em, tClass, qToSend);
+            ret.setMaxResults(maxResults);
+            return ret;
         } catch (SDBException e) {
             if (e.getMessage() != null && e.getMessage().contains("The specified domain does not exist")) {
                 return new ArrayList(); // no need to throw here
@@ -82,46 +90,7 @@ public class QueryImpl implements Query {
         }
     }
 
-    public List<ItemAndAttributes> test(Domain domain) throws SDBException, ExecutionException, InterruptedException {
-        QueryResult result = domain.listItems();
-        return getAttributesFromSdb(result.getItemList(), em.getExecutor());
-    }
-
-    public static List<ItemAndAttributes> getAttributesFromSdb(List<Item> items, Executor executor) throws SDBException, InterruptedException, ExecutionException {
-//        List<Item> items = result.getItemList();
-        if (!parallel) {
-            return getSerially(items);
-        } else {
-            return getParallel(items, executor);
-        }
-    }
-
-    private static List<ItemAndAttributes> getParallel(List<Item> items, Executor executor) throws InterruptedException, ExecutionException {
-        CompletionService<ItemAndAttributes> ecs = new ExecutorCompletionService<ItemAndAttributes>(executor);
-        for (Item item : items) {
-            Callable callable = new ItemCallable(item);
-            ecs.submit(callable);
-        }
-        List<ItemAndAttributes> ret = new ArrayList<ItemAndAttributes>();
-        int n = items.size();
-        for (int i = 0; i < n; ++i) {
-            ItemAndAttributes r = ecs.take().get();
-            if (r != null) {
-                ret.add(r);
-            }
-        }
-        return ret;
-    }
-
-    private static List<ItemAndAttributes> getSerially(List<Item> items) throws SDBException {
-        List<ItemAndAttributes> ret = new ArrayList<ItemAndAttributes>();
-        for (Item item : items) {
-//            logger.fine("item=" + item.getIdentifier());
-            List<ItemAttribute> atts = item.getAttributes();
-            ret.add(new ItemAndAttributes(item, atts));
-        }
-        return ret;
-    }
+   
 
     public StringBuilder toAmazonQuery(Class tClass, JPAQuery q) {
         StringBuilder sb = new StringBuilder();
@@ -313,8 +282,9 @@ public class QueryImpl implements Query {
         throw new NotImplementedException("TODO");
     }
 
-    public Query setMaxResults(int i) {
-        throw new NotImplementedException("TODO");
+    public Query setMaxResults(int maxResults) {
+        this.maxResults = maxResults;
+        return this;
     }
 
     public Query setFirstResult(int i) {
