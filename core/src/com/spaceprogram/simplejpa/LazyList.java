@@ -200,8 +200,8 @@ public class LazyList extends AbstractList implements Serializable {
                         System.out.println("found item in cache while materializing. All good.");
                     }
                 }
-                System.out.println("Loading " + itemList.size() + " asynchronously.");
-                List<ItemAndAttributes> attributes = ConcurrentRetriever.getAttributesFromSdb(itemList, em.getExecutor());
+                logger.fine("Loading " + itemList.size() + " asynchronously.");
+                List<ItemAndAttributes> attributes = ConcurrentRetriever.getAttributesFromSdb(itemsToGet, em.getExecutor());
                 for (ItemAndAttributes ia : attributes) {
                     Object o = em.buildObject(genericReturnType, ia.getItem().getIdentifier(), ia.getAtts());
                     // now it will be in the cache too, so next call get get() on this list will first get it from the cache
