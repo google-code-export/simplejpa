@@ -116,7 +116,6 @@ public class AnnotationManager {
                 discriminatorValue = c.getSimpleName();
             }
             ai.setDiscriminatorValue(discriminatorValue);
-            System.out.println("putting dtype=" + discriminatorValue + " into map");
             discriminatorMap.put(discriminatorValue, ai);
         } else {
             ai.setRootClass(c);
