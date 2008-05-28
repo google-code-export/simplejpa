@@ -12,6 +12,7 @@ import java.util.HashMap;
  */
 public class AnnotationManager {
 
+    // todo: implement EntityListeners for timestamps
     private Map<String, AnnotationInfo> annotationMap = new HashMap<String, AnnotationInfo>();
     private Map<String, AnnotationInfo> discriminatorMap = new HashMap<String, AnnotationInfo>();
 

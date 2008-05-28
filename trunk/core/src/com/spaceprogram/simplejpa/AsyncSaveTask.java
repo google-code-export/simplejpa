@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -84,15 +85,14 @@ public class AsyncSaveTask implements Callable {
         // now set attributes
         List<ItemAttribute> atts = new ArrayList<ItemAttribute>();
         if (ai.getDiscriminatorValue() != null) {
-            atts.add(new ItemAttribute("DTYPE", ai.getDiscriminatorValue(), true));
+            atts.add(new ItemAttribute(EntityManagerFactoryImpl.DTYPE, ai.getDiscriminatorValue(), true));
         }
 
         LazyInterceptor interceptor = null;
         if (o instanceof Factory) {
-            Factory factory = null;
-            factory = (Factory) o;
+            Factory factory = (Factory) o;
             for (Callback callback2 : factory.getCallbacks()) {
-                System.out.println("callback=" + callback2);
+                if(logger.isLoggable(Level.FINER)) logger.finer("callback=" + callback2);
                 if (callback2 instanceof LazyInterceptor) {
                     interceptor = (LazyInterceptor) callback2;
                 }

@@ -42,5 +42,14 @@ public interface SimpleEntityManager extends EntityManager {
      * @param oldAttributeName the attribute name you want values moved from
      * @param newAttributeName the attribute name you want values moved to
      */
-    void rename(Class domainClass, String oldAttributeName, String newAttributeName);
+    void renameField(Class domainClass, String oldAttributeName, String newAttributeName);
+
+    /**
+     * This will basically change the values for the differentiator column (DTYPE) from
+     * the oldClassName to the newClass name.
+     * 
+     * @param oldClassName
+     * @param newClass
+     */
+    void renameSubclass(String oldClassName, Class newClass);
 }
