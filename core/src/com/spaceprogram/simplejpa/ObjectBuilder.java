@@ -28,9 +28,12 @@ public class ObjectBuilder {
 //            newInstance = tClass.newInstance();
             // check for DTYPE to see if it's a subclass, must be a faster way to do this you'd think?
             for (ItemAttribute att : atts) {
-                if (att.getName().equals("DTYPE")) {
-                    System.out.println("dtype=" + att.getValue());
+                if (att.getName().equals(EntityManagerFactoryImpl.DTYPE)) {
+                    logger.fine("dtype=" + att.getValue());
                     ai = em.getFactory().getAnnotationManager().getAnnotationInfoByDiscriminator(att.getValue());
+                    if(ai == null) {
+                        throw new PersistenceException(new ClassNotFoundException("Could not build object with dtype = " + att.getValue() + ". Class not found or is not an @Entity."));
+                    }
                     tClass = ai.getMainClass();
                     // check cache again with new class
                     newInstance = (T) em.cacheGet(em.cacheKey(tClass, id));

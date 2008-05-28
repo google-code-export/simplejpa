@@ -185,6 +185,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
      * @param o
      */
     public void remove(Object o) {
+        if(o == null) return;
         try {
             Domain domain = getDomain(o.getClass());
             String id = getId(o);
@@ -224,7 +225,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         }
     }
 
-    public void rename(Class tClass, String oldAttributeName, String newAttributeName) {
+    public void renameField(Class tClass, String oldAttributeName, String newAttributeName) {
         // get list of all items in the domain
         try {
             Domain domain = getDomain(tClass);
@@ -238,10 +239,50 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
                 putAndDelete(oldAttributeName, newAttributeName, items);
                 nextToken = result.getNextToken();
                 i++;
+                if(i % 100 == 0){
+                    System.out.println("Renamed " + i + " fields so far...");
+                }
             }
         } catch (SDBException e) {
             e.printStackTrace();
         }
+    }
+
+    public void renameSubclass(String oldClassName, Class newClass) {
+        logger.info("Renaming DTYPE for " + oldClassName + " to " + newClass.getSimpleName());
+        try {
+            String newClassName = newClass.getSimpleName();
+            Domain domain = factory.getDomain(factory.getDomainName(newClass));
+            QueryResult result;
+            List<Item> items;
+            int i = 0;
+            String nextToken = null;
+            while (i == 0 || nextToken != null) {
+                result = executeQueryForRenameSubclass(oldClassName, newClass, domain, nextToken);
+                items = result.getItemList();
+                putNewValue(items, EntityManagerFactoryImpl.DTYPE, newClassName);
+                nextToken = result.getNextToken();
+                i++;
+                if (i % 100 == 0) {
+                    System.out.println("Renamed " + i + " subclassed objects so far...");
+                }
+            }
+        } catch (SDBException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void putNewValue(List<Item> items, String dtype, String newClassName) throws SDBException {
+        for (Item item : items) {
+            List<ItemAttribute> atts = new ArrayList<ItemAttribute>();
+            atts.add(new ItemAttribute(dtype, newClassName, true));
+            item.putAttributes(atts);
+        }
+    }
+
+    private QueryResult executeQueryForRenameSubclass(String oldClassName, Class newClass, Domain domain, String nextToken) throws SDBException {
+        QueryResult result = domain.listItems("['DTYPE' = '" + oldClassName+ "']", nextToken, 100);
+        return result;
     }
 
     private QueryResult executeQueryForRename(String oldAttributeName, String newAttributeName, Domain domain, String nextToken) throws SDBException {

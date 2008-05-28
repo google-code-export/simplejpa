@@ -66,6 +66,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     private Map<String, Domain> domainMap = new HashMap<String, Domain>();
     
     private int numExecutorThreads = 50;
+    public static final String DTYPE = "DTYPE";
 
     /**
      * This one is generally called via the PersistenceProvider.
@@ -294,6 +295,10 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 
     public String getDomainName(Class<? extends Object> aClass) {
         String className = getRootClassName(aClass);
+        return getDomainName(className);
+    }
+
+    public String getDomainName(String className) {
         return getPersistenceUnitName() + "-" + className;
     }
 

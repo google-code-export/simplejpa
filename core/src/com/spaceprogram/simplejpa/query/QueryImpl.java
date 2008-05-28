@@ -1,9 +1,6 @@
 package com.spaceprogram.simplejpa.query;
 
-import com.spaceprogram.simplejpa.AnnotationInfo;
-import com.spaceprogram.simplejpa.AsyncSaveTask;
-import com.spaceprogram.simplejpa.EntityManagerSimpleJPA;
-import com.spaceprogram.simplejpa.LazyList;
+import com.spaceprogram.simplejpa.*;
 import com.spaceprogram.simplejpa.util.AmazonSimpleDBUtil;
 import com.xerox.amazonws.sdb.Domain;
 import com.xerox.amazonws.sdb.SDBException;
@@ -72,7 +69,7 @@ public class QueryImpl implements Query {
                 } else {
                     amazonQuery.append(" intersection ");
                 }
-                appendFilter(amazonQuery, "DTYPE", "=", ai.getDiscriminatorValue());
+                appendFilter(amazonQuery, EntityManagerFactoryImpl.DTYPE, "=", ai.getDiscriminatorValue());
             }
             logger.fine("amazonQuery [" + tClass.getName() + "]= " + amazonQuery);
             String qToSend = amazonQuery != null ? amazonQuery.toString() : null;
