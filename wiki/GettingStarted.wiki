@@ -27,13 +27,15 @@ http://code.google.com/p/simplejpa/downloads/list
 
 = Setup =
 
-Create a file called sdb.properties and put on the classpath.
+Create a file called simplejpa.properties and put on the classpath.
 Add your Amazon access key and secret key like:
 
 {{{
 accessKey = AAAAAAAAAAAAAAAAAAAAAAA
 secretKey = SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
 }}}
+
+For more configuration options, see [Configuration].
 
 = Now the Code =
 
