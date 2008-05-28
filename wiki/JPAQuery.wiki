@@ -5,6 +5,19 @@
 
 SimpleJPA queries are a subset of the JPA spec due to the limitations of SimpleDB. Keep in mind that many things can be accomplished by doing things in a different way.
 
+= Supported =
+
+  * =
+  * <
+  * >
+  * <=
+  * >=
+  * <> (not equal)
+  * AND 
+  * OR
+  * IS NULL
+  * IS NOT NULL
+
 = Limitations =
 
   * Can only query on a single object type, no joins. 
