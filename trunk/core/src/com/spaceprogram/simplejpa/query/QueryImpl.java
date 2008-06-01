@@ -38,7 +38,7 @@ public class QueryImpl implements Query {
     private JPAQuery q;
     private Map<String, Object> paramMap = new HashMap<String, Object>();
 
-    public static String conditionRegex = "(<>)|(>=)|=|>|(<=)|\\band\\b|\\bor\\b"; //"[(<>)(>=)=>(<=)]+|and|or";
+    public static String conditionRegex = "(<>)|(>=)|=|>|(<=)|\\band\\b|\\bor\\b|\\bis\\b"; //"[(<>)(>=)=>(<=)]+|and|or";
     private Integer maxResults;
 
     public QueryImpl(EntityManagerSimpleJPA em, JPAQuery q) {
@@ -71,7 +71,11 @@ public class QueryImpl implements Query {
                 }
                 appendFilter(amazonQuery, EntityManagerFactoryImpl.DTYPE, "=", ai.getDiscriminatorValue());
             }
-            logger.fine("amazonQuery [" + tClass.getName() + "]= " + amazonQuery);
+            String logString = "amazonQuery: Domain=" + d.getName() + ", query=" + amazonQuery;
+            logger.fine(logString);
+            if(em.getFactory().isPrintQueries()){
+                System.out.println(logString);
+            }
             String qToSend = amazonQuery != null ? amazonQuery.toString() : null;
             em.incrementQueryCount();
             LazyList ret = new LazyList(em, tClass, qToSend);
@@ -87,18 +91,17 @@ public class QueryImpl implements Query {
         }
     }
 
-   
 
     public StringBuilder toAmazonQuery(Class tClass, JPAQuery q) {
         StringBuilder sb = new StringBuilder();
         String where = q.getFilter();
         where = where.trim();
         // now split it into pieces
-        List<String> split = splitWhere(where);
+        List<String> tokens = tokenizeWhere(where);
         Boolean aok = false;
-        for (int i = 0; i < split.size(); i += 3) {
+        for (int i = 0; i < tokens.size(); ) {
             if (aok && i > 0) {
-                String andOr = split.get(i);
+                String andOr = tokens.get(i);
                 if (andOr.equalsIgnoreCase("OR")) {
                     sb.append(" union ");
                 } else {
@@ -109,29 +112,47 @@ public class QueryImpl implements Query {
                 i++;
             }
 //            System.out.println("sbbefore=" + sb);
-            aok = appendCondition(tClass, sb, split.get(i), split.get(i + 1), split.get(i + 2));
+            // special null cases: is null and is not null
+            String firstParam = tokens.get(i);
+            i++;
+            String secondParam = tokens.get(i);
+            i++;
+            String thirdParam = tokens.get(i);
+            if (thirdParam.equalsIgnoreCase("not")) {
+                i++;
+                thirdParam += " " + tokens.get(i);
+            }
+            i++;
+            aok = appendCondition(tClass, sb, firstParam, secondParam, thirdParam);
 //            System.out.println("sbafter=" + sb);
-            if (aok == null)
+            if (aok == null) {
                 return null; // todo: only return null if it's an AND query, or's should still continue, but skip the intersection part
+            }
         }
         logger.fine("query=" + sb);
         return sb;
     }
 
-    public static List<String> splitWhere(String where) {
+    public static List<String> tokenizeWhere(String where) {
         List<String> split = new ArrayList<String>();
         Pattern pattern = Pattern.compile(conditionRegex, Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(where);
         int lastIndex = 0;
+        String s;
+        int i = 0;
         while (matcher.find()) {
-            String s = where.substring(lastIndex, matcher.start()).trim();
-//            System.out.println(s);
-//            System.out.println("matcher found: " + matcher.group() + " at " + matcher.start() + " to " + matcher.end());
+            s = where.substring(lastIndex, matcher.start()).trim();
+            logger.fine("value: " + s);
             split.add(s);
-            split.add(matcher.group());
+            s = matcher.group();
+            split.add(s);
+            logger.fine("matcher found: " + s + " at " + matcher.start() + " to " + matcher.end());
             lastIndex = matcher.end();
+            i++;
         }
-        split.add(where.substring(lastIndex).trim());
+        s = where.substring(lastIndex).trim();
+        logger.fine("final:" + s);
+        split.add(s);
         return split;
     }
 
@@ -197,14 +218,23 @@ public class QueryImpl implements Query {
         if (getterForField == null) {
             throw new PersistenceException("No getter for field: " + field);
         }
-        String paramValue = getParamValueAsStringForAmazonQuery(param, getterForField);
-        logger.fine("paramValue=" + paramValue);
-        logger.fine("comp=[" + comparator + "]");
         String columnName = AsyncSaveTask.getColumnName(getterForField);
-        if(columnName == null) columnName = field;
-        appendFilter(sb, columnName, comparator, paramValue);
+        if (columnName == null) columnName = field;
+        if (comparator.equalsIgnoreCase("is")) {
+            if (param.equals("null")) {
+                appendFilter(sb, true, columnName, "starts-with", "");
+            } else if (param.equals("not null")) {
+                appendFilter(sb, false, columnName, "starts-with", "");
+            }
+        } else {
+            String paramValue = getParamValueAsStringForAmazonQuery(param, getterForField);
+            logger.fine("paramValue=" + paramValue);
+            logger.fine("comp=[" + comparator + "]");
+            appendFilter(sb, columnName, comparator, paramValue);
+        }
         return true;
     }
+
 
     private String getParamValueAsStringForAmazonQuery(String param, Method getterForField) {
         String paramName = paramName(param);
@@ -268,7 +298,18 @@ public class QueryImpl implements Query {
     }
 
     private void appendFilter(StringBuilder sb, String field, String comparator, String param) {
-        sb.append("['").append(field).append("' ").append(comparator).append(" '").append(param).append("']");
+        appendFilter(sb, false, field, comparator, param);
+    }
+
+    private void appendFilter(StringBuilder sb, boolean not, String field, String comparator, String param) {
+        if (not) {
+            sb.append("not ");
+        }
+        sb.append("[");
+        sb.append("'").append(field).append("' ");
+        sb.append(comparator);
+        sb.append(" '").append(param).append("'");
+        sb.append("]");
     }
 
     public Object getSingleResult() {

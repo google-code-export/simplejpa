@@ -1,6 +1,8 @@
 package com.spaceprogram.simplejpa;
 
 import javax.persistence.*;
+
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.HashMap;
@@ -126,6 +128,12 @@ public class AnnotationManager {
         if (ai.getIdMethod() == null) {
             throw new PersistenceException("No ID method specified for: " + c.getName());
         }
+        
+        EntityListeners listeners = (EntityListeners) c.getAnnotation(EntityListeners.class);
+        if (listeners != null) {
+        	putListeners(ai, listeners.value());
+        }
+        
         getAnnotationMap().put(c.getName(), ai);
         return ai;
     }
@@ -142,8 +150,51 @@ public class AnnotationManager {
             ai.addGetter(method);
         }
     }
+    
+    @SuppressWarnings("unchecked")
+	private void putListeners(AnnotationInfo ai, Class[] classes) {
+    	Map<Class, ClassMethodEntry> listeners = new HashMap<Class, ClassMethodEntry>();
+    	
+    	// TODO: More than one listener per event cannot be handled like this...
+    	
+    	for (Class clazz : classes) {
+    		for (Method method : clazz.getMethods()) {
+    			PrePersist prePersist = method.getAnnotation(PrePersist.class);
+    			if (prePersist != null) { listeners.put(PrePersist.class, new ClassMethodEntry(clazz, method)); continue; }
+    			PreUpdate preUpdate = method.getAnnotation(PreUpdate.class);
+    			if (preUpdate != null) { listeners.put(PreUpdate.class, new ClassMethodEntry(clazz, method)); continue; }
+    			PreRemove preRemove = method.getAnnotation(PreRemove.class);
+    			if (preRemove != null) { listeners.put(PreRemove.class, new ClassMethodEntry(clazz, method)); continue; }
+
+    			PostLoad postLoad = method.getAnnotation(PostLoad.class);
+    			if (postLoad != null) { listeners.put(PostLoad.class, new ClassMethodEntry(clazz, method)); continue; }
+    			PostPersist postPersist = method.getAnnotation(PostPersist.class);
+    			if (postPersist != null) { listeners.put(PostPersist.class, new ClassMethodEntry(clazz, method)); continue; }
+    			PostUpdate postUpdate = method.getAnnotation(PostUpdate.class);
+    			if (postUpdate != null) { listeners.put(PostUpdate.class, new ClassMethodEntry(clazz, method)); continue; }
+    			PostRemove postRemove = method.getAnnotation(PostRemove.class);
+    			if (postRemove != null) { listeners.put(PostRemove.class, new ClassMethodEntry(clazz, method)); continue; }
+    		}
+    	}
+
+    	ai.setEntityListeners(listeners);
+    }
 
     public AnnotationInfo getAnnotationInfoByDiscriminator(String discriminatorValue) {
         return discriminatorMap.get(discriminatorValue);
+    }
+    
+    public class ClassMethodEntry {
+    	private Class clazz;
+    	private Method method;
+    	
+    	public ClassMethodEntry(Class clazz, Method method) {
+    		this.clazz = clazz;
+    		this.method = method;
+    	}
+    	
+    	public void invoke(Object... args) throws IllegalArgumentException, IllegalAccessException, InvocationTargetException, InstantiationException {
+    		this.method.invoke(clazz.newInstance(), args);
+    	}
     }
 }

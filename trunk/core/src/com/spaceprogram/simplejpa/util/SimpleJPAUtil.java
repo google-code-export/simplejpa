@@ -3,6 +3,7 @@ package com.spaceprogram.simplejpa.util;
 import com.spaceprogram.simplejpa.EntityManagerFactoryImpl;
 
 import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
 import javax.persistence.PersistenceException;
 import java.util.Set;
 import java.util.logging.Level;
@@ -58,6 +59,10 @@ public class SimpleJPAUtil {
             logger.log(Level.SEVERE, "Initial SessionFactory creation failed.", ex);
             throw new ExceptionInInitializerError(ex);
         }
+    }
+    
+    public static EntityManagerFactory getFactory() {
+    	return entityManagerFactory;
     }
 
     public static EntityManager createSession() {

@@ -1,9 +1,8 @@
 package com.spaceprogram.simplejpa;
 
-import com.xerox.amazonws.sdb.Domain;
 import com.xerox.amazonws.sdb.SDBException;
-import com.xerox.amazonws.sdb.SimpleDB;
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Test;
 
 import javax.persistence.EntityManager;
 import javax.persistence.Query;
@@ -20,6 +19,7 @@ import java.util.concurrent.Future;
  * Time: 1:03:57 PM
  */
 public class PersistenceTests extends BaseTestClass {
+
 
 
     @Test
@@ -542,4 +542,38 @@ public class PersistenceTests extends BaseTestClass {
         em.close();
     }
 
+    @Test
+    public void queryIsNull(){
+        EntityManager em = factory.createEntityManager();
+
+        MyTestObject object = new MyTestObject();
+        object.setName("fred");
+        em.persist(object);
+        String id = object.getId();
+        em.close();
+
+        em = factory.createEntityManager();
+        Query query = em.createQuery("select o from MyTestObject o where o.income is null");
+        List<MyTestObject> obs = query.getResultList();
+        for (MyTestObject ob : obs) {
+            System.out.println(ob);
+        }
+        Assert.assertEquals(1, obs.size());
+
+        query = em.createQuery("select o from MyTestObject o where o.income is not null");
+        obs = query.getResultList();
+        for (MyTestObject ob : obs) {
+            System.out.println(ob);
+        }
+        Assert.assertEquals(0, obs.size());
+
+        query = em.createQuery("select o from MyTestObject o where o.name is not null");
+        obs = query.getResultList();
+        for (MyTestObject ob : obs) {
+            System.out.println(ob);
+        }
+        Assert.assertEquals(1, obs.size());
+        
+        em.close();
+    }
 }

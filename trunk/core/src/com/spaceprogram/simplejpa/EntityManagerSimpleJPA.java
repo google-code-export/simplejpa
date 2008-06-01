@@ -1,5 +1,6 @@
 package com.spaceprogram.simplejpa;
 
+import com.spaceprogram.simplejpa.AnnotationManager.ClassMethodEntry;
 import com.spaceprogram.simplejpa.query.JPAQuery;
 import com.spaceprogram.simplejpa.query.JPAQueryParser;
 import com.spaceprogram.simplejpa.query.QueryImpl;
@@ -33,6 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -64,6 +66,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         resetLastOpStats();
         try {
             new AsyncSaveTask(this, o).call();
+            invokeEntityListener(o, PostPersist.class);
         } catch (SDBException e) {
             throw new PersistenceException("Could not get SimpleDb Domain", e);
         } catch (Exception e) {
@@ -102,7 +105,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
 
     S3Service getS3Service() throws S3ServiceException {
         S3Service s3;
-        AWSCredentials awsCredentials = new AWSCredentials((String) factory.getProps().get("accessKey"), (String) factory.getProps().get("secretKey"));
+        AWSCredentials awsCredentials = new AWSCredentials(factory.getAwsAccessKey(), factory.getAwsSecretKey());
         s3 = new RestS3Service(awsCredentials);
         return s3;
     }
@@ -192,6 +195,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
             logger.fine("deleting item with id: " + id);
             domain.deleteItem(id);
             cacheRemove(cacheKey(o.getClass(), id));
+            invokeEntityListener(o, PostRemove.class);
         } catch (Exception e) {
             throw new PersistenceException(e);
         }
@@ -583,6 +587,17 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
                 System.out.println("\t=" + att.getName() + "=" + att.getValue());
             }
         }
+    }
+    
+    private void invokeEntityListener(Object o, Class event) {
+    	if (getAnnotationManager().getAnnotationInfo(o).getEntityListeners().containsKey(event)) {
+    		ClassMethodEntry listener = getAnnotationManager().getAnnotationInfo(o).getEntityListeners().get(event);
+    		try {
+				listener.invoke(o);
+			} catch (Exception e) {
+				logger.log(Level.WARNING, "Error invoking entity listener", e);
+			}
+    	}
     }
 
     public AnnotationManager getAnnotationManager() {
