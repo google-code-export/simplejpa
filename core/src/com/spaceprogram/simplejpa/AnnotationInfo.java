@@ -1,8 +1,12 @@
 package com.spaceprogram.simplejpa;
 
+import com.spaceprogram.simplejpa.AnnotationManager.ClassMethodEntry;
+
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * User: treeder
@@ -17,6 +21,7 @@ public class AnnotationInfo {
     private String discriminatorValue;
     private Class rootClass;
     private Class mainClass;
+    private Map<Class, ClassMethodEntry> entityListeners;
 
     public void setClassAnnotations(Annotation[] classAnnotations) {
         this.classAnnotations = classAnnotations;
@@ -70,4 +75,18 @@ public class AnnotationInfo {
     public Class getMainClass() {
         return mainClass;
     }
+
+	/**
+	 * @return the entityListeners
+	 */
+	public Map<Class, ClassMethodEntry> getEntityListeners() {
+		return entityListeners;
+	}
+
+	/**
+	 * @param entityListeners the entityListeners to set
+	 */
+	public void setEntityListeners(Map<Class, ClassMethodEntry> entityListeners) {
+		this.entityListeners = entityListeners;
+	}
 }

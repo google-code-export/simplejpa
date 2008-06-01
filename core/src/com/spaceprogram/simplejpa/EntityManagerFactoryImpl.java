@@ -13,9 +13,15 @@ import javax.persistence.EntityManagerFactory;
 import javax.persistence.PersistenceException;
 import javax.persistence.spi.PersistenceUnitInfo;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Level;
@@ -67,6 +73,14 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     
     private int numExecutorThreads = 50;
     public static final String DTYPE = "DTYPE";
+
+
+    /**
+     * Whether to display amazon queries or not.
+     */
+    private boolean printQueries = false;
+    private String awsAccessKey;
+    private String awsSecretKey;
 
     /**
      * This one is generally called via the PersistenceProvider.
@@ -168,8 +182,17 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
      */
     public void loadProps() throws IOException {
         Properties props2 = new Properties();
-        props2.load(this.getClass().getResourceAsStream("/sdb.properties"));
+        String propsFileName = "/simplejpa.properties";
+        InputStream stream = this.getClass().getResourceAsStream(propsFileName);
+        if(stream == null){
+            throw new FileNotFoundException(propsFileName + " not found on classpath.");
+        }
+        props2.load(stream);
         props = props2;
+        awsAccessKey = props2.getProperty("accessKey");
+        awsSecretKey = props2.getProperty("secretKey");
+        printQueries = Boolean.valueOf(props2.getProperty("printQueries"));
+        stream.close();
     }
 
     /**
@@ -280,12 +303,8 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     }
 
     public SimpleDB getSimpleDb() {
-        return getSimpleDb(getProps());
-    }
-
-    public SimpleDB getSimpleDb(Map props) {
-        SimpleDB db = new SimpleDB((String) props.get("accessKey"), (String) props.get("secretKey"));
-        db.setSignatureVersion(0); // TEMPORARY UNTIL SDB FIXES THE UNICODE PROBLEM FOR REST QUERIES
+        SimpleDB db = new SimpleDB(awsAccessKey, awsSecretKey);
+        db.setSignatureVersion(0); // todo: TEMPORARY UNTIL SDB FIXES THE UNICODE PROBLEM FOR REST QUERIES
         return db;
     }
 
@@ -306,5 +325,21 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         AnnotationInfo ai = getAnnotationManager().getAnnotationInfo(aClass);
         String className = ai.getRootClass().getSimpleName();
         return className;
+    }
+
+    public boolean isPrintQueries() {
+        return printQueries;
+    }
+
+    public void setPrintQueries(boolean printQueries) {
+        this.printQueries = printQueries;
+    }
+
+    public String getAwsAccessKey() {
+        return awsAccessKey;
+    }
+
+    public String getAwsSecretKey() {
+        return awsSecretKey;
     }
 }
