@@ -52,6 +52,8 @@ public class BaseTestClass {
         db.deleteDomain(d);
         d = db.getDomain(em.getDomainName(MyTestObject2.class));
         db.deleteDomain(d);
+        d = db.getDomain(em.getDomainName(MyTestObject3.class));
+        db.deleteDomain(d);
         d = db.getDomain(em.getDomainName(MyInheritanceObject1.class));
         db.deleteDomain(d);
         em.close();
