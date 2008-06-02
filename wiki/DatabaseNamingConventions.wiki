@@ -1,5 +1,5 @@
 #summary This is how SimpleJPA will name items in SimpleDB
-#labels Phase-Support
+#labels Phase-Support,Manual
 
 = Domain =
 
