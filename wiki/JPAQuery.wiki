@@ -1,5 +1,5 @@
 #summary All about querying with SimpleJPA
-#labels Featured,Phase-Support
+#labels Featured,Phase-Support,Manual
 
 = Introduction =
 
