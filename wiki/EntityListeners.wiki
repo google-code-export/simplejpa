@@ -1,0 +1,71 @@
+#summary EntityListeners
+#labels Manual
+
+= Introduction =
+
+EntityListeners allow you to invoke your own code before and after certain persistence operations.
+
+= Details =
+
+*@PrePersist*
+
+Called immediately before the object is persisted to the data store.
+
+*@PostPersist*
+
+Called immediately after the object is persisted to the data store.
+
+*@PreRemove*
+
+Called immediately before an object is removed/deleted.
+
+*@PostRemove*
+
+Called immediately after an object is removed/deleted.
+
+*@PreUpdate*
+
+Called immediately before an object is updated.
+
+*@PostUpdate*
+
+Called immediately after an object is updated.
+
+*@PostLoad* - not supported yet.
+
+= Example Code =
+
+To enable EntityListeners on an entity, use the @EntityListeners annotation:
+
+{{{
+@Entity
+@EntityListeners({TimestampEntityListener.class, SomeEntityListener.class})
+public class MyTestObject3 extends MySuperClass implements Timestamped{
+}}}
+
+You can add several classes here, comma separated. 
+
+The EntityListener classes themselves, use the annotations listed above to enable them for callbacks, for instance, the TimestampEntityListener below sets created and updated dates on PrePersist and PreUpdate.
+
+{{{
+public class TimestampEntityListener {
+
+    @PrePersist
+    public void prePersist(Object object) {
+        if(object instanceof Timestamped){
+            Timestamped timestamped = (Timestamped) object;
+            Date now = new Date();
+            timestamped.setCreated(now);
+            timestamped.setUpdated(now);
+        }
+    }
+
+    @PreUpdate
+    public void preUpdate(Object object) {
+        if(object instanceof Timestamped){
+            Timestamped timestamped = (Timestamped) object;
+            timestamped.setUpdated(new Date());
+        }
+    }
+}
+}}}
