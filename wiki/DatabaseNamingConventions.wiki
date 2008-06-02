@@ -19,4 +19,4 @@ This will use the root class name if it is an inheritance hierarchy.
 
 = Fields/Attributes =
 
-These will be named the same as the field itself unless you use @Column(name = "somethingElse" - NOTE: @Column not yet supported).
+These will be named the same as the field itself unless you use @Column(name = "somethingElse").
