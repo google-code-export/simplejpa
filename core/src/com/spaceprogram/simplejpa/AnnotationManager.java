@@ -160,12 +160,11 @@ public class AnnotationManager {
         // TODO: More than one listener per event cannot be handled like this...
 
         for (Class clazz : classes) {
-            System.out.println("class=" + clazz);
+//            System.out.println("class=" + clazz);
             for (Method method : clazz.getMethods()) {
-                System.out.println("method=" + method.getName());
+//                System.out.println("method=" + method.getName());
                 PrePersist prePersist = method.getAnnotation(PrePersist.class);
                 if (prePersist != null) {
-                    System.out.println("found a pre persist.");
                     listeners.put(PrePersist.class, new ClassMethodEntry(clazz, method));
                 }
                 PreUpdate preUpdate = method.getAnnotation(PreUpdate.class);
