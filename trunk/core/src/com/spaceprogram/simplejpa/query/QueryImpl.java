@@ -38,7 +38,7 @@ public class QueryImpl implements Query {
     private JPAQuery q;
     private Map<String, Object> paramMap = new HashMap<String, Object>();
 
-    public static String conditionRegex = "(<>)|(>=)|=|>|(<=)|\\band\\b|\\bor\\b|\\bis\\b"; //"[(<>)(>=)=>(<=)]+|and|or";
+    public static String conditionRegex = "(<>)|(>=)|=|>|(<=)|\\band\\b|\\bor\\b|\\bis\\b|\\blike\\b"; //"[(<>)(>=)=>(<=)]+|and|or";
     private Integer maxResults;
 
     public QueryImpl(EntityManagerSimpleJPA em, JPAQuery q) {
@@ -73,7 +73,7 @@ public class QueryImpl implements Query {
             }
             String logString = "amazonQuery: Domain=" + d.getName() + ", query=" + amazonQuery;
             logger.fine(logString);
-            if(em.getFactory().isPrintQueries()){
+            if (em.getFactory().isPrintQueries()) {
                 System.out.println(logString);
             }
             String qToSend = amazonQuery != null ? amazonQuery.toString() : null;
@@ -99,7 +99,7 @@ public class QueryImpl implements Query {
         // now split it into pieces
         List<String> tokens = tokenizeWhere(where);
         Boolean aok = false;
-        for (int i = 0; i < tokens.size(); ) {
+        for (int i = 0; i < tokens.size();) {
             if (aok && i > 0) {
                 String andOr = tokens.get(i);
                 if (andOr.equalsIgnoreCase("OR")) {
@@ -157,6 +157,7 @@ public class QueryImpl implements Query {
     }
 
     private Boolean appendCondition(Class tClass, StringBuilder sb, String field, String comparator, String param) {
+        comparator = comparator.toLowerCase();
         AnnotationInfo ai = em.getAnnotationManager().getAnnotationInfo(tClass);
 
         String fieldSplit[] = field.split("\\.");
@@ -220,12 +221,23 @@ public class QueryImpl implements Query {
         }
         String columnName = AsyncSaveTask.getColumnName(getterForField);
         if (columnName == null) columnName = field;
-        if (comparator.equalsIgnoreCase("is")) {
+        if (comparator.equals("is")) {
             if (param.equals("null")) {
                 appendFilter(sb, true, columnName, "starts-with", "");
             } else if (param.equals("not null")) {
                 appendFilter(sb, false, columnName, "starts-with", "");
             }
+        } else if (comparator.equals("like")) {
+            comparator = "starts-with";
+            String paramValue = getParamValueAsStringForAmazonQuery(param, getterForField);
+            System.out.println("param=" + paramValue + "___");
+            paramValue = paramValue.endsWith("%") ? paramValue.substring(0, paramValue.length() - 1) : paramValue;
+            System.out.println("param=" + paramValue + "___");
+//            param = param.startsWith("%") ? param.substring(1) : param;
+            if(paramValue.startsWith("%")){
+                throw new PersistenceException("SimpleDB only supports a wildcard query on the right side of the value (ie: starts-with).");
+            }
+            appendFilter(sb, columnName, comparator, paramValue);
         } else {
             String paramValue = getParamValueAsStringForAmazonQuery(param, getterForField);
             logger.fine("paramValue=" + paramValue);

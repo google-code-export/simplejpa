@@ -5,6 +5,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import javax.persistence.EntityManager;
+import javax.persistence.PersistenceException;
 import javax.persistence.Query;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -541,7 +542,7 @@ public class PersistenceTests extends BaseTestClass {
     }
 
     @Test
-    public void queryIsNull(){
+    public void queryIsNull() {
         EntityManager em = factory.createEntityManager();
 
         MyTestObject object = new MyTestObject();
@@ -571,12 +572,12 @@ public class PersistenceTests extends BaseTestClass {
             System.out.println(ob);
         }
         Assert.assertEquals(1, obs.size());
-        
+
         em.close();
     }
 
     @Test
-    public void testEntityListeners(){
+    public void testEntityListeners() {
         EntityManager em = factory.createEntityManager();
 
         MyTestObject3 object = new MyTestObject3();
@@ -596,4 +597,46 @@ public class PersistenceTests extends BaseTestClass {
         Assert.assertFalse(object.getUpdated().equals(firstUpdated));
         em.close();
     }
+
+    @Test
+    public void testStartsWithQuery() {
+        EntityManager em = factory.createEntityManager();
+
+        MyTestObject3 object = new MyTestObject3();
+        object.setSomeField3("fred and barney");
+        em.persist(object);
+        em.close();
+
+        em = factory.createEntityManager();
+        Query query = em.createQuery("select o from MyTestObject3 o where o.someField3 like :x");
+        query.setParameter("x", "fred and%");
+        List<MyTestObject3> obs = query.getResultList();
+        for (MyTestObject3 ob : obs) {
+            System.out.println(ob);
+        }
+        Assert.assertEquals(1, obs.size());
+        em.close();
+    }
+
+    @Test(expected = PersistenceException.class)
+    public void testEndsWithQuery() {
+        EntityManager em = factory.createEntityManager();
+
+        MyTestObject3 object = new MyTestObject3();
+        object.setSomeField3("fred and barney");
+        em.persist(object);
+        em.close();
+
+        em = factory.createEntityManager();
+        Query query = em.createQuery("select o from MyTestObject3 o where o.someField3 like :x");
+        query.setParameter("x", "%fred and"); // bad
+        List<MyTestObject3> obs = query.getResultList();
+        System.out.println("shouldn't make it here");
+        for (MyTestObject3 ob : obs) {
+            System.out.println(ob);
+        }
+        Assert.assertEquals(1, obs.size());
+        em.close();
+    }
+
 }
