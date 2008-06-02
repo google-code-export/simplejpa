@@ -1,5 +1,5 @@
 #summary SimpleJPA is built using these sponsored tools.
-#labels Featured
+#labels Fe
 
 YourKit is kindly supporting open source projects with its full-featured Java Profiler.
 YourKit, LLC is creator of innovative and intelligent tools for profiling
