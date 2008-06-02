@@ -1,5 +1,5 @@
 #summary Configuration options for simplejpa.properties
-#labels Phase-Implementation
+#labels Phase-Implementation,Manual
 
 = Introduction =
 
