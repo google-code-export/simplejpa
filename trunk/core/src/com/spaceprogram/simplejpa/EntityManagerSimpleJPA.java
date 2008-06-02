@@ -6,7 +6,12 @@ import com.spaceprogram.simplejpa.query.JPAQueryParser;
 import com.spaceprogram.simplejpa.query.QueryImpl;
 import com.spaceprogram.simplejpa.util.AmazonSimpleDBUtil;
 import com.spaceprogram.simplejpa.util.ConcurrentRetriever;
-import com.xerox.amazonws.sdb.*;
+import com.xerox.amazonws.sdb.Domain;
+import com.xerox.amazonws.sdb.Item;
+import com.xerox.amazonws.sdb.ItemAttribute;
+import com.xerox.amazonws.sdb.QueryResult;
+import com.xerox.amazonws.sdb.SDBException;
+import com.xerox.amazonws.sdb.SimpleDB;
 import net.sf.cglib.proxy.Enhancer;
 import net.sf.cglib.proxy.LazyLoader;
 import org.apache.commons.lang.NotImplementedException;
@@ -18,7 +23,13 @@ import org.jets3t.service.model.S3Bucket;
 import org.jets3t.service.model.S3Object;
 import org.jets3t.service.security.AWSCredentials;
 
-import javax.persistence.*;
+import javax.persistence.EntityTransaction;
+import javax.persistence.FlushModeType;
+import javax.persistence.LockModeType;
+import javax.persistence.PersistenceException;
+import javax.persistence.PostRemove;
+import javax.persistence.PreRemove;
+import javax.persistence.Query;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -34,7 +45,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -66,7 +76,6 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         resetLastOpStats();
         try {
             new AsyncSaveTask(this, o).call();
-            invokeEntityListener(o, PostPersist.class);
         } catch (SDBException e) {
             throw new PersistenceException("Could not get SimpleDb Domain", e);
         } catch (Exception e) {
@@ -193,6 +202,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
             Domain domain = getDomain(o.getClass());
             String id = getId(o);
             logger.fine("deleting item with id: " + id);
+            invokeEntityListener(o, PreRemove.class);
             domain.deleteItem(id);
             cacheRemove(cacheKey(o.getClass(), id));
             invokeEntityListener(o, PostRemove.class);
@@ -589,13 +599,14 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         }
     }
     
-    private void invokeEntityListener(Object o, Class event) {
-    	if (getAnnotationManager().getAnnotationInfo(o).getEntityListeners().containsKey(event)) {
-    		ClassMethodEntry listener = getAnnotationManager().getAnnotationInfo(o).getEntityListeners().get(event);
+    public void invokeEntityListener(Object o, Class event) {
+        Map<Class, ClassMethodEntry> listeners = getAnnotationManager().getAnnotationInfo(o).getEntityListeners();
+        if (listeners != null && listeners.containsKey(event)) {
+    		ClassMethodEntry listener = listeners.get(event);
     		try {
 				listener.invoke(o);
 			} catch (Exception e) {
-				logger.log(Level.WARNING, "Error invoking entity listener", e);
+                throw new PersistenceException("Error invoking entity listener", e);
 			}
     	}
     }
@@ -604,11 +615,9 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         return factory.getAnnotationManager();
     }
 
-
     public EntityManagerFactoryImpl getFactory() {
         return factory;
     }
-
 
     public OpStats getOpStats() {
         return opStats;

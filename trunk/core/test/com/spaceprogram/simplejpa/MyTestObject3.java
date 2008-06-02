@@ -1,6 +1,8 @@
 package com.spaceprogram.simplejpa;
 
 import javax.persistence.Entity;
+import javax.persistence.EntityListeners;
+import java.util.Date;
 
 /**
  * User: treeder
@@ -8,8 +10,12 @@ import javax.persistence.Entity;
  * Time: 5:26:21 PM
  */
 @Entity
-public class MyTestObject3 extends MySuperClass{
+@EntityListeners({TimestampEntityListener.class})
+public class MyTestObject3 extends MySuperClass implements Timestamped{
     private String someField3;
+
+    private Date created;
+    private Date updated;
 
     public String getSomeField3() {
         return someField3;
@@ -17,5 +23,21 @@ public class MyTestObject3 extends MySuperClass{
 
     public void setSomeField3(String someField3) {
         this.someField3 = someField3;
+    }
+
+    public Date getCreated() {
+        return created;
+    }
+
+    public void setCreated(Date created) {
+        this.created = created;
+    }
+
+    public Date getUpdated() {
+        return updated;
+    }
+
+    public void setUpdated(Date updated) {
+        this.updated = updated;
     }
 }

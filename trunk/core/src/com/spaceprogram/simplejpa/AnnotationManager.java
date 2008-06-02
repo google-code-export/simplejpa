@@ -128,12 +128,14 @@ public class AnnotationManager {
         if (ai.getIdMethod() == null) {
             throw new PersistenceException("No ID method specified for: " + c.getName());
         }
-        
+
+        // todo: this should go above to get all listeners from all subclassess too
         EntityListeners listeners = (EntityListeners) c.getAnnotation(EntityListeners.class);
         if (listeners != null) {
-        	putListeners(ai, listeners.value());
+            System.out.println("Found EntityListeners for " + c);
+            putListeners(ai, listeners.value());
         }
-        
+
         getAnnotationMap().put(c.getName(), ai);
         return ai;
     }
@@ -150,51 +152,68 @@ public class AnnotationManager {
             ai.addGetter(method);
         }
     }
-    
+
     @SuppressWarnings("unchecked")
-	private void putListeners(AnnotationInfo ai, Class[] classes) {
-    	Map<Class, ClassMethodEntry> listeners = new HashMap<Class, ClassMethodEntry>();
-    	
-    	// TODO: More than one listener per event cannot be handled like this...
-    	
-    	for (Class clazz : classes) {
-    		for (Method method : clazz.getMethods()) {
-    			PrePersist prePersist = method.getAnnotation(PrePersist.class);
-    			if (prePersist != null) { listeners.put(PrePersist.class, new ClassMethodEntry(clazz, method)); continue; }
-    			PreUpdate preUpdate = method.getAnnotation(PreUpdate.class);
-    			if (preUpdate != null) { listeners.put(PreUpdate.class, new ClassMethodEntry(clazz, method)); continue; }
-    			PreRemove preRemove = method.getAnnotation(PreRemove.class);
-    			if (preRemove != null) { listeners.put(PreRemove.class, new ClassMethodEntry(clazz, method)); continue; }
+    private void putListeners(AnnotationInfo ai, Class[] classes) {
+        Map<Class, ClassMethodEntry> listeners = new HashMap<Class, ClassMethodEntry>();
 
-    			PostLoad postLoad = method.getAnnotation(PostLoad.class);
-    			if (postLoad != null) { listeners.put(PostLoad.class, new ClassMethodEntry(clazz, method)); continue; }
-    			PostPersist postPersist = method.getAnnotation(PostPersist.class);
-    			if (postPersist != null) { listeners.put(PostPersist.class, new ClassMethodEntry(clazz, method)); continue; }
-    			PostUpdate postUpdate = method.getAnnotation(PostUpdate.class);
-    			if (postUpdate != null) { listeners.put(PostUpdate.class, new ClassMethodEntry(clazz, method)); continue; }
-    			PostRemove postRemove = method.getAnnotation(PostRemove.class);
-    			if (postRemove != null) { listeners.put(PostRemove.class, new ClassMethodEntry(clazz, method)); continue; }
-    		}
-    	}
+        // TODO: More than one listener per event cannot be handled like this...
 
-    	ai.setEntityListeners(listeners);
+        for (Class clazz : classes) {
+            System.out.println("class=" + clazz);
+            for (Method method : clazz.getMethods()) {
+                System.out.println("method=" + method.getName());
+                PrePersist prePersist = method.getAnnotation(PrePersist.class);
+                if (prePersist != null) {
+                    System.out.println("found a pre persist.");
+                    listeners.put(PrePersist.class, new ClassMethodEntry(clazz, method));
+                }
+                PreUpdate preUpdate = method.getAnnotation(PreUpdate.class);
+                if (preUpdate != null) {
+                    listeners.put(PreUpdate.class, new ClassMethodEntry(clazz, method));
+                }
+                PreRemove preRemove = method.getAnnotation(PreRemove.class);
+                if (preRemove != null) {
+                    listeners.put(PreRemove.class, new ClassMethodEntry(clazz, method));
+                }
+
+                PostLoad postLoad = method.getAnnotation(PostLoad.class);
+                if (postLoad != null) {
+                    listeners.put(PostLoad.class, new ClassMethodEntry(clazz, method));
+                }
+                PostPersist postPersist = method.getAnnotation(PostPersist.class);
+                if (postPersist != null) {
+                    listeners.put(PostPersist.class, new ClassMethodEntry(clazz, method));
+                }
+                PostUpdate postUpdate = method.getAnnotation(PostUpdate.class);
+                if (postUpdate != null) {
+                    listeners.put(PostUpdate.class, new ClassMethodEntry(clazz, method));
+                }
+                PostRemove postRemove = method.getAnnotation(PostRemove.class);
+                if (postRemove != null) {
+                    listeners.put(PostRemove.class, new ClassMethodEntry(clazz, method));
+                }
+            }
+        }
+
+        ai.setEntityListeners(listeners);
     }
 
     public AnnotationInfo getAnnotationInfoByDiscriminator(String discriminatorValue) {
         return discriminatorMap.get(discriminatorValue);
     }
-    
+
     public class ClassMethodEntry {
-    	private Class clazz;
-    	private Method method;
-    	
-    	public ClassMethodEntry(Class clazz, Method method) {
-    		this.clazz = clazz;
-    		this.method = method;
-    	}
-    	
-    	public void invoke(Object... args) throws IllegalArgumentException, IllegalAccessException, InvocationTargetException, InstantiationException {
-    		this.method.invoke(clazz.newInstance(), args);
-    	}
+        private Class clazz;
+        private Method method;
+
+        public ClassMethodEntry(Class clazz, Method method) {
+            this.clazz = clazz;
+            this.method = method;
+        }
+
+        public void invoke(Object... args) throws IllegalArgumentException, IllegalAccessException, InvocationTargetException, InstantiationException {
+            this.method.invoke(clazz.newInstance(), args);
+        }
     }
 }

@@ -45,6 +45,7 @@ public class AsyncSaveTask implements Callable {
         long start = System.currentTimeMillis();
         id = prePersist(o); // could probably move this inside the AsyncSaveTask
         logger.fine("prePersist time=" + (System.currentTimeMillis() - start));
+
     }
 
     /**
@@ -74,6 +75,7 @@ public class AsyncSaveTask implements Callable {
 
     protected void persistOnly(Object o, String id) throws SDBException, IllegalAccessException, InvocationTargetException, S3ServiceException, IOException {
         long start = System.currentTimeMillis();
+        em.invokeEntityListener(o, newObject ? PrePersist.class : PreUpdate.class);
         AnnotationInfo ai = em.getFactory().getAnnotationManager().getAnnotationInfo(o);
         Domain domain;
         if (ai.getRootClass() != null) {
@@ -185,6 +187,7 @@ public class AsyncSaveTask implements Callable {
         } else {
             logger.fine("deleteAttributes time= no nulled fields, nothing to delete.");
         }
+        em.invokeEntityListener(o, newObject ? PostPersist.class : PostUpdate.class);
         logger.fine("persistOnly time=" + (System.currentTimeMillis() - start));
     }
 
