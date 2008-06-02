@@ -20,8 +20,6 @@ import java.util.concurrent.Future;
  */
 public class PersistenceTests extends BaseTestClass {
 
-
-
     @Test
     public void listAllObjects() throws IOException, SDBException, ExecutionException, InterruptedException {
         Class c = MyTestObject.class;
@@ -574,6 +572,28 @@ public class PersistenceTests extends BaseTestClass {
         }
         Assert.assertEquals(1, obs.size());
         
+        em.close();
+    }
+
+    @Test
+    public void testEntityListeners(){
+        EntityManager em = factory.createEntityManager();
+
+        MyTestObject3 object = new MyTestObject3();
+        object.setSomeField3("fred");
+        em.persist(object);
+        Date firstCreated = object.getCreated();
+        Date firstUpdated = object.getUpdated();
+        em.close();
+
+        em = factory.createEntityManager();
+        object = em.find(MyTestObject3.class, object.getId());
+        Assert.assertNotNull(object);
+        Assert.assertEquals(firstUpdated, object.getUpdated());
+
+        object.setSomeField3("fred updated");
+        em.merge(object);
+        Assert.assertFalse(object.getUpdated().equals(firstUpdated));
         em.close();
     }
 }
