@@ -197,7 +197,7 @@ public class LazyList extends AbstractList implements Serializable {
                     if (o == null) {
                         itemsToGet.add(item);
                     } else {
-                        System.out.println("found item in cache while materializing. All good.");
+//                        System.out.println("found item in cache while materializing. All good.");
                     }
                 }
                 logger.fine("Loading " + itemList.size() + " asynchronously.");
