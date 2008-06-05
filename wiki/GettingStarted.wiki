@@ -107,6 +107,8 @@ em.getTransaction().commit();
 
 = Call commit when you want to commit your changes to the database =
 
+NOTE: This is just for JPA semantics right now. SimpleJPA currently commits every operation, but this may change so call commit explicitly just to be future safe.
+
 {{{
 em.getTransaction().commit();
 }}}
