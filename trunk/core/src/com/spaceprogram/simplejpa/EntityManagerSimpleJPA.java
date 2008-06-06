@@ -101,11 +101,11 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
     }
 
     String lobKeyAttributeName(String columnName, Method getter) {
-        return columnName != null ? columnName : attributeName(getter) + "-lobkey";
+        return columnName != null ? columnName : NamingHelper.attributeName(getter) + "-lobkey";
     }
 
     String s3ObjectId(String id, Method getter) {
-        return id + "-" + attributeName(getter);
+        return id + "-" + NamingHelper.attributeName(getter);
     }
 
     String s3bucketName() {
@@ -224,7 +224,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         try {
             T ob = (T) cacheGet(cacheKey(tClass, id));
             if (ob != null) {
-                logger.fine("found in cache: " + ob);
+                logger.finest("found in cache: " + ob);
                 return ob;
             }
             Domain domain = getDomain(tClass);
@@ -343,21 +343,21 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
 
 
     public Object cacheGet(String key) {
-        logger.fine("getting item from cache with cachekey=" + key);
+        logger.finest("getting item from cache with cachekey=" + key);
         Object o = cache.get(key);
-        logger.fine("got item from cache=" + o);
+        logger.finest("got item from cache=" + o);
         return o;
     }
 
     public void cachePut(String key, Object newInstance) {
-        logger.fine("putting item in cache with cachekey=" + key + " - " + newInstance);
+        logger.finest("putting item in cache with cachekey=" + key + " - " + newInstance);
         cache.put(key, newInstance);
     }
 
     private Object cacheRemove(String key) {
-        logger.fine("removing item from cache with cachekey=" + key);
+        logger.finest("removing item from cache with cachekey=" + key);
         Object o = cache.remove(key);
-        logger.fine("removed object from cache=" + o);
+        logger.finest("removed object from cache=" + o);
         return o;
     }
 
@@ -366,20 +366,12 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
     }
 
 
-    public String foreignKey(Method getter) {
-        return foreignKey(attributeName(getter));
-    }
-
-    public String foreignKey(String attName) {
-        return attName + "_id";
-    }
-
     private Object newLazyLoadingInstance(final Class retType, final Object id) {
         return Enhancer.create(retType,
                 new LazyLoader() {
                     public Object loadObject() {
                         try {
-                            logger.fine("loadObject called for type=" + retType + " with id=" + id);
+                            logger.finest("loadObject called for type=" + retType + " with id=" + id);
                             return find(retType, id);
                         } catch (Exception e) {
                             throw new RuntimeException(e);
@@ -393,23 +385,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
     }
 
     String getSetterNameFromGetter(Method getter) {
-        return setterName(attributeName(getter));
-    }
-
-    String getGetterNameFromSetter(Method setter) {
-        return getterName(attributeName(setter));
-    }
-
-    private String setterName(String fieldName) {
-        return "set" + StringUtils.capitalize(fieldName);
-    }
-
-    public String attributeName(Method getterOrSetter) {
-        return StringUtils.uncapitalize(getterOrSetter.getName().substring(3));
-    }
-
-    static <T> String getterName(String fieldName) {
-        return ("get" + StringUtils.capitalize(fieldName));
+        return NamingHelper.setterName(NamingHelper.attributeName(getter));
     }
 
     /**
@@ -423,7 +399,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
     <T> void setFieldValue(Class tClass, T newInstance, Method getter, String val) {
         try {
             // need param type
-            String attName = attributeName(getter);
+            String attName = NamingHelper.attributeName(getter);
             Class retType = getter.getReturnType();
 //            logger.fine("getter in setFieldValue = " + attName + " - val=" + val + " rettype=" + retType);
             Method setMethod = tClass.getMethod("set" + StringUtils.capitalize(attName), retType);
@@ -491,7 +467,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
     }
 
     public Query createQuery(String s) {
-        logger.fine("query=" + s);
+        logger.finer("query=" + s);
         JPAQuery q = new JPAQuery();
         JPAQueryParser parser = new JPAQueryParser(q, s);
         parser.parse();

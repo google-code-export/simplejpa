@@ -52,12 +52,12 @@ public class LazyInterceptor implements MethodInterceptor {
     private void handleSetMethod(Object obj, Method method, Object[] args) throws Throwable {
         // we basically want to mark this object as dirty if this is called and to only delete attributes if it's dirty
         dirty = true;
-        String attributeName = em.attributeName(method);
+        String attributeName = NamingHelper.attributeName(method);
         if (args != null && args.length == 1) {
             Object valueToSet = args[0];
             if (valueToSet == null) {
                 Method getter = em.getFactory().getAnnotationManager().getAnnotationInfo(obj).getGetter(attributeName);
-                MethodProxy getterProxy = MethodProxy.find(obj.getClass(), new Signature(em.getGetterNameFromSetter(method), Type.getType(getter.getReturnType()), new Type[]{}));
+                MethodProxy getterProxy = MethodProxy.find(obj.getClass(), new Signature(NamingHelper.getGetterNameFromSetter(method), Type.getType(getter.getReturnType()), new Type[]{}));
                 Object ret = getterProxy.invokeSuper(obj, null);
                 if (ret != null) {
                     nulledFields.put(attributeName, ret);
@@ -71,26 +71,26 @@ public class LazyInterceptor implements MethodInterceptor {
         if (method.getAnnotation(ManyToOne.class) != null) {
             logger.finer("intercepting many to one");
             if (foreignKeys != null) {
-                String foreignKey = foreignKeys.get(em.attributeName(method));
+                String foreignKey = foreignKeys.get(NamingHelper.attributeName(method));
                 logger.finer("ManyToOne key=" + foreignKey);
                 if (foreignKey == null) {
                     return true;
                 }
                 Class retType = method.getReturnType();
-                logger.fine("loading ManyToOne object for type=" + retType + " with id=" + foreignKey);
+                logger.finer("loading ManyToOne object for type=" + retType + " with id=" + foreignKey);
                 Object toSet = em.find(retType, foreignKey);
-                logger.fine("got object for ManyToOne=" + toSet);
+                logger.finest("got object for ManyToOne=" + toSet);
                 String setterName = em.getSetterNameFromGetter(method);
                 Method setter = obj.getClass().getMethod(setterName, retType);
                 setter.invoke(obj, toSet);
             }
         } else if (method.getAnnotation(Lob.class) != null) {
             if (foreignKeys != null) {
-                String lobKey = foreignKeys.get(em.attributeName(method));
+                String lobKey = foreignKeys.get(NamingHelper.attributeName(method));
                 if (lobKey == null) {
                     return true;
                 }
-                logger.fine("intercepting lob. key==" + lobKey);
+                logger.finer("intercepting lob. key==" + lobKey);
                 Class retType = method.getReturnType();
                 Object toSet = em.getObjectFromS3(lobKey);
                 // System.out.println("toset=" + toSet);

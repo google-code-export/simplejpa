@@ -48,7 +48,7 @@ public class AnnotationInfo {
     }
 
     public Method getGetter(String field) {
-        String getterName = EntityManagerSimpleJPA.getterName(field);
+        String getterName = NamingHelper.getterName(field);
         return getterMap.get(getterName);
     }
 

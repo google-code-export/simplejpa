@@ -86,12 +86,12 @@ public class LazyList extends AbstractList implements Serializable {
 
     public Object get(int i) {
         loadItems(i / maxToRetrievePerRequest, true);
-        logger.fine("getting from lazy list at index=" + i);
+        logger.finer("getting from lazy list at index=" + i);
         Object o;
         if (backingList.size() > i) {
             o = backingList.get(i);
             if (o != null) {
-                logger.fine("object already loaded in backing list: " + o);
+                logger.finest("object already loaded in backing list: " + o);
                 return o;
             }
         }
@@ -99,7 +99,7 @@ public class LazyList extends AbstractList implements Serializable {
         Item item = items.get(i);
         o = checkCache(item);
         if (o != null) {
-            logger.fine("cache hit in lazy list: " + o);
+            logger.finest("cache hit in lazy list: " + o);
             putInBackingList(i, o);
             return o;
         }
@@ -145,16 +145,16 @@ public class LazyList extends AbstractList implements Serializable {
             }
             // Now we'll load up all the items up to the page specified
             for (int i = numPagesLoaded; i <= page; i++) {
-                logger.fine("loading items for list. Page=" + i);
+                logger.finer("loading items for list. Page=" + i);
                 if (numPagesLoaded > 0 && nextToken == null) {
                     break;
                 }
                 QueryResult qr;
                 try {
-                    logger.fine("query for lazylist=" + query);
+                    logger.finer("query for lazylist=" + query);
                     qr = domain.listItems(query, nextToken, maxToRetrievePerRequest);
                     List<Item> itemList = qr.getItemList();
-                    logger.fine("got items for lazylist=" + itemList.size());
+                    logger.finer("got items for lazylist=" + itemList.size());
                     items.addAll(itemList);
                     numRetrieved += itemList.size();
                     nextToken = qr.getNextToken();
@@ -169,7 +169,7 @@ public class LazyList extends AbstractList implements Serializable {
                         throw new PersistenceException(e);
                     }
                 }
-                logger.fine("got " + items.size() + " for lazy list");
+                logger.finer("got " + items.size() + " for lazy list");
                 // todo: we really need the size of the full list here. Or load up all the ids here via multiple calls with next token
                 //            size = items.size();
                 //            loadedItems = true;
@@ -200,7 +200,7 @@ public class LazyList extends AbstractList implements Serializable {
 //                        System.out.println("found item in cache while materializing. All good.");
                     }
                 }
-                logger.fine("Loading " + itemList.size() + " asynchronously.");
+                logger.finer("Loading " + itemList.size() + " asynchronously.");
                 List<ItemAndAttributes> attributes = ConcurrentRetriever.getAttributesFromSdb(itemsToGet, em.getExecutor());
                 for (ItemAndAttributes ia : attributes) {
                     Object o = em.buildObject(genericReturnType, ia.getItem().getIdentifier(), ia.getAtts());
