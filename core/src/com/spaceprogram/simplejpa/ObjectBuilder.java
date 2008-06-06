@@ -29,7 +29,7 @@ public class ObjectBuilder {
             // check for DTYPE to see if it's a subclass, must be a faster way to do this you'd think?
             for (ItemAttribute att : atts) {
                 if (att.getName().equals(EntityManagerFactoryImpl.DTYPE)) {
-                    logger.fine("dtype=" + att.getValue());
+                    logger.finest("dtype=" + att.getValue());
                     ai = em.getFactory().getAnnotationManager().getAnnotationInfoByDiscriminator(att.getValue());
                     if(ai == null) {
                         throw new PersistenceException(new ClassNotFoundException("Could not build object with dtype = " + att.getValue() + ". Class not found or is not an @Entity."));
@@ -45,17 +45,17 @@ public class ObjectBuilder {
             newInstance = (T) owi.getBean();
             Collection<Method> getters = ai.getGetters();
             for (Method getter : getters) {
-                String attName = em.attributeName(getter);
-                String columnName = AsyncSaveTask.getColumnName(getter);
+                String attName = NamingHelper.attributeName(getter);
+                String columnName = NamingHelper.getColumnName(getter);
                 if (getter.getAnnotation(ManyToOne.class) != null) {
                     // lazy it up
                     String identifierForManyToOne = getIdForManyToOne(em, getter, columnName, atts);
-                    logger.fine("identifierForManyToOne=" + identifierForManyToOne);
+                    logger.finest("identifierForManyToOne=" + identifierForManyToOne);
                     if (identifierForManyToOne == null) {
                         continue;
                     }
                     // todo: stick a cache in here and check the cache for the instance before creating the lazy loader.
-                    logger.finer("creating new lazy loading instance for getter " + getter.getName() + " of class " + tClass.getSimpleName() + " with id " + id);
+                    logger.finest("creating new lazy loading instance for getter " + getter.getName() + " of class " + tClass.getSimpleName() + " with id " + id);
 //                    Object toSet = newLazyLoadingInstance(retType, identifierForManyToOne);
                     owi.getInterceptor().putForeignKey(attName, identifierForManyToOne);
                 } else if (getter.getAnnotation(OneToMany.class) != null) {
@@ -76,7 +76,7 @@ public class ObjectBuilder {
                     // handled in Proxy
                     String lobKeyAttributeName = em.lobKeyAttributeName(columnName, getter);
                     String lobKeyVal = getValueToSet(atts, lobKeyAttributeName, columnName);
-                    logger.fine("lobkeyval to set on interceptor=" + lobKeyVal + " - fromatt=" + lobKeyAttributeName);
+                    logger.finest("lobkeyval to set on interceptor=" + lobKeyVal + " - fromatt=" + lobKeyAttributeName);
                     if (lobKeyVal != null) owi.getInterceptor().putForeignKey(attName, lobKeyVal);
                 } else if (getter.getAnnotation(Enumerated.class) != null) {
                     Enumerated enumerated = getter.getAnnotation(Enumerated.class);
@@ -124,7 +124,7 @@ public class ObjectBuilder {
     }
 
     private static String getIdForManyToOne(EntityManagerSimpleJPA em, Method getter, String columnName, List<ItemAttribute> atts) {
-        String fkAttName = columnName != null ? columnName : em.foreignKey(getter);
+        String fkAttName = columnName != null ? columnName : NamingHelper.foreignKey(getter);
         for (ItemAttribute att : atts) {
             if (att.getName().equals(fkAttName)) {
                 return att.getValue();
@@ -148,11 +148,11 @@ public class ObjectBuilder {
 
     private static String oneToManyQuery(EntityManagerSimpleJPA em, String foreignKeyFieldName, Object id, Class typeInList) {
         AnnotationInfo ai = em.getFactory().getAnnotationManager().getAnnotationInfo(typeInList);
-        String query = "['" + em.foreignKey(foreignKeyFieldName) + "' = '" + id + "']";
+        String query = "['" + NamingHelper.foreignKey(foreignKeyFieldName) + "' = '" + id + "']";
         if (ai.getDiscriminatorValue() != null) {
             query += " intersection ['DTYPE' = '" + ai.getDiscriminatorValue() + "']";
         }
-        logger.fine("OneToMany query=" + query);
+        logger.finer("OneToMany query=" + query);
         return query;
     }
 

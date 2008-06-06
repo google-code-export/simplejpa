@@ -142,16 +142,16 @@ public class QueryImpl implements Query {
         int i = 0;
         while (matcher.find()) {
             s = where.substring(lastIndex, matcher.start()).trim();
-            logger.fine("value: " + s);
+            logger.finest("value: " + s);
             split.add(s);
             s = matcher.group();
             split.add(s);
-            logger.fine("matcher found: " + s + " at " + matcher.start() + " to " + matcher.end());
+            logger.finest("matcher found: " + s + " at " + matcher.start() + " to " + matcher.end());
             lastIndex = matcher.end();
             i++;
         }
         s = where.substring(lastIndex).trim();
-        logger.fine("final:" + s);
+        logger.finest("final:" + s);
         split.add(s);
         return split;
     }
@@ -185,13 +185,12 @@ public class QueryImpl implements Query {
             AnnotationInfo refAi = em.getAnnotationManager().getAnnotationInfo(refType);
             Method getterForField = refAi.getGetter(field);
 //            System.out.println("getter=" + getterForField);
-            String columnName = AsyncSaveTask.getColumnName(getterForField);
             String paramValue = getParamValueAsStringForAmazonQuery(param, getterForField);
-            logger.fine("paramValue=" + paramValue);
+            logger.finest("paramValue=" + paramValue);
             Method refIdMethod = refAi.getIdMethod();
-            if (em.attributeName(refIdMethod).equals(field)) {
-                logger.fine("Querying using id field, no second query required.");
-                appendFilter(sb, em.foreignKey(refObjectField), comparator, paramValue);
+            if (NamingHelper.attributeName(refIdMethod).equals(field)) {
+                logger.finer("Querying using id field, no second query required.");
+                appendFilter(sb, NamingHelper.foreignKey(refObjectField), comparator, paramValue);
             } else {
                 // no id method, so query for other object(s) first, then apply the returned value to the original query.
                 // todo: this needs some work (multiple ref objects? multiple params on same ref object?)
@@ -204,7 +203,7 @@ public class QueryImpl implements Query {
                 }
                 if (ids.size() > 0) {
 //                    sb.append(" intersection ");
-                    appendFilterMultiple(sb, em.foreignKey(refObjectField), "=", ids);
+                    appendFilterMultiple(sb, NamingHelper.foreignKey(refObjectField), "=", ids);
                 } else {
                     // no matches so should return nothing right? only if an AND query I guess
                     return null;
@@ -214,12 +213,12 @@ public class QueryImpl implements Query {
         } else {
             throw new PersistenceException("Invalid field used in query: " + field);
         }
-        logger.fine("field=" + field);
+        logger.finest("field=" + field);
         Method getterForField = ai.getGetter(field);
         if (getterForField == null) {
             throw new PersistenceException("No getter for field: " + field);
         }
-        String columnName = AsyncSaveTask.getColumnName(getterForField);
+        String columnName = NamingHelper.getColumnName(getterForField);
         if (columnName == null) columnName = field;
         if (comparator.equals("is")) {
             if (param.equals("null")) {
@@ -240,8 +239,8 @@ public class QueryImpl implements Query {
             appendFilter(sb, columnName, comparator, paramValue);
         } else {
             String paramValue = getParamValueAsStringForAmazonQuery(param, getterForField);
-            logger.fine("paramValue=" + paramValue);
-            logger.fine("comp=[" + comparator + "]");
+            logger.finest("paramValue=" + paramValue);
+            logger.finest("comp=[" + comparator + "]");
             appendFilter(sb, columnName, comparator, paramValue);
         }
         return true;
@@ -267,7 +266,7 @@ public class QueryImpl implements Query {
         if (Integer.class.isAssignableFrom(retType)) {
             Integer x = (Integer) paramOb;
             param = AmazonSimpleDBUtil.encodeRealNumberRange(new BigDecimal(x), AmazonSimpleDBUtil.LONG_DIGITS, EntityManagerSimpleJPA.OFFSET_VALUE).toString();
-            logger.fine("encoded int " + x + " to " + param);
+            logger.finer("encoded int " + x + " to " + param);
         } else if (Long.class.isAssignableFrom(retType)) {
             Long x = (Long) paramOb;
             param = AmazonSimpleDBUtil.encodeRealNumberRange(new BigDecimal(x), AmazonSimpleDBUtil.LONG_DIGITS, EntityManagerSimpleJPA.OFFSET_VALUE).toString();

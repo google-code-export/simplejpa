@@ -110,11 +110,11 @@ public class AsyncSaveTask implements Callable {
             if (ob == null) {
                 continue;
             }
-            String columnName = getColumnName(getter);
+            String columnName = NamingHelper.getColumnName(getter);
             if (getter.getAnnotation(ManyToOne.class) != null) {
                 // store the id of this object
                 String id2 = em.getId(ob);
-                atts.add(new ItemAttribute(columnName != null ? columnName : em.foreignKey(getter), id2, true));
+                atts.add(new ItemAttribute(columnName != null ? columnName : NamingHelper.foreignKey(getter), id2, true));
             } else if (getter.getAnnotation(OneToMany.class) != null) {
                 // FORCING BI-DIRECTIONAL RIGHT NOW SO JUST IGNORE
             } else if (getter.getAnnotation(Lob.class) != null) {
@@ -134,7 +134,7 @@ public class AsyncSaveTask implements Callable {
                 s3Object = s3.putObject(bucket, s3Object);
                 out.close();
                 em.getOpStats().s3Put(System.currentTimeMillis() - start3);
-                logger.fine("setting lobkeyattribute=" + em.lobKeyAttributeName(columnName, getter) + " - " + s3ObjectId);
+                logger.finer("setting lobkeyattribute=" + em.lobKeyAttributeName(columnName, getter) + " - " + s3ObjectId);
                 atts.add(new ItemAttribute(columnName != null ? columnName : em.lobKeyAttributeName(columnName, getter), s3ObjectId, true));
             } else if (getter.getAnnotation(Enumerated.class) != null) {
                 Enumerated enumerated = getter.getAnnotation(Enumerated.class);
@@ -157,11 +157,11 @@ public class AsyncSaveTask implements Callable {
                     // should never happen
                     throw new PersistenceException("Enum value is null, couldn't find ordinal match: " + ob);
                 }
-                atts.add(new ItemAttribute(columnName != null ? columnName : em.attributeName(getter), toSet, true));
+                atts.add(new ItemAttribute(columnName != null ? columnName : NamingHelper.attributeName(getter), toSet, true));
             } else {
                 String toSet = ob != null ? em.padOrConvertIfRequired(ob) : "";
                 // todo: throw an exception if this is going to exceed maximum size, suggest using @Lob
-                atts.add(new ItemAttribute(columnName != null ? columnName : em.attributeName(getter), toSet, true));
+                atts.add(new ItemAttribute(columnName != null ? columnName : NamingHelper.attributeName(getter), toSet, true));
             }
         }
 
@@ -191,15 +191,5 @@ public class AsyncSaveTask implements Callable {
         logger.fine("persistOnly time=" + (System.currentTimeMillis() - start));
     }
 
-    public static String getColumnName(Method getter) {
-        String columnName = null;
-        if (getter.getAnnotation(Column.class) != null) {
-            Column column = getter.getAnnotation(Column.class);
-            if(column.name() != null && column.name().length() > 0){
-                columnName = column.name();
-            }
-        }
-        return columnName;
-    }
-
+  
 }
