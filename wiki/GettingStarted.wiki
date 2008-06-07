@@ -20,6 +20,8 @@ Need the latest releases of (I'll try to package these up into the release if I 
   * ejb3-persistence-api - Is there any simpler place to just get the jar? For now, get it in the Hibernate EntityManager release: http://sourceforge.net/project/showfiles.php?group_id=40712&package_id=156160
   * scannotation - http://scannotation.sourceforge.net/
   * javassist (scannotation) - http://www.csg.is.titech.ac.jp/~chiba/javassist/
+  * ehcache - as of SimpleJPA alpha 0.6 - http://ehcache.sourceforge.net/
+  * Backport concurrent (ehcache) - http://dcl.mathcs.emory.edu/util/backport-util-concurrent
 
 = Download SimpleJPA =
 
