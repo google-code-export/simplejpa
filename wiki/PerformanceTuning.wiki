@@ -1,0 +1,12 @@
+#summary Performance tuning tips and tricks.
+#labels Phase-Support
+
+= Introduction =
+
+Tips and tricks to get top performance.
+
+= Details =
+
+===Warm up the SecondLevelCache===
+
+Warming up the second level cache with items that are reachable via @ManyToOne links will improve performance because instead of retrieving each item via lazy loading, you can have them all the @ManyToOne references in the cache before hand.
