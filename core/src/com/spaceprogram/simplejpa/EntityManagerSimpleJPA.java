@@ -12,8 +12,7 @@ import com.xerox.amazonws.sdb.ItemAttribute;
 import com.xerox.amazonws.sdb.QueryResult;
 import com.xerox.amazonws.sdb.SDBException;
 import com.xerox.amazonws.sdb.SimpleDB;
-import net.sf.cglib.proxy.Enhancer;
-import net.sf.cglib.proxy.LazyLoader;
+import net.sf.jsr107cache.Cache;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.jets3t.service.S3Service;
@@ -60,7 +59,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
     /**
      * cache is used to store objects retrieved in this EntityManager session
      */
-    private Map cache = new ConcurrentHashMap();
+    private Map sessionCache = new ConcurrentHashMap();
     /**
      * used for converting numbers to strings
      */
@@ -83,14 +82,14 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         }
     }
 
-    private void resetLastOpStats() {
-        opStats = new OpStats();
-    }
-
-
     public Future persistAsync(Object o) {
         Future future = getExecutor().submit(new AsyncSaveTask(this, o));
         return future;
+    }
+
+
+    private void resetLastOpStats() {
+        opStats = new OpStats();
     }
 
 
@@ -204,7 +203,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
             logger.fine("deleting item with id: " + id);
             invokeEntityListener(o, PreRemove.class);
             domain.deleteItem(id);
-            cacheRemove(cacheKey(o.getClass(), id));
+            cacheRemove(o.getClass(), id);
             invokeEntityListener(o, PostRemove.class);
         } catch (Exception e) {
             throw new PersistenceException(e);
@@ -222,7 +221,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         if (closed) throw new PersistenceException("EntityManager already closed.");
         if (id == null) throw new IllegalArgumentException("Id value must not be null.");
         try {
-            T ob = (T) cacheGet(cacheKey(tClass, id));
+            T ob = (T) cacheGet(tClass, id);
             if (ob != null) {
                 logger.finest("found in cache: " + ob);
                 return ob;
@@ -342,42 +341,52 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
     }
 
 
-    public Object cacheGet(String key) {
+    public Object cacheGet(Class aClass, Object id) {
+        String key = cacheKey(aClass, id);
         logger.finest("getting item from cache with cachekey=" + key);
-        Object o = cache.get(key);
+        Object o = sessionCache.get(key);
+        if(o == null){
+            Cache c = getFactory().getCache(aClass);
+            if(c != null){
+                o = c.get(id);
+                if(o != null){
+                    logger.finest("Got item from second level cache!");
+                }
+            }
+        }
         logger.finest("got item from cache=" + o);
         return o;
     }
 
-    public void cachePut(String key, Object newInstance) {
+    public void cachePut(Object id, Object newInstance) {
+        String key = cacheKey(newInstance.getClass(), id);
         logger.finest("putting item in cache with cachekey=" + key + " - " + newInstance);
-        cache.put(key, newInstance);
+        sessionCache.put(key, newInstance);
+        Cache c = getFactory().getCache(newInstance.getClass());
+        if(c != null){
+            c.put(id, newInstance);
+        }
     }
 
-    private Object cacheRemove(String key) {
+    public void cachePut(Object o) {
+        String id = getId(o);
+        cachePut(id, o);
+    }
+
+    private Object cacheRemove(Class aClass, String id) {
+        String key = cacheKey(aClass, id);
         logger.finest("removing item from cache with cachekey=" + key);
-        Object o = cache.remove(key);
+        Object o = sessionCache.remove(key);
+        Cache c = getFactory().getCache(aClass);
+        if(c != null){
+            c.remove(id);
+        }
         logger.finest("removed object from cache=" + o);
         return o;
     }
 
     public String cacheKey(Class tClass, Object id) {
-        return factory.getAnnotationManager().stripEnhancerClass(tClass).getName() + "_" + id;
-    }
-
-
-    private Object newLazyLoadingInstance(final Class retType, final Object id) {
-        return Enhancer.create(retType,
-                new LazyLoader() {
-                    public Object loadObject() {
-                        try {
-                            logger.finest("loadObject called for type=" + retType + " with id=" + id);
-                            return find(retType, id);
-                        } catch (Exception e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
-                });
+        return AnnotationManager.stripEnhancerClass(tClass).getName() + "_" + id;
     }
 
     public Method getSetterFromGetter(Class tClass, Method getter, Class retType) throws NoSuchMethodException {
@@ -509,7 +518,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
      */
     public void close() {
         closed = true;
-        cache = null;
+        sessionCache = null;
     }
 
     public boolean isOpen() {
@@ -598,4 +607,5 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
     public OpStats getOpStats() {
         return opStats;
     }
+
 }

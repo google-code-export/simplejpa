@@ -115,7 +115,7 @@ public class LazyList extends AbstractList implements Serializable {
 
     private Object checkCache(Item item) {
         Object o;
-        o = em.cacheGet(em.cacheKey(genericReturnType, item.getIdentifier()));
+        o = em.cacheGet(genericReturnType, item.getIdentifier()); 
         return o;
     }
 
@@ -195,6 +195,7 @@ public class LazyList extends AbstractList implements Serializable {
                 for (Item item : itemList) {
                     Object o = checkCache(item);
                     if (o == null) {
+                        // if it's already cached, no need to retrieve it again.
                         itemsToGet.add(item);
                     } else {
 //                        System.out.println("found item in cache while materializing. All good.");

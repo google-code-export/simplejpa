@@ -21,7 +21,7 @@ public class ObjectBuilder {
     private static Logger logger = Logger.getLogger(ObjectBuilder.class.getName());
 
     public static <T> T buildObject(EntityManagerSimpleJPA em, Class<T> tClass, Object id, List<ItemAttribute> atts) {
-        T newInstance = (T) em.cacheGet(em.cacheKey(tClass, id));
+        T newInstance = (T) em.cacheGet(tClass, id);
         if (newInstance != null) return newInstance;
         AnnotationInfo ai = em.getFactory().getAnnotationManager().getAnnotationInfo(tClass);
         try {
@@ -36,7 +36,7 @@ public class ObjectBuilder {
                     }
                     tClass = ai.getMainClass();
                     // check cache again with new class
-                    newInstance = (T) em.cacheGet(em.cacheKey(tClass, id));
+                    newInstance = (T) em.cacheGet(tClass, id);
                     if (newInstance != null) return newInstance;
                     break;
                 }
@@ -108,7 +108,7 @@ public class ObjectBuilder {
         } catch (Exception e) {
             throw new PersistenceException(e);
         }
-        em.cachePut(em.cacheKey(tClass, id), newInstance);
+        em.cachePut(id, newInstance);
         return newInstance;
 
     }

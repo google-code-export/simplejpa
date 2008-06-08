@@ -1,9 +1,13 @@
 package com.spaceprogram.simplejpa;
 
+import com.spaceprogram.simplejpa.cache.CacheFactory2;
+import com.spaceprogram.simplejpa.cache.NoopCacheFactory;
 import com.xerox.amazonws.sdb.Domain;
 import com.xerox.amazonws.sdb.ListDomainsResult;
 import com.xerox.amazonws.sdb.SDBException;
 import com.xerox.amazonws.sdb.SimpleDB;
+import net.sf.jsr107cache.Cache;
+import net.sf.jsr107cache.CacheException;
 import org.scannotation.AnnotationDB;
 import org.scannotation.ClasspathUrlFinder;
 
@@ -81,6 +85,8 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     private boolean printQueries = false;
     private String awsAccessKey;
     private String awsSecretKey;
+    private String cacheFactoryClassname;
+    private CacheFactory2 cacheFactory;
 
     /**
      * This one is generally called via the PersistenceProvider.
@@ -89,12 +95,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
      * @param props
      */
     public EntityManagerFactoryImpl(PersistenceUnitInfo persistenceUnitInfo, Map props) {
-        if (persistenceUnitInfo == null || persistenceUnitInfo.getPersistenceUnitName() == null) {
-            throw new IllegalArgumentException("Must have a persistenceUnitName!");
-        }
-
-        persistenceUnitName = persistenceUnitInfo.getPersistenceUnitName();
-        this.props = props;
+        this(persistenceUnitInfo != null ? persistenceUnitInfo.getPersistenceUnitName() : null, props);
         init(null);
     }
 
@@ -105,8 +106,18 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
      * @param props               should have accessKey and secretKey
      */
     public EntityManagerFactoryImpl(String persistenceUnitName, Map props) {
+        if (persistenceUnitName == null) {
+            throw new IllegalArgumentException("Must have a persistenceUnitName!");
+        }
         this.persistenceUnitName = persistenceUnitName;
         this.props = props;
+        if(props == null){
+            try {
+                loadProps2();
+            } catch (IOException e) {
+                throw new PersistenceException(e);
+            }
+        }
         init(null);
     }
 
@@ -122,7 +133,6 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         this.props = props;
         init(libsToScan);
     }
-
 
     private void init(Set<String> libsToScan) {
         try {
@@ -168,9 +178,27 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
                 }
             }
             System.out.println("Finished scanning for entity classes.");
+
+            initSecondLevelCache();
+
             executor = Executors.newFixedThreadPool(numExecutorThreads);
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private void initSecondLevelCache() {
+        if(cacheFactoryClassname != null){
+            try {
+                Class<CacheFactory2> cacheFactoryClass = (Class<CacheFactory2>) Class.forName(cacheFactoryClassname);
+                cacheFactory = cacheFactoryClass.newInstance();
+                cacheFactory.init(props);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+        if(cacheFactory == null){
+            cacheFactory = new NoopCacheFactory();
         }
     }
 
@@ -179,19 +207,25 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
      * Call this to load the props from a file in the root of our classpath called: sdb.properties
      *
      * @throws IOException
+     * @deprecated don't use this.
      */
     public void loadProps() throws IOException {
+
+    }
+
+    private void loadProps2() throws IOException {
         Properties props2 = new Properties();
         String propsFileName = "/simplejpa.properties";
         InputStream stream = this.getClass().getResourceAsStream(propsFileName);
         if(stream == null){
-            throw new FileNotFoundException(propsFileName + " not found on classpath.");
+            throw new FileNotFoundException(propsFileName + " not found on classpath. Could not initialize SimpleJPA.");
         }
         props2.load(stream);
         props = props2;
         awsAccessKey = props2.getProperty("accessKey");
         awsSecretKey = props2.getProperty("secretKey");
         printQueries = Boolean.valueOf(props2.getProperty("printQueries"));
+        cacheFactoryClassname = props2.getProperty("cacheFactory");
         stream.close();
     }
 
@@ -341,5 +375,13 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 
     public String getAwsSecretKey() {
         return awsSecretKey;
+    }
+
+    public Cache getCache(Class aClass) {
+        try {
+            return cacheFactory.createCache(aClass.getName());
+        } catch (CacheException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
