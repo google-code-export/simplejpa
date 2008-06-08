@@ -12,7 +12,7 @@ Enabling the second level cache in SimpleJPA is extremely simple and provides hu
 = Drawbacks =
 
   * More memory usage. This can be tuned to your liking though so it's generally a non issue.
-  * Stale data. If another application changes the data in SimpleDB, then your application may have stale data in the cache.
+  * Stale data. If another application changes the data in SimpleDB, then your application may have stale data in the cache. If this is likely to happen, you'll want to reduce your caches Time to Live settings.
 
 = Using the second level cache =
 
