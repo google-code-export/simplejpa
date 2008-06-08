@@ -5,6 +5,8 @@
 
 Enabling the second level cache in SimpleJPA is extremely simple and provides huge performance benefits.  The second level cache is shared across all EntityManager sessions obtained by an EntityManagerFactory. 
 
+Only Ehcache is supported at this time.
+
 = Benefits =
 
   * *Much faster queries*. When you run a query on SimpleDB, it returns a list of id's to the items. A second request is required to retrieve the attributes for that item. Using the second level cache can avoid the additional request resulting in a huge performance improvement.
