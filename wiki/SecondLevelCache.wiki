@@ -18,7 +18,7 @@ Enabling the second level cache in SimpleJPA is extremely simple and provides hu
 
 This only requires two things:
 
-  * Add the cacheFactory and cache config file properties to your SimpleJPA Configuration.
+  * Add the cacheFactory and cache config file properties to your SimpleJPA [Configuration].
   * Create a cache configuration file and put it in your classpath. You can see an example here.
 
 That's it. Nothing else is required. Simple huh?
