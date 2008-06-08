@@ -106,6 +106,17 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
      * @param props               should have accessKey and secretKey
      */
     public EntityManagerFactoryImpl(String persistenceUnitName, Map props) {
+        this(persistenceUnitName, props, null);
+    }
+
+    /**
+     * Use this one in web applications, see: http://code.google.com/p/simplejpa/wiki/WebApplications
+     *
+     * @param persistenceUnitName
+     * @param props
+     * @param libsToScan          a set of
+     */
+    public EntityManagerFactoryImpl(String persistenceUnitName, Map props, Set<String> libsToScan) {
         if (persistenceUnitName == null) {
             throw new IllegalArgumentException("Must have a persistenceUnitName!");
         }
@@ -118,23 +129,21 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
                 throw new PersistenceException(e);
             }
         }
-        init(null);
-    }
-
-    /**
-     * Use this one in web applications, see: http://code.google.com/p/simplejpa/wiki/WebApplications
-     *
-     * @param persistenceUnitName
-     * @param props
-     * @param libsToScan          a set of
-     */
-    public EntityManagerFactoryImpl(String persistenceUnitName, Map props, Set<String> libsToScan) {
-        this.persistenceUnitName = persistenceUnitName;
-        this.props = props;
         init(libsToScan);
     }
 
     private void init(Set<String> libsToScan) {
+        awsAccessKey = (String) props.get("accessKey");
+        awsSecretKey = (String) props.get("secretKey");
+        printQueries = Boolean.valueOf((String) props.get("printQueries"));
+        cacheFactoryClassname = (String) props.get("cacheFactory");
+        if(awsAccessKey == null || awsAccessKey.length() == 0) {
+            throw new PersistenceException("AWS Access Key not found. It is a required property.");
+        }
+         if(awsSecretKey == null || awsSecretKey.length() == 0) {
+            throw new PersistenceException("AWS Secret Key not found. It is a required property.");
+        }
+
         try {
             System.out.println("Scanning for entity classes...");
             URL[] urls;
@@ -222,10 +231,6 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         }
         props2.load(stream);
         props = props2;
-        awsAccessKey = props2.getProperty("accessKey");
-        awsSecretKey = props2.getProperty("secretKey");
-        printQueries = Boolean.valueOf(props2.getProperty("printQueries"));
-        cacheFactoryClassname = props2.getProperty("cacheFactory");
         stream.close();
     }
 
