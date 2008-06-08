@@ -1,0 +1,24 @@
+#summary Second level cache information.
+#labels Phase-Support,Manual
+
+= Introduction =
+
+Enabling the second level cache in SimpleJPA is extremely simple and provides huge performance benefits.  The second level cache is shared across all EntityManager sessions obtained by an EntityManagerFactory. 
+
+= Benefits =
+
+  * *Much faster queries*. When you run a query on SimpleDB, it returns a list of id's to the items. A second request is required to retrieve the attributes for that item. Using the second level cache can avoid the additional request resulting in a huge performance improvement.
+
+= Drawbacks =
+
+  * More memory usage. This can be tuned to your liking though so it's generally a non issue.
+  * Stale data. If another application changes the data in SimpleDB, then your application may have stale data in the cache.
+
+= Using the second level cache =
+
+This only requires two things:
+
+  * Add the cacheFactory and cache config file properties to your SimpleJPA Configuration.
+  * Create a cache configuration file and put it in your classpath. You can see an example here.
+
+That's it. Nothing else is required. Simple huh?
