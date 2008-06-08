@@ -64,6 +64,7 @@ public class AsyncSaveTask implements Callable {
         }
         AnnotationInfo ai = em.getFactory().getAnnotationManager().getAnnotationInfo(o);
         em.setFieldValue(o.getClass(), o, ai.getIdMethod(), id);
+        em.cachePut(id, o);
         return id;
     }
 
