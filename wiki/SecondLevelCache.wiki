@@ -21,6 +21,6 @@ Only Ehcache is supported at this time.
 This only requires two things:
 
   * Add the cacheFactory and cache config file properties to your SimpleJPA [Configuration].
-  * Create a cache configuration file and put it in your classpath. You can see an example here.
+  * Create a cache configuration file and put it in your classpath. [http://code.google.com/p/simplejpa/source/browse/trunk/core/test/ehcache-test.xml You can see an example config file here].
 
 That's it. Nothing else is required. Simple huh?
