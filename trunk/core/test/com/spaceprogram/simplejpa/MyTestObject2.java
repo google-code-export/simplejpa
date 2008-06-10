@@ -17,6 +17,7 @@ public class MyTestObject2 {
     private String name;
     private Integer someInt;
     private MyTestObject myTestObject;
+    private MyTestObject4 myTestObject4;
 
     public MyTestObject2() {
         System.out.println("constructing testobject2");
@@ -64,5 +65,14 @@ public class MyTestObject2 {
 
     public void setMyTestObject(MyTestObject myTestObject) {
         this.myTestObject = myTestObject;
+    }
+
+    @ManyToOne
+    public MyTestObject4 getMyTestObject4() {
+        return myTestObject4;
+    }
+
+    public void setMyTestObject4(MyTestObject4 myTestObject4) {
+        this.myTestObject4 = myTestObject4;
     }
 }

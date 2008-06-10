@@ -3,17 +3,24 @@ package com.spaceprogram.simplejpa;
 import org.apache.commons.lang.StringUtils;
 
 import javax.persistence.Column;
+import javax.persistence.Lob;
 import javax.persistence.ManyToOne;
 import java.lang.reflect.Method;
 
 /**
  * Utility class for names of items in the database.
- *
+ * <p/>
  * User: treeder
  * Date: Jun 4, 2008
  * Time: 6:28:19 PM
  */
 public class NamingHelper {
+
+    /**
+     * Use this method to get the name of the attribute for SimpleDB.
+     * @param getter
+     * @return
+     */
     public static String getColumnName(Method getter) {
         if (getter.getAnnotation(Column.class) != null) {
             Column column = getter.getAnnotation(Column.class);
@@ -25,7 +32,14 @@ public class NamingHelper {
         if (getter.getAnnotation(ManyToOne.class) != null) {
             return NamingHelper.foreignKey(getter);
         }
-        return null;
+        if (getter.getAnnotation(Lob.class) != null) {
+            return NamingHelper.lobKeyAttributeName(getter);
+        }
+        return NamingHelper.attributeName(getter);
+    }
+
+    public static String lobKeyAttributeName(Method getter) {
+        return NamingHelper.attributeName(getter) + "-lobkey";
     }
 
     public static String foreignKey(Method getter) {

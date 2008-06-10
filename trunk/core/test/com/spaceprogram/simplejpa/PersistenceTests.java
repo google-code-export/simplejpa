@@ -68,6 +68,12 @@ public class PersistenceTests extends BaseTestClass {
         em.close();
     }
 
+    /**
+     * This test also ensures that modifications on non-enhanced classes still work.
+     *
+     * @throws IOException
+     * @throws InterruptedException
+     */
     @Test
     public void persistThenModify() throws IOException, InterruptedException {
         EntityManagerSimpleJPA em = (EntityManagerSimpleJPA) factory.createEntityManager();
@@ -75,6 +81,7 @@ public class PersistenceTests extends BaseTestClass {
         MyTestObject object = new MyTestObject();
         object.setName("Scooby doo");
         object.setAge(100);
+        object.setSomeDouble(new Double("123.456"));
         em.persist(object);
         String id = object.getId();
 
@@ -82,9 +89,17 @@ public class PersistenceTests extends BaseTestClass {
         object.setMyTestObject2(myObject2);
         em.persist(myObject2);
         em.persist(object); // had to resave to get object2's id
+
+        // now delete an attribute with the non-enhanced class
+        object.setSomeDouble(null);
+        object = em.merge(object);
+        Assert.assertEquals(10, em.getOpStats().getAttsDeleted());
+
         em.close();
 
         Thread.sleep(1000);
+
+        clearCaches();
 
         em = (EntityManagerSimpleJPA) factory.createEntityManager();
         object = em.find(MyTestObject.class, object.getId());
@@ -99,12 +114,15 @@ public class PersistenceTests extends BaseTestClass {
         object = em.merge(object); // should not delete attributes because income was always null
         Assert.assertEquals(0, em.getOpStats().getAttsDeleted());
 
+        System.out.println("age=" + object.getAge());
         object.setAge(null);
         object = em.merge(object);
         Assert.assertEquals(1, em.getOpStats().getAttsDeleted());
         em.close();
 
         Thread.sleep(1000);
+
+        clearCaches();
 
         em = (EntityManagerSimpleJPA) factory.createEntityManager();
         object = em.find(MyTestObject.class, object.getId());
@@ -122,6 +140,13 @@ public class PersistenceTests extends BaseTestClass {
         object = em.find(MyTestObject.class, object.getId());
         Assert.assertNull(object);
         em.close();
+    }
+
+    private void clearCaches() {
+        factory.getCache(MyTestObject.class).clear();
+        factory.getCache(MyTestObject2.class).clear();
+        factory.getCache(MyTestObject3.class).clear();
+        factory.getCache(MyTestObject4.class).clear();
     }
 
     @Test
@@ -311,6 +336,8 @@ public class PersistenceTests extends BaseTestClass {
         System.out.println("age before=" + originalObject.getAge());
         originalObject.setAge(null);
         em.merge(originalObject);
+
+        clearCaches();
 
         // now query for it
         MyTestObject fresh = em.find(MyTestObject.class, originalObject.getId());
