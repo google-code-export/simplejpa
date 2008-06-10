@@ -3,6 +3,8 @@ package com.spaceprogram.simplejpa;
 import com.xerox.amazonws.sdb.Domain;
 import com.xerox.amazonws.sdb.SDBException;
 import com.xerox.amazonws.sdb.SimpleDB;
+import com.xerox.amazonws.sdb.QueryResult;
+import com.xerox.amazonws.sdb.Item;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -24,7 +26,6 @@ public class BaseTestClass {
     @BeforeClass
     public static void setupEntityManagerFactory() throws IOException {
         factory = new EntityManagerFactoryImpl("testunit", null);
-        factory.loadProps();
 
         /*
         This doesn't work when not packaged in jar or something.
@@ -44,19 +45,44 @@ public class BaseTestClass {
     @After
     public void deleteAll() throws SDBException {
         printLog();
-
+        // todo: should just delete all items in the domain, would probably be faster
         System.out.println("Deleting all objects created during test...");
         EntityManagerSimpleJPA em = (EntityManagerSimpleJPA) factory.createEntityManager();
         SimpleDB db = em.getSimpleDb();
-        Domain d = db.getDomain(em.getDomainName(MyTestObject.class));
-        db.deleteDomain(d);
-        d = db.getDomain(em.getDomainName(MyTestObject2.class));
-        db.deleteDomain(d);
-        d = db.getDomain(em.getDomainName(MyTestObject3.class));
-        db.deleteDomain(d);
-        d = db.getDomain(em.getDomainName(MyInheritanceObject1.class));
-        db.deleteDomain(d);
+        deleteAll(em, db, MyTestObject.class);
+//        db.deleteDomain(d);
+//        d = db.getDomain(em.getDomainName(MyTestObject2.class));
+        deleteAll(em, db, MyTestObject2.class);
+//        db.deleteDomain(d);
+//        d = db.getDomain(em.getDomainName(MyTestObject3.class));
+//        db.deleteDomain(d);
+        deleteAll(em, db, MyTestObject3.class);
+        deleteAll(em, db, MyTestObject4.class);
+//        d = db.getDomain(em.getDomainName(MyInheritanceObject1.class));
+//        db.deleteDomain(d);
+        deleteAll(em, db, MyInheritanceObject1.class);
+        deleteAll(em, db, MyInheritanceObject2.class);
+        deleteAll(em, db, MyInheritanceObject3.class);
         em.close();
+    }
+
+    private void deleteAll(EntityManagerSimpleJPA em, SimpleDB db, Class aClass) throws SDBException {
+        Domain d = db.getDomain(em.getDomainName(aClass));
+        QueryResult items = null;
+        try {
+            items = d.listItems();
+            deleteAll(items.getItemList());
+        } catch (SDBException e) {
+            if (!ExceptionHelper.isDomainDoesNotExist(e)) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void deleteAll(List<Item> itemList) throws SDBException {
+        for (Item item : itemList) {
+            item.deleteAttributes(null);
+        }
     }
 
     private void printLog() {

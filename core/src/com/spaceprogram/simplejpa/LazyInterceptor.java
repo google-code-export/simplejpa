@@ -24,8 +24,12 @@ import java.util.logging.Logger;
  */
 public class LazyInterceptor implements MethodInterceptor {
     private static Logger logger = Logger.getLogger(LazyInterceptor.class.getName());
+
+    /** Used to lazy load */
     private EntityManagerSimpleJPA em;
+    /** Just for reference */
     private Map<String, String> foreignKeys;
+    /** Used to know which fields to delete */
     private Map<String, Object> nulledFields = new HashMap<String, Object>();
     private boolean dirty;
 
@@ -61,7 +65,7 @@ public class LazyInterceptor implements MethodInterceptor {
                 Object ret = getterProxy.invokeSuper(obj, null);
                 if (ret != null) {
                     nulledFields.put(attributeName, ret);
-//                    System.out.println("field " + attributeName + " is being nulled. Old value = " + ret);
+                    System.out.println("field " + attributeName + " is being nulled. Old value = " + ret);
                 }
             }
         }
@@ -110,5 +114,14 @@ public class LazyInterceptor implements MethodInterceptor {
 
     public Map<String, Object> getNulledFields() {
         return nulledFields;
+    }
+
+    public void setEntityManager(EntityManagerSimpleJPA entityManager) {
+        this.em = entityManager;
+    }
+
+    public void reset() {
+        System.out.println("Resetting nulled fields.");
+        nulledFields = new HashMap();
     }
 }

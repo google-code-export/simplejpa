@@ -163,7 +163,7 @@ public class LazyList extends AbstractList implements Serializable {
                         materializeObjectsInPage(page);
                     }
                 } catch (SDBException e) {
-                    if (e.getMessage() != null && e.getMessage().contains("The specified domain does not exist")) {
+                    if (ExceptionHelper.isDomainDoesNotExist(e)) {
                         items = new ArrayList<Item>(); // no need to throw here
                     } else {
                         throw new PersistenceException(e);

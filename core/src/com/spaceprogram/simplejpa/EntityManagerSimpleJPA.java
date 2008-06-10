@@ -13,6 +13,7 @@ import com.xerox.amazonws.sdb.QueryResult;
 import com.xerox.amazonws.sdb.SDBException;
 import com.xerox.amazonws.sdb.SimpleDB;
 import net.sf.jsr107cache.Cache;
+import net.sf.cglib.proxy.Factory;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.jets3t.service.S3Service;
@@ -97,10 +98,6 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         // todo: should probably behave a bit different
         persist(t);
         return t;
-    }
-
-    String lobKeyAttributeName(String columnName, Method getter) {
-        return columnName != null ? columnName : NamingHelper.attributeName(getter) + "-lobkey";
     }
 
     String s3ObjectId(String id, Method getter) {
@@ -196,7 +193,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
      * @param o
      */
     public void remove(Object o) {
-        if(o == null) return;
+        if (o == null) return;
         try {
             Domain domain = getDomain(o.getClass());
             String id = getId(o);
@@ -221,7 +218,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         if (closed) throw new PersistenceException("EntityManager already closed.");
         if (id == null) throw new IllegalArgumentException("Id value must not be null.");
         try {
-            T ob = (T) cacheGet(tClass, id);
+            T ob = cacheGet(tClass, id);
             if (ob != null) {
                 logger.finest("found in cache: " + ob);
                 return ob;
@@ -252,7 +249,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
                 putAndDelete(oldAttributeName, newAttributeName, items);
                 nextToken = result.getNextToken();
                 i++;
-                if(i % 100 == 0){
+                if (i % 100 == 0) {
                     System.out.println("Renamed " + i + " fields so far...");
                 }
             }
@@ -294,7 +291,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
     }
 
     private QueryResult executeQueryForRenameSubclass(String oldClassName, Class newClass, Domain domain, String nextToken) throws SDBException {
-        QueryResult result = domain.listItems("['DTYPE' = '" + oldClassName+ "']", nextToken, 100);
+        QueryResult result = domain.listItems("['DTYPE' = '" + oldClassName + "']", nextToken, 100);
         return result;
     }
 
@@ -341,16 +338,17 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
     }
 
 
-    public Object cacheGet(Class aClass, Object id) {
+    public <T> T cacheGet(Class<T> aClass, Object id) {
         String key = cacheKey(aClass, id);
         logger.finest("getting item from cache with cachekey=" + key);
-        Object o = sessionCache.get(key);
-        if(o == null){
+        T o = (T) sessionCache.get(key);
+        if (o == null) {
             Cache c = getFactory().getCache(aClass);
-            if(c != null){
-                o = c.get(id);
-                if(o != null){
+            if (c != null) {
+                o = (T) c.get(id);
+                if (o != null) {
                     logger.finest("Got item from second level cache!");
+                    replaceEntityManager(o);
                 }
             }
         }
@@ -363,7 +361,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         logger.finest("putting item in cache with cachekey=" + key + " - " + newInstance);
         sessionCache.put(key, newInstance);
         Cache c = getFactory().getCache(newInstance.getClass());
-        if(c != null){
+        if (c != null) {
             c.put(id, newInstance);
         }
     }
@@ -378,7 +376,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         logger.finest("removing item from cache with cachekey=" + key);
         Object o = sessionCache.remove(key);
         Cache c = getFactory().getCache(aClass);
-        if(c != null){
+        if (c != null) {
             c.remove(id);
         }
         logger.finest("removed object from cache=" + o);
@@ -583,17 +581,17 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
             }
         }
     }
-    
+
     public void invokeEntityListener(Object o, Class event) {
         Map<Class, ClassMethodEntry> listeners = getAnnotationManager().getAnnotationInfo(o).getEntityListeners();
         if (listeners != null && listeners.containsKey(event)) {
-    		ClassMethodEntry listener = listeners.get(event);
-    		try {
-				listener.invoke(o);
-			} catch (Exception e) {
+            ClassMethodEntry listener = listeners.get(event);
+            try {
+                listener.invoke(o);
+            } catch (Exception e) {
                 throw new PersistenceException("Error invoking entity listener", e);
-			}
-    	}
+            }
+        }
     }
 
     public AnnotationManager getAnnotationManager() {
@@ -608,4 +606,12 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         return opStats;
     }
 
+    public <T> void replaceEntityManager(T newInstance) {
+        if (newInstance instanceof Factory) {
+            Factory factory = (Factory) newInstance;
+//                factory.setCallback(0, new LazyInterceptor(em));
+            LazyInterceptor interceptor = (LazyInterceptor) factory.getCallback(0);
+            interceptor.setEntityManager(this);
+        }
+    }
 }

@@ -4,14 +4,22 @@ import com.xerox.amazonws.sdb.Domain;
 import com.xerox.amazonws.sdb.Item;
 import com.xerox.amazonws.sdb.ItemAttribute;
 import com.xerox.amazonws.sdb.SDBException;
-import net.sf.cglib.proxy.Callback;
 import net.sf.cglib.proxy.Factory;
 import org.jets3t.service.S3Service;
 import org.jets3t.service.S3ServiceException;
 import org.jets3t.service.model.S3Bucket;
 import org.jets3t.service.model.S3Object;
 
-import javax.persistence.*;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
+import javax.persistence.Lob;
+import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
+import javax.persistence.PersistenceException;
+import javax.persistence.PostPersist;
+import javax.persistence.PostUpdate;
+import javax.persistence.PrePersist;
+import javax.persistence.PreUpdate;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -23,7 +31,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -86,36 +93,36 @@ public class AsyncSaveTask implements Callable {
         }
         Item item = domain.getItem(id);
         // now set attributes
-        List<ItemAttribute> atts = new ArrayList<ItemAttribute>();
+        List<ItemAttribute> attsToPut = new ArrayList<ItemAttribute>();
+        List<ItemAttribute> attsToDelete = new ArrayList<ItemAttribute>();
         if (ai.getDiscriminatorValue() != null) {
-            atts.add(new ItemAttribute(EntityManagerFactoryImpl.DTYPE, ai.getDiscriminatorValue(), true));
+            attsToPut.add(new ItemAttribute(EntityManagerFactoryImpl.DTYPE, ai.getDiscriminatorValue(), true));
         }
 
         LazyInterceptor interceptor = null;
         if (o instanceof Factory) {
             Factory factory = (Factory) o;
-            for (Callback callback2 : factory.getCallbacks()) {
+            /*for (Callback callback2 : factory.getCallbacks()) {
                 if(logger.isLoggable(Level.FINER)) logger.finer("callback=" + callback2);
                 if (callback2 instanceof LazyInterceptor) {
                     interceptor = (LazyInterceptor) callback2;
                 }
-            }
+            }*/
+            interceptor = (LazyInterceptor) factory.getCallback(0);
         }
-        /*
-        don't delete attributes if this is a new object AND don't delete
-        atts if it's not dirty AND don't delete if no nulls were set (nulledField on LazyInterceptor)
-        */
+
         Collection<Method> getters = ai.getGetters();
         for (Method getter : getters) {
             Object ob = getter.invoke(o);
+            String columnName = NamingHelper.getColumnName(getter);
             if (ob == null) {
+                attsToDelete.add(new ItemAttribute(columnName, null, true));
                 continue;
             }
-            String columnName = NamingHelper.getColumnName(getter);
             if (getter.getAnnotation(ManyToOne.class) != null) {
                 // store the id of this object
                 String id2 = em.getId(ob);
-                atts.add(new ItemAttribute(columnName != null ? columnName : NamingHelper.foreignKey(getter), id2, true));
+                attsToPut.add(new ItemAttribute(columnName, id2, true));
             } else if (getter.getAnnotation(OneToMany.class) != null) {
                 // FORCING BI-DIRECTIONAL RIGHT NOW SO JUST IGNORE
             } else if (getter.getAnnotation(Lob.class) != null) {
@@ -135,8 +142,8 @@ public class AsyncSaveTask implements Callable {
                 s3Object = s3.putObject(bucket, s3Object);
                 out.close();
                 em.getOpStats().s3Put(System.currentTimeMillis() - start3);
-                logger.finer("setting lobkeyattribute=" + em.lobKeyAttributeName(columnName, getter) + " - " + s3ObjectId);
-                atts.add(new ItemAttribute(columnName != null ? columnName : em.lobKeyAttributeName(columnName, getter), s3ObjectId, true));
+                logger.finer("setting lobkeyattribute=" + columnName + " - " + s3ObjectId);
+                attsToPut.add(new ItemAttribute(columnName, s3ObjectId, true));
             } else if (getter.getAnnotation(Enumerated.class) != null) {
                 Enumerated enumerated = getter.getAnnotation(Enumerated.class);
                 Class retType = getter.getReturnType();
@@ -154,43 +161,69 @@ public class AsyncSaveTask implements Callable {
                         }
                     }
                 }
-                if(toSet == null){
+                if (toSet == null) {
                     // should never happen
                     throw new PersistenceException("Enum value is null, couldn't find ordinal match: " + ob);
                 }
-                atts.add(new ItemAttribute(columnName != null ? columnName : NamingHelper.attributeName(getter), toSet, true));
+                attsToPut.add(new ItemAttribute(columnName, toSet, true));
             } else {
                 String toSet = ob != null ? em.padOrConvertIfRequired(ob) : "";
                 // todo: throw an exception if this is going to exceed maximum size, suggest using @Lob
-                atts.add(new ItemAttribute(columnName != null ? columnName : NamingHelper.attributeName(getter), toSet, true));
+                attsToPut.add(new ItemAttribute(columnName, toSet, true));
             }
         }
 
         // and now finally send it for storage
         long start2 = System.currentTimeMillis();
-        item.putAttributes(atts);
+        item.putAttributes(attsToPut);
         long duration2 = System.currentTimeMillis() - start2;
         logger.fine("putAttributes time=" + (duration2));
-        em.getOpStats().attsPut(atts.size(), duration2);
+        em.getOpStats().attsPut(attsToPut.size(), duration2);
 
-        // Check for nulled attributes so we can send a delete call
-        if (interceptor != null && interceptor.getNulledFields() != null && interceptor.getNulledFields().size() > 0) {
-            List<ItemAttribute> attsToDelete = new ArrayList<ItemAttribute>();
-            for (String s : interceptor.getNulledFields().keySet()) {
-                attsToDelete.add(new ItemAttribute(s, null, true));
+        /*
+         Check for nulled attributes so we can send a delete call.
+        Don't delete attributes if this is a new object
+        AND don't delete atts if it's not dirty
+        AND don't delete if no nulls were set (nulledField on LazyInterceptor)
+        */
+        if (interceptor != null) {
+            if (interceptor.getNulledFields() != null && interceptor.getNulledFields().size() > 0) {
+                List<ItemAttribute> attsToDelete2 = new ArrayList<ItemAttribute>();
+                for (String s : interceptor.getNulledFields().keySet()) {
+                    Method getter = ai.getGetter(s);
+                    String columnName = NamingHelper.getColumnName(getter);
+                    attsToDelete2.add(new ItemAttribute(columnName, null, true));
+                }
+                start2 = System.currentTimeMillis();
+                item.deleteAttributes(attsToDelete2);
+                // todo: what about lobs?  need to delete from s3
+                duration2 = System.currentTimeMillis() - start2;
+                logger.fine("deleteAttributes time=" + (duration2));
+                em.getOpStats().attsDeleted(attsToDelete2.size(), duration2);
+            } else {
+                logger.fine("deleteAttributes time= no nulled fields, nothing to delete.");
             }
-            start2 = System.currentTimeMillis();
-            item.deleteAttributes(attsToDelete);
-            // todo: what about lobs?  need to delete from s3
-            duration2 = System.currentTimeMillis() - start2;
-            logger.fine("deleteAttributes time=" + (duration2));
-            em.getOpStats().attsDeleted(attsToDelete.size(), duration2);
         } else {
-            logger.fine("deleteAttributes time= no nulled fields, nothing to delete.");
+            if (!newObject && attsToDelete.size() > 0) {
+                // not enhanced, but still have to deal with deleted attributes
+                start2 = System.currentTimeMillis();
+                for (ItemAttribute itemAttribute : attsToDelete) {
+                    System.out.println("itemAttr=" + itemAttribute.getName() + ": " + itemAttribute.getValue());
+                }
+                item.deleteAttributes(attsToDelete);
+                // todo: what about lobs?  need to delete from s3
+                duration2 = System.currentTimeMillis() - start2;
+                logger.fine("deleteAttributes time=" + (duration2));
+                em.getOpStats().attsDeleted(attsToDelete.size(), duration2);
+            }
+        }
+        if (interceptor != null) {
+            // reset the interceptor since we're all synced with the db now
+            interceptor.reset();
         }
         em.invokeEntityListener(o, newObject ? PostPersist.class : PostUpdate.class);
         logger.fine("persistOnly time=" + (System.currentTimeMillis() - start));
     }
 
-  
+
 }

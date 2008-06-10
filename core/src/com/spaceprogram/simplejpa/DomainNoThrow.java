@@ -15,6 +15,7 @@ import javax.persistence.PersistenceException;
  * Time: 10:23:13 AM
  */
 public class DomainNoThrow extends Domain {
+
     protected DomainNoThrow(String domainName, String awsAccessKeyId, String awsSecretAccessKey, boolean isSecure, String server) throws SDBException {
         super(domainName, awsAccessKeyId, awsSecretAccessKey, isSecure, server);
     }

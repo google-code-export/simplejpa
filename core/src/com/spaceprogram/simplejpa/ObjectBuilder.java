@@ -3,7 +3,12 @@ package com.spaceprogram.simplejpa;
 import com.xerox.amazonws.sdb.ItemAttribute;
 import net.sf.cglib.proxy.Enhancer;
 
-import javax.persistence.*;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
+import javax.persistence.Lob;
+import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
+import javax.persistence.PersistenceException;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -21,8 +26,10 @@ public class ObjectBuilder {
     private static Logger logger = Logger.getLogger(ObjectBuilder.class.getName());
 
     public static <T> T buildObject(EntityManagerSimpleJPA em, Class<T> tClass, Object id, List<ItemAttribute> atts) {
-        T newInstance = (T) em.cacheGet(tClass, id);
-        if (newInstance != null) return newInstance;
+        T newInstance = em.cacheGet(tClass, id);
+        if (newInstance != null) {
+            return newInstance;
+        }
         AnnotationInfo ai = em.getFactory().getAnnotationManager().getAnnotationInfo(tClass);
         try {
 //            newInstance = tClass.newInstance();
@@ -74,7 +81,7 @@ public class ObjectBuilder {
                     setter.invoke(newInstance, lazyList);
                 } else if (getter.getAnnotation(Lob.class) != null) {
                     // handled in Proxy
-                    String lobKeyAttributeName = em.lobKeyAttributeName(columnName, getter);
+                    String lobKeyAttributeName = NamingHelper.lobKeyAttributeName(getter);
                     String lobKeyVal = getValueToSet(atts, lobKeyAttributeName, columnName);
                     logger.finest("lobkeyval to set on interceptor=" + lobKeyVal + " - fromatt=" + lobKeyAttributeName);
                     if (lobKeyVal != null) owi.getInterceptor().putForeignKey(attName, lobKeyVal);
