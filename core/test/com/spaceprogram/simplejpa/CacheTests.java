@@ -36,10 +36,7 @@ public class CacheTests extends BaseTestClass{
         em.close();
 
         // clean out the caches
-        factory.getCache(MyTestObject.class).clear();
-        factory.getCache(MyTestObject2.class).clear();
-        factory.getCache(MyTestObject3.class).clear();
-        factory.getCache(MyTestObject4.class).clear();
+        clearCaches();
 
         em = factory.createEntityManager();
         // get all MyTestObject2's to get them in 2nd level cache
