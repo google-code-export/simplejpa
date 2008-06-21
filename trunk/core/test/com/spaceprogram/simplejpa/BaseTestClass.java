@@ -95,4 +95,11 @@ public class BaseTestClass {
         System.out.println(s);
         afterTestLog.add(s);
     }
+
+    protected void clearCaches() {
+        factory.getCache(MyTestObject.class).clear();
+        factory.getCache(MyTestObject2.class).clear();
+        factory.getCache(MyTestObject3.class).clear();
+        factory.getCache(MyTestObject4.class).clear();
+    }
 }

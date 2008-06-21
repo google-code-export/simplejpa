@@ -53,6 +53,9 @@ public class QueryImpl implements Query {
         try {
             // convert to amazon query
             Domain d = em.getDomain(tClass);
+            if(d == null){
+                return new ArrayList();
+            }
             StringBuilder amazonQuery;
             if (q.getFilter() != null) {
                 amazonQuery = toAmazonQuery(tClass, q);

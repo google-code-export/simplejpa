@@ -142,13 +142,6 @@ public class PersistenceTests extends BaseTestClass {
         em.close();
     }
 
-    private void clearCaches() {
-        factory.getCache(MyTestObject.class).clear();
-        factory.getCache(MyTestObject2.class).clear();
-        factory.getCache(MyTestObject3.class).clear();
-        factory.getCache(MyTestObject4.class).clear();
-    }
-
     @Test
     public void persistAsync() throws IOException, ExecutionException, InterruptedException {
         SimpleEntityManager em = (SimpleEntityManager) factory.createEntityManager();
