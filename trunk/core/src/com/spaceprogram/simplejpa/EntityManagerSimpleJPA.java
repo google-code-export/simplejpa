@@ -1,6 +1,8 @@
 package com.spaceprogram.simplejpa;
 
 import com.spaceprogram.simplejpa.AnnotationManager.ClassMethodEntry;
+import com.spaceprogram.simplejpa.operations.AsyncSaveTask;
+import com.spaceprogram.simplejpa.operations.Delete;
 import com.spaceprogram.simplejpa.query.JPAQuery;
 import com.spaceprogram.simplejpa.query.JPAQueryParser;
 import com.spaceprogram.simplejpa.query.QueryImpl;
@@ -12,8 +14,8 @@ import com.xerox.amazonws.sdb.ItemAttribute;
 import com.xerox.amazonws.sdb.QueryResult;
 import com.xerox.amazonws.sdb.SDBException;
 import com.xerox.amazonws.sdb.SimpleDB;
-import net.sf.jsr107cache.Cache;
 import net.sf.cglib.proxy.Factory;
+import net.sf.jsr107cache.Cache;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.jets3t.service.S3Service;
@@ -27,8 +29,6 @@ import javax.persistence.EntityTransaction;
 import javax.persistence.FlushModeType;
 import javax.persistence.LockModeType;
 import javax.persistence.PersistenceException;
-import javax.persistence.PostRemove;
-import javax.persistence.PreRemove;
 import javax.persistence.Query;
 import java.io.BufferedInputStream;
 import java.io.IOException;
@@ -66,7 +66,8 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
      */
     public static final BigDecimal OFFSET_VALUE = new BigDecimal(Long.MIN_VALUE).negate();
     private int queryCount;
-    private OpStats opStats = new OpStats();
+    private OpStats lastOpStats = new OpStats();
+    private OpStats totalOpStats = new OpStats();
 
     EntityManagerSimpleJPA(EntityManagerFactoryImpl factory) {
         this.factory = factory;
@@ -88,9 +89,13 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         return future;
     }
 
+    public Future removeAsync(Object o){
+        Future future = getExecutor().submit(new Delete(this, o));
+        return future;
+    }
 
     private void resetLastOpStats() {
-        opStats = new OpStats();
+        lastOpStats = new OpStats();
     }
 
 
@@ -100,22 +105,22 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         return t;
     }
 
-    String s3ObjectId(String id, Method getter) {
+    public String s3ObjectId(String id, Method getter) {
         return id + "-" + NamingHelper.attributeName(getter);
     }
 
-    String s3bucketName() {
+    public String s3bucketName() {
         return factory.getPersistenceUnitName() + "-lobs";
     }
 
-    S3Service getS3Service() throws S3ServiceException {
+    public S3Service getS3Service() throws S3ServiceException {
         S3Service s3;
         AWSCredentials awsCredentials = new AWSCredentials(factory.getAwsAccessKey(), factory.getAwsSecretKey());
         s3 = new RestS3Service(awsCredentials);
         return s3;
     }
 
-    String padOrConvertIfRequired(Object ob) {
+    public String padOrConvertIfRequired(Object ob) {
         if (ob instanceof Integer || ob instanceof Long) {
             // then pad
             return AmazonSimpleDBUtil.encodeRealNumberRange(new BigDecimal(ob.toString()), AmazonSimpleDBUtil.LONG_DIGITS, OFFSET_VALUE);
@@ -162,7 +167,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
     }
 
 
-    void checkEntity(Object o) {
+    public void checkEntity(Object o) {
         String className = o.getClass().getName();
         ensureClassIsEntity(className);
         // now if it the reflection data hasn't been cached, do it now
@@ -195,13 +200,8 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
     public void remove(Object o) {
         if (o == null) return;
         try {
-            Domain domain = getDomain(o.getClass());
-            String id = getId(o);
-            logger.fine("deleting item with id: " + id);
-            invokeEntityListener(o, PreRemove.class);
-            domain.deleteItem(id);
-            cacheRemove(o.getClass(), id);
-            invokeEntityListener(o, PostRemove.class);
+            Delete d = new Delete(this, o);
+            d.call();
         } catch (Exception e) {
             throw new PersistenceException(e);
         }
@@ -227,6 +227,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
             Item item = domain.getItem(id.toString());
 //            logger.fine("got back item=" + item);
             if (item == null) return null;
+            // todo: update stats for this get
             List<ItemAttribute> atts = item.getAttributes();
             if (atts == null || atts.size() == 0) return null;
             return buildObject(tClass, id, atts);
@@ -371,7 +372,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         cachePut(id, o);
     }
 
-    private Object cacheRemove(Class aClass, String id) {
+    public Object cacheRemove(Class aClass, String id) {
         String key = cacheKey(aClass, id);
         logger.finest("removing item from cache with cachekey=" + key);
         Object o = sessionCache.remove(key);
@@ -403,7 +404,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
      * @param getter
      * @param val
      */
-    <T> void setFieldValue(Class tClass, T newInstance, Method getter, String val) {
+    public <T> void setFieldValue(Class tClass, T newInstance, Method getter, String val) {
         try {
             // need param type
             String attName = NamingHelper.attributeName(getter);
@@ -602,8 +603,8 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         return factory;
     }
 
-    public OpStats getOpStats() {
-        return opStats;
+    public OpStats getLastOpStats() {
+        return lastOpStats;
     }
 
     public <T> void replaceEntityManager(T newInstance) {
@@ -613,5 +614,29 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
             LazyInterceptor interceptor = (LazyInterceptor) factory.getCallback(0);
             interceptor.setEntityManager(this);
         }
+    }
+
+    public void statsS3Put(long duration) {
+        getLastOpStats().s3Put(duration);
+        totalOpStats.s3Put(duration);
+    }
+
+    public void statsAttsPut(int numAtts, long duration2) {
+        getLastOpStats().attsPut(numAtts, duration2);
+        totalOpStats.attsPut(numAtts, duration2);
+    }
+
+    public void statsAttsDeleted(int numAtts, long duration2) {
+        getLastOpStats().attsDeleted(numAtts, duration2);
+        totalOpStats.attsDeleted(numAtts, duration2);
+    }
+
+    public OpStats getTotalOpStats() {
+        return totalOpStats;
+    }
+
+    public void statsGets(int numItems, long duration2) {
+        getLastOpStats().got(numItems, duration2);
+        totalOpStats.got(numItems, duration2);
     }
 }
