@@ -32,6 +32,8 @@ public interface SimpleEntityManager extends EntityManager {
      */
     Future persistAsync(Object o);
 
+    Future removeAsync(Object o);
+
     /**
      * This method will rename an attribute in SimpleDB by iterating through EVERY element in the Domain
      * putting the old attribute value to the new attribute name, then deleting the old one.

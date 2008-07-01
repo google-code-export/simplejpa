@@ -93,7 +93,7 @@ public class PersistenceTests extends BaseTestClass {
         // now delete an attribute with the non-enhanced class
         object.setSomeDouble(null);
         object = em.merge(object);
-        Assert.assertEquals(10, em.getOpStats().getAttsDeleted());
+        Assert.assertEquals(10, em.getLastOpStats().getAttsDeleted());
 
         em.close();
 
@@ -112,12 +112,12 @@ public class PersistenceTests extends BaseTestClass {
 
         object.setIncome(null);
         object = em.merge(object); // should not delete attributes because income was always null
-        Assert.assertEquals(0, em.getOpStats().getAttsDeleted());
+        Assert.assertEquals(0, em.getLastOpStats().getAttsDeleted());
 
         System.out.println("age=" + object.getAge());
         object.setAge(null);
         object = em.merge(object);
-        Assert.assertEquals(1, em.getOpStats().getAttsDeleted());
+        Assert.assertEquals(1, em.getLastOpStats().getAttsDeleted());
         em.close();
 
         Thread.sleep(1000);

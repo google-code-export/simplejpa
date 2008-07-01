@@ -67,7 +67,7 @@ public class EhCacheFactory implements CacheFactory, CacheFactory2 {
         throw new UnsupportedOperationException("Use createCache(String name) instead.");
     }
 
-    public Cache createCache(String name) throws CacheException {
+    public synchronized Cache createCache(String name) throws CacheException {
         if (manager == null) {
             throw new CacheException("CacheFactory was not initialized. Call init() before creating a cache.");
         }

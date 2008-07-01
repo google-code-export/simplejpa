@@ -8,12 +8,33 @@ package com.spaceprogram.simplejpa;
  * Time: 8:34:44 PM
  */
 public class OpStats {
+    private int puts;
+    private int putsDuration;
     private int s3Puts;
     private long s3PutsDuration;
     private int attsPut;
     private long attsPutDuration;
     private long attsDeletedDuration;
     private int attsDeleted;
+    private int gets;
+    private long getsDuration;
+
+
+    public int getPuts() {
+        return puts;
+    }
+
+    public void setPuts(int puts) {
+        this.puts = puts;
+    }
+
+    public int getPutsDuration() {
+        return putsDuration;
+    }
+
+    public void setPutsDuration(int putsDuration) {
+        this.putsDuration = putsDuration;
+    }
 
     public void s3Put(long duration) {
         s3Puts++;
@@ -21,6 +42,7 @@ public class OpStats {
     }
 
     public void attsPut(int numAtts, long duration) {
+        puts++;
         attsPut += numAtts;
         attsPutDuration += duration;
     }
@@ -76,5 +98,26 @@ public class OpStats {
 
     public void setAttsDeleted(int attsDeleted) {
         this.attsDeleted = attsDeleted;
+    }
+
+    public void got(int numItems, long duration2) {
+        gets += numItems;
+        getsDuration += duration2;
+    }
+
+    public int getGets() {
+        return gets;
+    }
+
+    public void setGets(int gets) {
+        this.gets = gets;
+    }
+
+    public long getGetsDuration() {
+        return getsDuration;
+    }
+
+    public void setGetsDuration(long getsDuration) {
+        this.getsDuration = getsDuration;
     }
 }

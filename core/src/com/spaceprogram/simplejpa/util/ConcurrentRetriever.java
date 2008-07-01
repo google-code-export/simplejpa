@@ -2,7 +2,7 @@ package com.spaceprogram.simplejpa.util;
 
 import com.spaceprogram.simplejpa.EntityManagerSimpleJPA;
 import com.spaceprogram.simplejpa.ItemAndAttributes;
-import com.spaceprogram.simplejpa.ItemCallable;
+import com.spaceprogram.simplejpa.operations.AsyncGetAttributes;
 import com.xerox.amazonws.sdb.*;
 
 import java.util.ArrayList;
@@ -33,7 +33,7 @@ public class ConcurrentRetriever {
     private static List<ItemAndAttributes> getParallel(List<Item> items, Executor executor) throws InterruptedException, ExecutionException {
         CompletionService<ItemAndAttributes> ecs = new ExecutorCompletionService<ItemAndAttributes>(executor);
         for (Item item : items) {
-            Callable callable = new ItemCallable(item);
+            Callable callable = new AsyncGetAttributes(item);
             ecs.submit(callable);
         }
         List<ItemAndAttributes> ret = new ArrayList<ItemAndAttributes>();

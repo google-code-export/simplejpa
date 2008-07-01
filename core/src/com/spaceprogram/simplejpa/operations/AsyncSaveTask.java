@@ -1,5 +1,10 @@
-package com.spaceprogram.simplejpa;
+package com.spaceprogram.simplejpa.operations;
 
+import com.spaceprogram.simplejpa.AnnotationInfo;
+import com.spaceprogram.simplejpa.EntityManagerFactoryImpl;
+import com.spaceprogram.simplejpa.EntityManagerSimpleJPA;
+import com.spaceprogram.simplejpa.LazyInterceptor;
+import com.spaceprogram.simplejpa.NamingHelper;
 import com.xerox.amazonws.sdb.Domain;
 import com.xerox.amazonws.sdb.Item;
 import com.xerox.amazonws.sdb.ItemAttribute;
@@ -31,6 +36,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -51,7 +57,7 @@ public class AsyncSaveTask implements Callable {
         this.o = o;
         long start = System.currentTimeMillis();
         id = prePersist(o); // could probably move this inside the AsyncSaveTask
-        logger.fine("prePersist time=" + (System.currentTimeMillis() - start));
+        if(logger.isLoggable(Level.FINE)) logger.fine("prePersist time=" + (System.currentTimeMillis() - start));
 
     }
 
@@ -141,7 +147,7 @@ public class AsyncSaveTask implements Callable {
                 s3Object.setDataInputStream(new ByteArrayInputStream(bos.toByteArray()));
                 s3Object = s3.putObject(bucket, s3Object);
                 out.close();
-                em.getOpStats().s3Put(System.currentTimeMillis() - start3);
+                em.statsS3Put(System.currentTimeMillis() - start3);
                 logger.finer("setting lobkeyattribute=" + columnName + " - " + s3ObjectId);
                 attsToPut.add(new ItemAttribute(columnName, s3ObjectId, true));
             } else if (getter.getAnnotation(Enumerated.class) != null) {
@@ -177,8 +183,8 @@ public class AsyncSaveTask implements Callable {
         long start2 = System.currentTimeMillis();
         item.putAttributes(attsToPut);
         long duration2 = System.currentTimeMillis() - start2;
-        logger.fine("putAttributes time=" + (duration2));
-        em.getOpStats().attsPut(attsToPut.size(), duration2);
+        if(logger.isLoggable(Level.FINE))logger.fine("putAttributes time=" + (duration2));
+        em.statsAttsPut(attsToPut.size(), duration2);
 
         /*
          Check for nulled attributes so we can send a delete call.
@@ -199,7 +205,7 @@ public class AsyncSaveTask implements Callable {
                 // todo: what about lobs?  need to delete from s3
                 duration2 = System.currentTimeMillis() - start2;
                 logger.fine("deleteAttributes time=" + (duration2));
-                em.getOpStats().attsDeleted(attsToDelete2.size(), duration2);
+                em.statsAttsDeleted(attsToDelete2.size(), duration2);
             } else {
                 logger.fine("deleteAttributes time= no nulled fields, nothing to delete.");
             }
@@ -214,7 +220,7 @@ public class AsyncSaveTask implements Callable {
                 // todo: what about lobs?  need to delete from s3
                 duration2 = System.currentTimeMillis() - start2;
                 logger.fine("deleteAttributes time=" + (duration2));
-                em.getOpStats().attsDeleted(attsToDelete.size(), duration2);
+                em.statsAttsDeleted(attsToDelete.size(), duration2);
             }
         }
         if (interceptor != null) {
@@ -222,7 +228,7 @@ public class AsyncSaveTask implements Callable {
             interceptor.reset();
         }
         em.invokeEntityListener(o, newObject ? PostPersist.class : PostUpdate.class);
-        logger.fine("persistOnly time=" + (System.currentTimeMillis() - start));
+        if(logger.isLoggable(Level.FINE)) logger.fine("persistOnly time=" + (System.currentTimeMillis() - start));
     }
 
 

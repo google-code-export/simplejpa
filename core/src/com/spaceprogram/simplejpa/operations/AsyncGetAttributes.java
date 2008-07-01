@@ -1,6 +1,7 @@
-package com.spaceprogram.simplejpa;
+package com.spaceprogram.simplejpa.operations;
 
 import com.xerox.amazonws.sdb.Item;
+import com.spaceprogram.simplejpa.ItemAndAttributes;
 
 import java.util.concurrent.Callable;
 
@@ -11,10 +12,10 @@ import java.util.concurrent.Callable;
  * Date: Feb 8, 2008
  * Time: 7:55:30 PM
  */
-public class ItemCallable implements Callable {
+public class AsyncGetAttributes implements Callable<ItemAndAttributes> {
     private Item item;
 
-    public ItemCallable(Item item) {
+    public AsyncGetAttributes(Item item) {
         this.item = item;
     }
 
