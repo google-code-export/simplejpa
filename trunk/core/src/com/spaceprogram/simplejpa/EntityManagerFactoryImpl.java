@@ -59,7 +59,8 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
      */
     private AnnotationManager annotationManager = new AnnotationManager();
     /**
-     * for all the concurrent action
+     * for all the concurrent action.
+     * todo: It might make sense to have two executors, one fast one for queries, and one slow one used for slow things like puts/deletes
      */
     private ExecutorService executor;
     /**

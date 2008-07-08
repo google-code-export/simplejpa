@@ -68,20 +68,28 @@ public class BaseTestClass {
 
     private void deleteAll(EntityManagerSimpleJPA em, SimpleDB db, Class aClass) throws SDBException {
         Domain d = db.getDomain(em.getDomainName(aClass));
+        System.out.println("deleting from domain: " + d.getName());
         QueryResult items = null;
         try {
-            items = d.listItems();
-            deleteAll(items.getItemList());
-        } catch (SDBException e) {
+            String nextToken = null;
+            while(items == null || nextToken != null){
+                items = d.listItems(null, nextToken);
+                deleteAll(d, items.getItemList());
+                nextToken = items.getNextToken();
+            }
+
+         } catch (SDBException e) {
             if (!ExceptionHelper.isDomainDoesNotExist(e)) {
                 e.printStackTrace();
             }
         }
     }
 
-    private void deleteAll(List<Item> itemList) throws SDBException {
+    private void deleteAll(Domain d, List<Item> itemList) throws SDBException {
+        System.out.println("Deleting " + itemList.size() + " items from domain " + d.getName());
         for (Item item : itemList) {
-            item.deleteAttributes(null);
+//            item.deleteAttributes(null);
+            d.deleteItem(item.getIdentifier());
         }
     }
 
