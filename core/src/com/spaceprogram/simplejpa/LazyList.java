@@ -121,7 +121,7 @@ public class LazyList extends AbstractList implements Serializable {
             if (o == null) {
                 o = checkCache(item);
                 if (o == null) {
-                    throw new PersistenceException("SHOULD NEVER HIT THIS");
+                    throw new PersistenceException("SHOULD NEVER GET THIS EXCEPTION. getting item at position " + i + ", list.size=" + size());
                     /*List<ItemAttribute> atts = item.getAttributes();
                     o = em.buildObject(genericReturnType, item.getIdentifier(), atts);*/
                 } else {

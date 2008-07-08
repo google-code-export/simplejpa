@@ -9,8 +9,10 @@ import javax.persistence.PersistenceException;
 import javax.persistence.Query;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Comparator;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
@@ -515,27 +517,40 @@ public class PersistenceTests extends BaseTestClass {
     }
 
     @Test
-    public void testMoreThanMaxPerQuery() {
+    public void testMoreThanMaxPerQuery() throws ExecutionException, InterruptedException {
         EntityManagerSimpleJPA em = (EntityManagerSimpleJPA) factory.createEntityManager();
 
         Query query;
         List<MyTestObject> obs;
 
+        Future future = null;
         int numItems = 120;
-        for (int i = 0; i < 120; i++) {
+        for (int i = 0; i < numItems; i++) {
             MyTestObject object = new MyTestObject();
             object.setName("Scooby doo");
-            object.setAge(100);
+            object.setAge(i);
             System.out.println("persisting " + i);
-            em.persistAsync(object);
+            future = em.persistAsync(object);
         }
+        future.get();
+
+        Thread.sleep(5000);
 
         System.out.println("querying for all objects...");
         query = em.createQuery("select o from MyTestObject o ");
         obs = query.getResultList();
-        System.out.println("asserting size...");
+        System.out.println("obs.size=" + obs.size());
         Assert.assertEquals(numItems, obs.size());
-
+        Collections.sort(obs, new Comparator<MyTestObject>() {
+            public int compare(MyTestObject o1, MyTestObject o2) {
+                return o1.getAge().compareTo(o2.getAge());
+            }
+        });
+        for (int i = 0; i < obs.size(); i++) {
+            MyTestObject myTestObject = obs.get(i);
+            System.out.println("age=" + i);
+            Assert.assertEquals(i, myTestObject.getAge().intValue());
+        }
         em.close();
     }
 
