@@ -53,7 +53,7 @@ public class QueryImpl implements Query {
         try {
             // convert to amazon query
             Domain d = em.getDomain(tClass);
-            if(d == null){
+            if (d == null) {
                 return new ArrayList();
             }
             StringBuilder amazonQuery;
@@ -63,17 +63,41 @@ public class QueryImpl implements Query {
                     return new ArrayList();
                 }
             } else {
-                amazonQuery = null;
+                amazonQuery = new StringBuilder();
             }
             AnnotationInfo ai = em.getAnnotationManager().getAnnotationInfo(tClass);
             if (ai.getDiscriminatorValue() != null) {
-                if (amazonQuery == null || amazonQuery.length() == 0) {
+                if (amazonQuery.length() == 0) {
                     amazonQuery = new StringBuilder();
                 } else {
                     amazonQuery.append(" intersection ");
                 }
                 appendFilter(amazonQuery, EntityManagerFactoryImpl.DTYPE, "=", ai.getDiscriminatorValue());
             }
+            System.out.println("doing order by");
+            // now for sorting
+            String orderBy = q.getOrdering();
+            if (orderBy != null && orderBy.length() > 0) {
+                amazonQuery.append(" sort ");
+                String orderByOrder = "asc";
+                String orderBySplit[] = orderBy.split(" ");
+                if (orderBySplit.length > 2) {
+                    throw new PersistenceException("Can only sort on a single attribute in SimpleDB. Your order by is: " + orderBy);
+                }
+                if (orderBySplit.length == 2) {
+                    orderByOrder = orderBySplit[1];
+                }
+                String orderByAttribute = orderBySplit[0];
+                String fieldSplit[] = orderByAttribute.split("\\.");
+                if (fieldSplit.length == 1) {
+                    orderByAttribute = fieldSplit[0];
+                } else if (fieldSplit.length == 2) {
+                    orderByAttribute = fieldSplit[1];
+                }
+                amazonQuery.append("'").append(orderByAttribute).append("'");
+                amazonQuery.append(" ").append(orderByOrder);
+            }
+            System.out.println("query=" + amazonQuery);
             String logString = "amazonQuery: Domain=" + d.getName() + ", query=" + amazonQuery;
             logger.fine(logString);
             if (em.getFactory().isPrintQueries()) {
@@ -100,11 +124,11 @@ public class QueryImpl implements Query {
         String where = q.getFilter();
         where = where.trim();
         // now split it into pieces
-        List<String> tokens = tokenizeWhere(where);
+        List<String> whereTokens = tokenizeWhere(where);
         Boolean aok = false;
-        for (int i = 0; i < tokens.size();) {
+        for (int i = 0; i < whereTokens.size();) {
             if (aok && i > 0) {
-                String andOr = tokens.get(i);
+                String andOr = whereTokens.get(i);
                 if (andOr.equalsIgnoreCase("OR")) {
                     sb.append(" union ");
                 } else {
@@ -116,14 +140,14 @@ public class QueryImpl implements Query {
             }
 //            System.out.println("sbbefore=" + sb);
             // special null cases: is null and is not null
-            String firstParam = tokens.get(i);
+            String firstParam = whereTokens.get(i);
             i++;
-            String secondParam = tokens.get(i);
+            String secondParam = whereTokens.get(i);
             i++;
-            String thirdParam = tokens.get(i);
+            String thirdParam = whereTokens.get(i);
             if (thirdParam.equalsIgnoreCase("not")) {
                 i++;
-                thirdParam += " " + tokens.get(i);
+                thirdParam += " " + whereTokens.get(i);
             }
             i++;
             aok = appendCondition(tClass, sb, firstParam, secondParam, thirdParam);
@@ -132,6 +156,7 @@ public class QueryImpl implements Query {
                 return null; // todo: only return null if it's an AND query, or's should still continue, but skip the intersection part
             }
         }
+
         logger.fine("query=" + sb);
         return sb;
     }
@@ -236,7 +261,7 @@ public class QueryImpl implements Query {
             paramValue = paramValue.endsWith("%") ? paramValue.substring(0, paramValue.length() - 1) : paramValue;
             System.out.println("param=" + paramValue + "___");
 //            param = param.startsWith("%") ? param.substring(1) : param;
-            if(paramValue.startsWith("%")){
+            if (paramValue.startsWith("%")) {
                 throw new PersistenceException("SimpleDB only supports a wildcard query on the right side of the value (ie: starts-with).");
             }
             appendFilter(sb, columnName, comparator, paramValue);

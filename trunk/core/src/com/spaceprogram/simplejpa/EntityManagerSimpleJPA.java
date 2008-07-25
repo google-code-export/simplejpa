@@ -482,8 +482,8 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         String from = q.getFrom();
         logger.finer("from=" + from);
         logger.finer("where=" + q.getFilter());
-        if (q.getOrdering() != null) {
-            throw new UnsupportedOperationException("ORDER BY not supported.");
+        if (q.getOrdering() != null && q.getFilter() == null) {
+            throw new PersistenceException("Attribute in ORDER BY [" + q.getOrdering() + "] must be included in a WHERE filter.");
         }
         return new QueryImpl(this, q);
     }

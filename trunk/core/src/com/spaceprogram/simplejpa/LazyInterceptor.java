@@ -9,6 +9,7 @@ import org.jets3t.service.S3ServiceException;
 import javax.persistence.Lob;
 import javax.persistence.ManyToOne;
 import java.io.IOException;
+import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -22,11 +23,11 @@ import java.util.logging.Logger;
  * Date: Feb 16, 2008
  * Time: 2:38:04 PM
  */
-public class LazyInterceptor implements MethodInterceptor {
+public class LazyInterceptor implements MethodInterceptor, Serializable {
     private static Logger logger = Logger.getLogger(LazyInterceptor.class.getName());
 
     /** Used to lazy load */
-    private EntityManagerSimpleJPA em;
+    private transient EntityManagerSimpleJPA em;
     /** Just for reference */
     private Map<String, String> foreignKeys;
     /** Used to know which fields to delete */
@@ -116,7 +117,7 @@ public class LazyInterceptor implements MethodInterceptor {
         return nulledFields;
     }
 
-    public void setEntityManager(EntityManagerSimpleJPA entityManager) {
+    public  void setEntityManager(EntityManagerSimpleJPA entityManager) {
         this.em = entityManager;
     }
 
