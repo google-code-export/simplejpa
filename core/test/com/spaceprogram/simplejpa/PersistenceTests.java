@@ -289,12 +289,51 @@ public class PersistenceTests extends BaseTestClass {
         em.close();
     }
 
-    @Test(expected = UnsupportedOperationException.class)
-    public void queryOrderBy() {
-        EntityManager em = factory.createEntityManager();
+    @Test
+    public void queryOrderBy() throws ExecutionException, InterruptedException {
+        EntityManagerSimpleJPA em = (EntityManagerSimpleJPA) factory.createEntityManager();
+
         Query query;
         List<MyTestObject> obs;
-        query = em.createQuery("select o from " + MyTestObject.class.getName() + " o where o.income = :income and o.age = :age order by o.age");
+
+        Future future = null;
+        int numItems = 120;
+        for (int i = 0; i < numItems; i++) {
+            MyTestObject object = new MyTestObject();
+            object.setName("Scooby doo");
+            object.setAge(i);
+            System.out.println("persisting " + i);
+            future = em.persistAsync(object);
+        }
+        future.get();
+
+        Thread.sleep(15000);
+
+        System.out.println("querying for all objects and checking order...");
+        query = em.createQuery("select o from MyTestObject o where o.age >= 0 order by o.age");
+        obs = query.getResultList();
+        System.out.println("obs.size=" + obs.size());
+        Assert.assertEquals(numItems, obs.size());
+
+        for (int i = 0; i < obs.size(); i++) {
+            MyTestObject myTestObject = obs.get(i);
+            System.out.println("age=" + myTestObject.getAge());
+            Assert.assertEquals(i, myTestObject.getAge().intValue());
+        }
+
+        System.out.println("querying for all objects and checking REVERSE order...");
+        query = em.createQuery("select o from MyTestObject o where o.age >= 0 order by o.age desc");
+        obs = query.getResultList();
+        System.out.println("obs.size=" + obs.size());
+        Assert.assertEquals(numItems, obs.size());
+
+        int j = numItems - 1;
+        for (int i = 0; i < obs.size(); i++) {
+            MyTestObject myTestObject = obs.get(i);
+            System.out.println("age=" + myTestObject.getAge());
+            Assert.assertEquals(j, myTestObject.getAge().intValue());
+            j--;
+        }
         em.close();
     }
 
@@ -673,5 +712,6 @@ public class PersistenceTests extends BaseTestClass {
         Assert.assertEquals(1, obs.size());
         em.close();
     }
+
 
 }
