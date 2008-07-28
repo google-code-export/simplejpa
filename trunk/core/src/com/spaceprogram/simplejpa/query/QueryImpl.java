@@ -74,7 +74,6 @@ public class QueryImpl implements Query {
                 }
                 appendFilter(amazonQuery, EntityManagerFactoryImpl.DTYPE, "=", ai.getDiscriminatorValue());
             }
-            System.out.println("doing order by");
             // now for sorting
             String orderBy = q.getOrdering();
             if (orderBy != null && orderBy.length() > 0) {
@@ -97,7 +96,6 @@ public class QueryImpl implements Query {
                 amazonQuery.append("'").append(orderByAttribute).append("'");
                 amazonQuery.append(" ").append(orderByOrder);
             }
-            System.out.println("query=" + amazonQuery);
             String logString = "amazonQuery: Domain=" + d.getName() + ", query=" + amazonQuery;
             logger.fine(logString);
             if (em.getFactory().isPrintQueries()) {
