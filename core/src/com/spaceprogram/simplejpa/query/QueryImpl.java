@@ -247,10 +247,12 @@ public class QueryImpl implements Query {
         String columnName = NamingHelper.getColumnName(getterForField);
         if (columnName == null) columnName = field;
         if (comparator.equals("is")) {
-            if (param.equals("null")) {
+            if (param.equalsIgnoreCase("null")) {
                 appendFilter(sb, true, columnName, "starts-with", "");
-            } else if (param.equals("not null")) {
+            } else if (param.equalsIgnoreCase("not null")) {
                 appendFilter(sb, false, columnName, "starts-with", "");
+            } else {
+                throw new PersistenceException("Must use only 'is null' or 'is not null' with where condition containing 'is'");
             }
         } else if (comparator.equals("like")) {
             comparator = "starts-with";
