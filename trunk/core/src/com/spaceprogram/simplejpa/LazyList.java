@@ -198,7 +198,7 @@ public class LazyList extends AbstractList implements Serializable {
                     if (ExceptionHelper.isDomainDoesNotExist(e)) {
                         items = new ArrayList<Item>(); // no need to throw here
                     } else {
-                        throw new PersistenceException(e);
+                        throw new PersistenceException("Query failed: " + query, e);
                     }
                 }
                 logger.finer("got " + items.size() + " for lazy list");
