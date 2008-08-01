@@ -89,7 +89,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         return future;
     }
 
-    public Future removeAsync(Object o){
+    public Future removeAsync(Object o) {
         Future future = getExecutor().submit(new Delete(this, o));
         return future;
     }
@@ -584,13 +584,19 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
     }
 
     public void invokeEntityListener(Object o, Class event) {
-        Map<Class, ClassMethodEntry> listeners = getAnnotationManager().getAnnotationInfo(o).getEntityListeners();
+//        System.out.println("invoking entity listeners on " + o + " for " + event);
+        Map<Class, List<ClassMethodEntry>> listeners = getAnnotationManager().getAnnotationInfo(o).getEntityListeners();
         if (listeners != null && listeners.containsKey(event)) {
-            ClassMethodEntry listener = listeners.get(event);
-            try {
-                listener.invoke(o);
-            } catch (Exception e) {
-                throw new PersistenceException("Error invoking entity listener", e);
+//            System.out.println("founder listeners: " + listeners);
+            List<ClassMethodEntry> listenerList = listeners.get(event);
+            if (listenerList != null) {
+                for (ClassMethodEntry listener : listenerList) {
+                    try {
+                        listener.invoke(o);
+                    } catch (Exception e) {
+                        throw new PersistenceException("Error invoking entity listener", e);
+                    }
+                }
             }
         }
     }

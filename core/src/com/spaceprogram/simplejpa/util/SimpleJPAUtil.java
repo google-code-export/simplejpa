@@ -20,7 +20,7 @@ public class SimpleJPAUtil {
 
     private static Logger logger = Logger.getLogger(SimpleJPAUtil.class.getName());
     private static EntityManagerFactoryImpl entityManagerFactory;
-    public static final ThreadLocal entityManagerThreadLocal = new ThreadLocal();
+    private static final ThreadLocal<EntityManager> entityManagerThreadLocal = new ThreadLocal<EntityManager>();
 
     private static String persistenceUnitName;
     private static Set<String> libsToScan;

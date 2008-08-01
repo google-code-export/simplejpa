@@ -651,7 +651,7 @@ public class PersistenceTests extends BaseTestClass {
     }
 
     @Test
-    public void testEntityListeners() {
+    public void testEntityListeners() throws InterruptedException {
         EntityManager em = factory.createEntityManager();
 
         MyTestObject3 object = new MyTestObject3();
@@ -659,16 +659,33 @@ public class PersistenceTests extends BaseTestClass {
         em.persist(object);
         Date firstCreated = object.getCreated();
         Date firstUpdated = object.getUpdated();
+        Assert.assertNotNull(firstCreated);
+        Assert.assertNotNull(firstUpdated);
         em.close();
+
+        Thread.sleep(3000);
 
         em = factory.createEntityManager();
         object = em.find(MyTestObject3.class, object.getId());
+        System.out.println("object=" + object);
         Assert.assertNotNull(object);
+        Assert.assertEquals(firstCreated, object.getCreated());
         Assert.assertEquals(firstUpdated, object.getUpdated());
 
         object.setSomeField3("fred updated");
         em.merge(object);
         Assert.assertFalse(object.getUpdated().equals(firstUpdated));
+        em.close();
+
+        // ensure it works when inherited too
+        em = factory.createEntityManager();
+        MyTestObject5Ext3 object5Ext3 = new MyTestObject5Ext3();
+        object5Ext3.setSomeField3("fred");
+        em.persist(object5Ext3);
+        firstCreated = object5Ext3.getCreated();
+        firstUpdated = object5Ext3.getUpdated();
+        Assert.assertNotNull(firstCreated);
+        Assert.assertNotNull(firstUpdated);
         em.close();
     }
 
