@@ -7,6 +7,7 @@ import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
 
 /**
  * User: treeder
@@ -21,7 +22,7 @@ public class AnnotationInfo {
     private String discriminatorValue;
     private Class rootClass;
     private Class mainClass;
-    private Map<Class, ClassMethodEntry> entityListeners;
+    private Map<Class, List<ClassMethodEntry>> entityListeners = new HashMap<Class, List<ClassMethodEntry>>();
 
     public void setClassAnnotations(Annotation[] classAnnotations) {
         this.classAnnotations = classAnnotations;
@@ -79,14 +80,14 @@ public class AnnotationInfo {
 	/**
 	 * @return the entityListeners
 	 */
-	public Map<Class, ClassMethodEntry> getEntityListeners() {
+	public Map<Class, List<ClassMethodEntry>> getEntityListeners() {
 		return entityListeners;
 	}
 
 	/**
 	 * @param entityListeners the entityListeners to set
 	 */
-	public void setEntityListeners(Map<Class, ClassMethodEntry> entityListeners) {
+	public void setEntityListeners(Map<Class, List<ClassMethodEntry>> entityListeners) {
 		this.entityListeners = entityListeners;
 	}
 }

@@ -1,7 +1,7 @@
 package com.spaceprogram.simplejpa;
 
-import javax.persistence.MappedSuperclass;
 import javax.persistence.Id;
+import javax.persistence.MappedSuperclass;
 
 /**
  * User: treeder

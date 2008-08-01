@@ -1,11 +1,14 @@
 package com.spaceprogram.simplejpa;
 
 import javax.persistence.*;
-
+import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * User: treeder
@@ -76,8 +79,7 @@ public class AnnotationManager {
      * @return
      */
     public AnnotationInfo putAnnotationInfo(Class c) {
-        AnnotationInfo ai;
-        ai = new AnnotationInfo();
+        AnnotationInfo ai = new AnnotationInfo();
         ai.setClassAnnotations(c.getAnnotations());
         ai.setMainClass(c);
         Class superClass = c;
@@ -95,14 +97,17 @@ public class AnnotationManager {
                 Method[] methods = superClass.getDeclaredMethods();
                 putMethods(ai, methods);
                 if (entity != null) {
-                    // need discriminator column
+                    /*Don't think this applies anymore
                     if (inheritance == null) {
                         throw new PersistenceException("Must use the @Inheritance annotation on " + superClass.getName() + " when using inherited entities.");
-                    } else {
-                        rootClass = superClass;
-                    }
+                    } else {*/
+                    rootClass = superClass;
+//                    }
                 }
+                putEntityListeners(ai, superClass);
             }
+
+
         }
         /* Inheritance inheritance = (Inheritance) c.getAnnotation(Inheritance.class);
         */
@@ -128,18 +133,11 @@ public class AnnotationManager {
         if (ai.getIdMethod() == null) {
             throw new PersistenceException("No ID method specified for: " + c.getName());
         }
-
-        // todo: this should go above to get all listeners from all subclassess too
-        EntityListeners listeners = (EntityListeners) c.getAnnotation(EntityListeners.class);
-        if (listeners != null) {
-            System.out.println("Found EntityListeners for " + c);
-            putListeners(ai, listeners.value());
-        }
+        putEntityListeners(ai, c);
 
         getAnnotationMap().put(c.getName(), ai);
         return ai;
     }
-
 
     private void putMethods(AnnotationInfo ai, Method[] methods) {
         for (Method method : methods) {
@@ -153,49 +151,56 @@ public class AnnotationManager {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private void putListeners(AnnotationInfo ai, Class[] classes) {
-        Map<Class, ClassMethodEntry> listeners = new HashMap<Class, ClassMethodEntry>();
 
+    private void putEntityListeners(AnnotationInfo ai, Class c) {
+        EntityListeners listeners = (EntityListeners) c.getAnnotation(EntityListeners.class);
+        if (listeners != null) {
+            System.out.println("Found EntityListeners for " + c + " - " + listeners);
+            putEntityListeners(ai, listeners);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void putEntityListeners(AnnotationInfo ai, EntityListeners entityListeners) {
+        Class[] entityListenerClasses = entityListeners.value();
+        if(entityListenerClasses == null) return;
+
+        Map<Class, List<ClassMethodEntry>> listeners = ai.getEntityListeners();
+
+        List<Class<? extends Annotation>> annotations = Arrays.asList(
+                PrePersist.class,
+                PreUpdate.class,
+                PreRemove.class,
+                PostLoad.class,
+                PostPersist.class,
+                PostUpdate.class,
+                PostRemove.class
+        );
         // TODO: More than one listener per event cannot be handled like this...
 
-        for (Class clazz : classes) {
-//            System.out.println("class=" + clazz);
+        for (Class clazz : entityListenerClasses) {
+            System.out.println("class=" + clazz);
             for (Method method : clazz.getMethods()) {
 //                System.out.println("method=" + method.getName());
-                PrePersist prePersist = method.getAnnotation(PrePersist.class);
-                if (prePersist != null) {
-                    listeners.put(PrePersist.class, new ClassMethodEntry(clazz, method));
-                }
-                PreUpdate preUpdate = method.getAnnotation(PreUpdate.class);
-                if (preUpdate != null) {
-                    listeners.put(PreUpdate.class, new ClassMethodEntry(clazz, method));
-                }
-                PreRemove preRemove = method.getAnnotation(PreRemove.class);
-                if (preRemove != null) {
-                    listeners.put(PreRemove.class, new ClassMethodEntry(clazz, method));
+                for (Class<? extends Annotation> annotationClass : annotations) {
+                    Annotation annotation = method.getAnnotation(annotationClass);
+                    addListener(listeners, clazz, method, annotation, annotationClass);
                 }
 
-                PostLoad postLoad = method.getAnnotation(PostLoad.class);
-                if (postLoad != null) {
-                    listeners.put(PostLoad.class, new ClassMethodEntry(clazz, method));
-                }
-                PostPersist postPersist = method.getAnnotation(PostPersist.class);
-                if (postPersist != null) {
-                    listeners.put(PostPersist.class, new ClassMethodEntry(clazz, method));
-                }
-                PostUpdate postUpdate = method.getAnnotation(PostUpdate.class);
-                if (postUpdate != null) {
-                    listeners.put(PostUpdate.class, new ClassMethodEntry(clazz, method));
-                }
-                PostRemove postRemove = method.getAnnotation(PostRemove.class);
-                if (postRemove != null) {
-                    listeners.put(PostRemove.class, new ClassMethodEntry(clazz, method));
-                }
             }
         }
+    }
 
-        ai.setEntityListeners(listeners);
+    private void addListener(Map<Class, List<ClassMethodEntry>> listeners, Class clazz, Method method, java.lang.annotation.Annotation annotation, Class<? extends Annotation> annotationClass) {
+        if (annotation != null) {
+            List<ClassMethodEntry> entryList = listeners.get(annotationClass);
+            if (entryList == null) {
+                entryList = new ArrayList<ClassMethodEntry>();
+                listeners.put(annotationClass, entryList);
+            }
+            System.out.println("adding " + method + " for " + annotation);
+            entryList.add(new ClassMethodEntry(clazz, method));
+        }
     }
 
     public AnnotationInfo getAnnotationInfoByDiscriminator(String discriminatorValue) {
