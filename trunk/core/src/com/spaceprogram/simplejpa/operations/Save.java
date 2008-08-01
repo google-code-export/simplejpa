@@ -44,19 +44,19 @@ import java.util.logging.Logger;
  * Date: Apr 1, 2008
  * Time: 11:51:16 AM
  */
-public class AsyncSaveTask implements Callable {
-    private static Logger logger = Logger.getLogger(AsyncSaveTask.class.getName());
+public class Save implements Callable {
+    private static Logger logger = Logger.getLogger(Save.class.getName());
 
     private EntityManagerSimpleJPA em;
     private Object o;
     private String id;
     private boolean newObject;
 
-    public AsyncSaveTask(EntityManagerSimpleJPA entityManager, Object o) {
+    public Save(EntityManagerSimpleJPA entityManager, Object o) {
         this.em = entityManager;
         this.o = o;
         long start = System.currentTimeMillis();
-        id = prePersist(o); // could probably move this inside the AsyncSaveTask
+        id = prePersist(o); // could probably move this inside the Save
         if(logger.isLoggable(Level.FINE)) logger.fine("prePersist time=" + (System.currentTimeMillis() - start));
 
     }
