@@ -1,7 +1,7 @@
 package com.spaceprogram.simplejpa;
 
 import com.spaceprogram.simplejpa.AnnotationManager.ClassMethodEntry;
-import com.spaceprogram.simplejpa.operations.AsyncSaveTask;
+import com.spaceprogram.simplejpa.operations.Save;
 import com.spaceprogram.simplejpa.operations.Delete;
 import com.spaceprogram.simplejpa.query.JPAQuery;
 import com.spaceprogram.simplejpa.query.JPAQueryParser;
@@ -76,7 +76,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
     public void persist(Object o) {
         resetLastOpStats();
         try {
-            new AsyncSaveTask(this, o).call();
+            new Save(this, o).call();
         } catch (SDBException e) {
             throw new PersistenceException("Could not get SimpleDb Domain", e);
         } catch (Exception e) {
@@ -85,7 +85,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
     }
 
     public Future persistAsync(Object o) {
-        Future future = getExecutor().submit(new AsyncSaveTask(this, o));
+        Future future = getExecutor().submit(new Save(this, o));
         return future;
     }
 

@@ -1,6 +1,6 @@
 package com.spaceprogram.simplejpa;
 
-import com.spaceprogram.simplejpa.operations.AsyncGetAttributes;
+import com.spaceprogram.simplejpa.operations.GetAttributes;
 import com.xerox.amazonws.sdb.Domain;
 import com.xerox.amazonws.sdb.Item;
 import com.xerox.amazonws.sdb.QueryResult;
@@ -240,7 +240,7 @@ public class LazyList extends AbstractList implements Serializable {
 
                 for (Item item : itemsToGet) {
                     // todo: Make this async do the buildObject call so it gets in the cache as soon as possible
-                    Callable<ItemAndAttributes> callable = new AsyncGetAttributes(item);
+                    Callable<ItemAndAttributes> callable = new GetAttributes(item);
                     Future<ItemAndAttributes> itemAndAttributesFuture = em.getExecutor().submit(callable);
                     // todo:  em.statsGets(attributes.size(), duration2); - put this into the Callable
                     futuresMap.put(item.getIdentifier(), itemAndAttributesFuture);

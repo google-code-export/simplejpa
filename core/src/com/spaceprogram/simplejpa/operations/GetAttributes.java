@@ -12,10 +12,10 @@ import java.util.concurrent.Callable;
  * Date: Feb 8, 2008
  * Time: 7:55:30 PM
  */
-public class AsyncGetAttributes implements Callable<ItemAndAttributes> {
+public class GetAttributes implements Callable<ItemAndAttributes> {
     private Item item;
 
-    public AsyncGetAttributes(Item item) {
+    public GetAttributes(Item item) {
         this.item = item;
     }
 
