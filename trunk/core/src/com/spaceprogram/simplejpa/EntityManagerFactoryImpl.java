@@ -88,6 +88,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     private String awsSecretKey;
     private String cacheFactoryClassname;
     private CacheFactory2 cacheFactory;
+    private boolean sessionless;
 
     /**
      * This one is generally called via the PersistenceProvider.
@@ -138,6 +139,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         awsSecretKey = (String) props.get("secretKey");
         printQueries = Boolean.valueOf((String) props.get("printQueries"));
         cacheFactoryClassname = (String) props.get("cacheFactory");
+        sessionless = Boolean.valueOf((String)props.get("sessionless"));
         if(awsAccessKey == null || awsAccessKey.length() == 0) {
             throw new PersistenceException("AWS Access Key not found. It is a required property.");
         }
@@ -239,7 +241,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
      * @return a new EntityManager for you to use.
      */
     public EntityManager createEntityManager() {
-        return new EntityManagerSimpleJPA(this);
+        return new EntityManagerSimpleJPA(this, sessionless);
     }
 
     public EntityManager createEntityManager(Map map) {
@@ -249,7 +251,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     public void close() {
         closed = true;
         executor.shutdown();
-        // todo: clean up any caching, etc
+        cacheFactory.shutdown();
     }
 
     public boolean isOpen() {
@@ -389,5 +391,23 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         } catch (CacheException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * This will turn on sessionless mode which means that you do not need to keep EntityManager's open, nor do
+     * you need to close them. But you should ALWAYS use the second level cache in this case.
+     *
+     * @param sessionless
+     */
+    public void setSessionless(boolean sessionless) {
+        this.sessionless = sessionless;
+    }
+
+    public boolean isSessionless() {
+        return sessionless;
+    }
+
+    public void clearSecondLevelCache() {
+        cacheFactory.clearAll();
     }
 }

@@ -45,6 +45,7 @@ public class BaseTestClass {
     @After
     public void deleteAll() throws SDBException {
         printLog();
+
         // todo: should just delete all items in the domain, would probably be faster
         System.out.println("Deleting all objects created during test...");
         EntityManagerSimpleJPA em = (EntityManagerSimpleJPA) factory.createEntityManager();

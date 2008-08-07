@@ -179,7 +179,7 @@ public class AnnotationManager {
         // TODO: More than one listener per event cannot be handled like this...
 
         for (Class clazz : entityListenerClasses) {
-            System.out.println("class=" + clazz);
+//            System.out.println("class=" + clazz);
             for (Method method : clazz.getMethods()) {
 //                System.out.println("method=" + method.getName());
                 for (Class<? extends Annotation> annotationClass : annotations) {
@@ -198,7 +198,7 @@ public class AnnotationManager {
                 entryList = new ArrayList<ClassMethodEntry>();
                 listeners.put(annotationClass, entryList);
             }
-            System.out.println("adding " + method + " for " + annotation);
+//            System.out.println("adding " + method + " for " + annotation);
             entryList.add(new ClassMethodEntry(clazz, method));
         }
     }

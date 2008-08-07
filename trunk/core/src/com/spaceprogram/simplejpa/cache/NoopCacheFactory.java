@@ -21,6 +21,14 @@ public class NoopCacheFactory implements CacheFactory2 {
         return noopCache;
     }
 
+    public void shutdown() {
+
+    }
+
+    public void clearAll() {
+
+    }
+
     public Cache createCache(Map map) throws CacheException {
         return noopCache;
     }

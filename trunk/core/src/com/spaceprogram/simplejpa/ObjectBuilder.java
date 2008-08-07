@@ -43,7 +43,7 @@ public class ObjectBuilder {
                     }
                     tClass = ai.getMainClass();
                     // check cache again with new class
-                    newInstance = (T) em.cacheGet(tClass, id);
+                    newInstance = em.cacheGet(tClass, id);
                     if (newInstance != null) return newInstance;
                     break;
                 }
