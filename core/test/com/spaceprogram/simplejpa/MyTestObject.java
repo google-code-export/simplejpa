@@ -32,6 +32,13 @@ public class MyTestObject extends MySuperClass {
     private MyEnum myEnumOrdinal;
     private MyEnum myEnumString;
 
+    public MyTestObject() {
+    }
+
+    public MyTestObject(String name) {
+
+        this.name = name;
+    }
 
     public void setName(String name) {
         this.name = name;

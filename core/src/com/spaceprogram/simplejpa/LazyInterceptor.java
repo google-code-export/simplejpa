@@ -74,7 +74,7 @@ public class LazyInterceptor implements MethodInterceptor, Serializable {
 
     private boolean handleGetMethod(Object obj, Method method) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, S3ServiceException, IOException, ClassNotFoundException {
         if (method.getAnnotation(ManyToOne.class) != null) {
-            logger.finer("intercepting many to one");
+            logger.fine("intercepting many to one");
             if (foreignKeys != null) {
                 String foreignKey = foreignKeys.get(NamingHelper.attributeName(method));
                 logger.finer("ManyToOne key=" + foreignKey);
@@ -82,7 +82,7 @@ public class LazyInterceptor implements MethodInterceptor, Serializable {
                     return true;
                 }
                 Class retType = method.getReturnType();
-                logger.finer("loading ManyToOne object for type=" + retType + " with id=" + foreignKey);
+                logger.fine("loading ManyToOne object for type=" + retType + " with id=" + foreignKey);
                 Object toSet = em.find(retType, foreignKey);
                 logger.finest("got object for ManyToOne=" + toSet);
                 String setterName = em.getSetterNameFromGetter(method);

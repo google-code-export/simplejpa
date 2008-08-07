@@ -1,8 +1,8 @@
 package com.spaceprogram.simplejpa;
 
 import com.spaceprogram.simplejpa.AnnotationManager.ClassMethodEntry;
-import com.spaceprogram.simplejpa.operations.Save;
 import com.spaceprogram.simplejpa.operations.Delete;
+import com.spaceprogram.simplejpa.operations.Save;
 import com.spaceprogram.simplejpa.query.JPAQuery;
 import com.spaceprogram.simplejpa.query.JPAQueryParser;
 import com.spaceprogram.simplejpa.query.QueryImpl;
@@ -41,10 +41,10 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 /**
@@ -57,20 +57,25 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
     private static Logger logger = Logger.getLogger(EntityManagerSimpleJPA.class.getName());
     private boolean closed = false;
     private EntityManagerFactoryImpl factory;
+    private boolean sessionless;
     /**
      * cache is used to store objects retrieved in this EntityManager session
      */
-    private Map sessionCache = new ConcurrentHashMap();
+    private Map sessionCache;
     /**
      * used for converting numbers to strings
      */
     public static final BigDecimal OFFSET_VALUE = new BigDecimal(Long.MIN_VALUE).negate();
     private int queryCount;
-    private OpStats lastOpStats = new OpStats();
+    private OpStats lastOpStats = new OpStats(); // todo: thread local this
     private OpStats totalOpStats = new OpStats();
 
-    EntityManagerSimpleJPA(EntityManagerFactoryImpl factory) {
+    EntityManagerSimpleJPA(EntityManagerFactoryImpl factory, boolean sessionless) {
         this.factory = factory;
+        this.sessionless = sessionless;
+        if(!sessionless){
+            sessionCache = new ConcurrentHashMap();
+        }
     }
 
     public void persist(Object o) {
@@ -215,7 +220,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
      * @return
      */
     public <T> T find(Class<T> tClass, Object id) {
-        if (closed) throw new PersistenceException("EntityManager already closed.");
+        if (!sessionless && closed) throw new PersistenceException("EntityManager already closed.");
         if (id == null) throw new IllegalArgumentException("Id value must not be null.");
         try {
             T ob = cacheGet(tClass, id);
@@ -342,7 +347,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
     public <T> T cacheGet(Class<T> aClass, Object id) {
         String key = cacheKey(aClass, id);
         logger.finest("getting item from cache with cachekey=" + key);
-        T o = (T) sessionCache.get(key);
+        T o = sessionCache != null ? (T) sessionCache.get(key) : null;
         if (o == null) {
             Cache c = getFactory().getCache(aClass);
             if (c != null) {
@@ -360,7 +365,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
     public void cachePut(Object id, Object newInstance) {
         String key = cacheKey(newInstance.getClass(), id);
         logger.finest("putting item in cache with cachekey=" + key + " - " + newInstance);
-        sessionCache.put(key, newInstance);
+        if (sessionCache != null) sessionCache.put(key, newInstance);
         Cache c = getFactory().getCache(newInstance.getClass());
         if (c != null) {
             c.put(id, newInstance);
@@ -375,10 +380,11 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
     public Object cacheRemove(Class aClass, String id) {
         String key = cacheKey(aClass, id);
         logger.finest("removing item from cache with cachekey=" + key);
-        Object o = sessionCache.remove(key);
+        Object o = sessionCache != null ? sessionCache.remove(key) : null;
         Cache c = getFactory().getCache(aClass);
         if (c != null) {
-            c.remove(id);
+            Object o2 = c.remove(id);
+            if(o == null) o = o2;
         }
         logger.finest("removed object from cache=" + o);
         return o;

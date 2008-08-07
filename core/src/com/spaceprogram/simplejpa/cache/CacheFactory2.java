@@ -24,4 +24,9 @@ public interface CacheFactory2 extends CacheFactory {
     void init(Map properties) throws CacheException;
 
     Cache createCache(String name) throws CacheException;
+
+    void shutdown();
+
+    void clearAll();
+
 }

@@ -93,6 +93,10 @@ public class EhCacheFactory implements CacheFactory, CacheFactory2 {
         }
     }
 
+    public void clearAll() {
+        manager.clearAll();
+    }
+
     private URL loadResource(String configurationResourceName) {
         ClassLoader standardClassloader = ClassLoaderUtil.getStandardClassLoader();
         URL url = null;
