@@ -1,0 +1,18 @@
+#summary Running SimpleJPA in sessionless mode
+#labels Phase-Deploy,Phase-Implementation
+
+= Introduction =
+
+There's a config setting in SimpleJPA, "sessionless", that enables SimpleJPA to run without the concept of sessions as you would be used to with Hibernate. Since SimpleDB has no concept of open connections, no transactions, no commits, no rollbacks, etc, SimpleJPA can follow along those lines too.
+
+==Benefits==
+
+The benefits of running sessionless:
+
+    * Can lazy load result sets, object references, and collections at any future time without requiring the EntityManager that first retrieved the object to be open
+    * Single shared global cache (second level cache)
+    * No transaction management required which makes for much simpler programming
+
+==How to enable==
+
+Set sessionless=true in simplejpa.properties.
