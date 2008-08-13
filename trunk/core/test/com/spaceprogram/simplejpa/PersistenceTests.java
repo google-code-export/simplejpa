@@ -616,7 +616,7 @@ public class PersistenceTests extends BaseTestClass {
     }
 
     @Test
-    public void queryIsNull() {
+    public void queryIsNull() throws InterruptedException {
         EntityManager em = factory.createEntityManager();
 
         MyTestObject object = new MyTestObject();
@@ -624,6 +624,8 @@ public class PersistenceTests extends BaseTestClass {
         em.persist(object);
         String id = object.getId();
         em.close();
+
+        Thread.sleep(3000);
 
         em = factory.createEntityManager();
         Query query = em.createQuery("select o from MyTestObject o where o.income is null");
