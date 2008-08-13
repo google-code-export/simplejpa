@@ -1,7 +1,7 @@
-#summary Supported Features
+#summary Supported JPA Features
 #labels Featured,Phase-Design
 
-This is a list of things that are supported so far.
+This is a list of Java Persistence API annotations and things that are supported so far.
 
 = Details =
 
