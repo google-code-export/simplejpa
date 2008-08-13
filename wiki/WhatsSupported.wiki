@@ -20,3 +20,4 @@ This is a list of Java Persistence API annotations and things that are supported
   * @Enumerated (ordinal and string)
   * @Column (name only)
   * @EntityListeners - for lifecycle callbacks.
+  * @Transient - won't persist these fields.
