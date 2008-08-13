@@ -13,3 +13,4 @@ This page has all the available options in simplejpa.properties
 || printQueries = true/false || optional || false || If true, all amazon queries will be printed to System.out ||
 || cacheFactory = com.spaceprogram.simplejpa.cache.EhCacheFactory || optional || no caching || Cache factory for SecondLevelCache ||
 || net.sf.ehcache.configurationResourceName = /ehcache-test.xml || required if cacheFactory is used || ehcache.xml || configuration file for ehcache ||
+|| sessionless = true/false || optional || false || If true, enable [Sessionless] mode ||
