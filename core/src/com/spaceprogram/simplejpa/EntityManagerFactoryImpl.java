@@ -387,7 +387,8 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 
     public Cache getCache(Class aClass) {
         try {
-            return cacheFactory.createCache(AnnotationManager.stripEnhancerClass(aClass).getName());
+            AnnotationInfo ai = getAnnotationManager().getAnnotationInfo(aClass);
+            return cacheFactory.createCache(ai.getRootClass().getName());
         } catch (CacheException e) {
             throw new RuntimeException(e);
         }

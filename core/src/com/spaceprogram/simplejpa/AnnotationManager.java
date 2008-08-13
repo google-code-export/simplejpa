@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 /**
  * User: treeder
@@ -16,6 +17,8 @@ import java.util.Map;
  * Time: 11:39:54 PM
  */
 public class AnnotationManager {
+
+     private static Logger logger = Logger.getLogger(AnnotationManager.class.getName());
 
     // todo: implement EntityListeners for timestamps
     private Map<String, AnnotationInfo> annotationMap = new HashMap<String, AnnotationInfo>();
@@ -155,7 +158,7 @@ public class AnnotationManager {
     private void putEntityListeners(AnnotationInfo ai, Class c) {
         EntityListeners listeners = (EntityListeners) c.getAnnotation(EntityListeners.class);
         if (listeners != null) {
-            System.out.println("Found EntityListeners for " + c + " - " + listeners);
+            logger.fine("Found EntityListeners for " + c + " - " + listeners);
             putEntityListeners(ai, listeners);
         }
     }
