@@ -8,6 +8,7 @@ import org.jets3t.service.S3ServiceException;
 
 import javax.persistence.Lob;
 import javax.persistence.ManyToOne;
+import javax.persistence.PersistenceException;
 import java.io.IOException;
 import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
@@ -35,7 +36,6 @@ public class LazyInterceptor implements MethodInterceptor, Serializable {
     private boolean dirty;
 
     public LazyInterceptor(EntityManagerSimpleJPA em) {
-
         this.em = em;
     }
 
@@ -81,6 +81,7 @@ public class LazyInterceptor implements MethodInterceptor, Serializable {
                 if (foreignKey == null) {
                     return true;
                 }
+                checkEntityManager();
                 Class retType = method.getReturnType();
                 logger.fine("loading ManyToOne object for type=" + retType + " with id=" + foreignKey);
                 Object toSet = em.find(retType, foreignKey);
@@ -95,6 +96,7 @@ public class LazyInterceptor implements MethodInterceptor, Serializable {
                 if (lobKey == null) {
                     return true;
                 }
+                checkEntityManager();
                 logger.finer("intercepting lob. key==" + lobKey);
                 Class retType = method.getReturnType();
                 Object toSet = em.getObjectFromS3(lobKey);
@@ -106,6 +108,12 @@ public class LazyInterceptor implements MethodInterceptor, Serializable {
 
         }
         return false;
+    }
+
+    private void checkEntityManager() {
+        if(em == null){
+            throw new PersistenceException("Could not lazy load for getter, EntityManager is null. This could be due to this object having been deserialized.");
+        }
     }
 
     public void putForeignKey(String attributeName, String foreignKeyVal) {
@@ -122,7 +130,7 @@ public class LazyInterceptor implements MethodInterceptor, Serializable {
     }
 
     public void reset() {
-        System.out.println("Resetting nulled fields.");
+//        System.out.println("Resetting nulled fields.");
         nulledFields = new HashMap();
     }
 }

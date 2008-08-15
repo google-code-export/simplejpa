@@ -8,6 +8,7 @@ import com.xerox.amazonws.sdb.SDBException;
 import com.xerox.amazonws.sdb.SimpleDB;
 import net.sf.jsr107cache.Cache;
 import net.sf.jsr107cache.CacheException;
+import net.sf.ehcache.CacheManager;
 import org.scannotation.AnnotationDB;
 import org.scannotation.ClasspathUrlFinder;
 
@@ -410,5 +411,9 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 
     public void clearSecondLevelCache() {
         cacheFactory.clearAll();
+    }
+
+    public CacheManager getCacheManager() {
+        return cacheFactory.getCacheManager();
     }
 }
