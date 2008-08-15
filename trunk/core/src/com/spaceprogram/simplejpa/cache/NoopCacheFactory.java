@@ -2,6 +2,7 @@ package com.spaceprogram.simplejpa.cache;
 
 import net.sf.jsr107cache.Cache;
 import net.sf.jsr107cache.CacheException;
+import net.sf.ehcache.CacheManager;
 
 import java.util.Map;
 
@@ -27,6 +28,10 @@ public class NoopCacheFactory implements CacheFactory2 {
 
     public void clearAll() {
 
+    }
+
+    public CacheManager getCacheManager() {
+        return null;
     }
 
     public Cache createCache(Map map) throws CacheException {

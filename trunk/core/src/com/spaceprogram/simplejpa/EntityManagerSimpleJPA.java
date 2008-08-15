@@ -41,10 +41,10 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 /**
@@ -52,7 +52,7 @@ import java.util.logging.Logger;
  * Date: Feb 8, 2008
  * Time: 12:59:38 PM
  */
-public class EntityManagerSimpleJPA implements SimpleEntityManager {
+public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseManager {
 
     private static Logger logger = Logger.getLogger(EntityManagerSimpleJPA.class.getName());
     private boolean closed = false;
@@ -651,4 +651,6 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager {
         getLastOpStats().got(numItems, duration2);
         totalOpStats.got(numItems, duration2);
     }
+
+   
 }

@@ -3,6 +3,7 @@ package com.spaceprogram.simplejpa.cache;
 import net.sf.jsr107cache.CacheFactory;
 import net.sf.jsr107cache.CacheException;
 import net.sf.jsr107cache.Cache;
+import net.sf.ehcache.CacheManager;
 
 import java.util.Map;
 
@@ -29,4 +30,5 @@ public interface CacheFactory2 extends CacheFactory {
 
     void clearAll();
 
+    CacheManager getCacheManager();
 }
