@@ -1,4 +1,4 @@
-package com.spaceprogram.simplejpa;
+package com.spaceprogram.simplejpa.stats;
 
 /**
  * Holds stats about the last operation performed. Useful for testing.

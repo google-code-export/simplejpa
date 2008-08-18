@@ -90,6 +90,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     private String cacheFactoryClassname;
     private CacheFactory2 cacheFactory;
     private boolean sessionless;
+    private boolean cacheless;
 
     /**
      * This one is generally called via the PersistenceProvider.
@@ -415,5 +416,22 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 
     public CacheManager getCacheManager() {
         return cacheFactory.getCacheManager();
+    }
+
+    /**
+     * Turns off caches. Useful for testing.
+     * This will also shutdown and recreate any existing cache if cacheless is true.
+     * 
+     * @param cacheless
+     */
+    public void setCacheless(boolean cacheless) {
+        this.cacheless = cacheless;
+        if(cacheless){
+            cacheFactory.shutdown();
+            cacheFactory = new NoopCacheFactory();
+        } else {
+            cacheFactory.shutdown();
+            initSecondLevelCache();
+        }
     }
 }

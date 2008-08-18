@@ -732,5 +732,43 @@ public class PersistenceTests extends BaseTestClass {
         em.close();
     }
 
+    @Test
+    public void testEscaping() throws IOException {
+        EntityManager em = factory.createEntityManager();
+
+        MyTestObject object = new MyTestObject();
+        object.setName("Scooby 'doo");
+        em.persist(object);
+        object = new MyTestObject();
+        object.setName("Shaggy \\");
+        em.persist(object);
+
+        em.close();
+
+        em = factory.createEntityManager();
+
+        em = factory.createEntityManager();
+        {
+            Query query = em.createQuery("select o from MyTestObject o where o.name like :x");
+            query.setParameter("x", "Scooby 'd%");
+            List<MyTestObject> obs = query.getResultList();
+            for (MyTestObject ob : obs) {
+                System.out.println(ob);
+            }
+            Assert.assertEquals(1, obs.size());
+        }
+        {
+            Query query = em.createQuery("select o from MyTestObject o where o.name like :x");
+            query.setParameter("x", "Shaggy \\%");
+            List<MyTestObject> obs = query.getResultList();
+            for (MyTestObject ob : obs) {
+                System.out.println(ob);
+            }
+            Assert.assertEquals(1, obs.size());
+        }
+
+        em.close();
+    }
+
 
 }

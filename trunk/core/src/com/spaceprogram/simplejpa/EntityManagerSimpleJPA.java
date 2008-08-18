@@ -8,6 +8,7 @@ import com.spaceprogram.simplejpa.query.JPAQueryParser;
 import com.spaceprogram.simplejpa.query.QueryImpl;
 import com.spaceprogram.simplejpa.util.AmazonSimpleDBUtil;
 import com.spaceprogram.simplejpa.util.ConcurrentRetriever;
+import com.spaceprogram.simplejpa.stats.OpStats;
 import com.xerox.amazonws.sdb.Domain;
 import com.xerox.amazonws.sdb.Item;
 import com.xerox.amazonws.sdb.ItemAttribute;
