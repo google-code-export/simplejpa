@@ -1,7 +1,12 @@
 package com.spaceprogram.simplejpa.query;
 
-import com.spaceprogram.simplejpa.*;
+import com.spaceprogram.simplejpa.AnnotationInfo;
+import com.spaceprogram.simplejpa.EntityManagerFactoryImpl;
+import com.spaceprogram.simplejpa.EntityManagerSimpleJPA;
+import com.spaceprogram.simplejpa.LazyList;
+import com.spaceprogram.simplejpa.NamingHelper;
 import com.spaceprogram.simplejpa.util.AmazonSimpleDBUtil;
+import com.spaceprogram.simplejpa.util.EscapeUtils;
 import com.xerox.amazonws.sdb.Domain;
 import com.xerox.amazonws.sdb.SDBException;
 import org.apache.commons.lang.NotImplementedException;
@@ -12,7 +17,12 @@ import javax.persistence.Query;
 import javax.persistence.TemporalType;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -74,6 +84,7 @@ public class QueryImpl implements Query {
                 }
                 appendFilter(amazonQuery, EntityManagerFactoryImpl.DTYPE, "=", ai.getDiscriminatorValue());
             }
+
             // now for sorting
             String orderBy = q.getOrdering();
             if (orderBy != null && orderBy.length() > 0) {
@@ -310,7 +321,8 @@ public class QueryImpl implements Query {
             Date x = (Date) paramOb;
             param = AmazonSimpleDBUtil.encodeDate(x);
         } else {
-            param = paramOb.toString();
+            // only thing supported now is String
+            param = EscapeUtils.escapeQueryParam(paramOb.toString());
         }
         return param;
     }

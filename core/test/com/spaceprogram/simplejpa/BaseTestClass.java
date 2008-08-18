@@ -26,6 +26,7 @@ public class BaseTestClass {
     @BeforeClass
     public static void setupEntityManagerFactory() throws IOException {
         factory = new EntityManagerFactoryImpl("testunit", null);
+        factory.setCacheless(true);
 
         /*
         This doesn't work when not packaged in jar or something.
