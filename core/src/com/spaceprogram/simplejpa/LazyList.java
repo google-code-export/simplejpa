@@ -24,28 +24,29 @@ import java.util.logging.Logger;
 /**
  * Loads objects in the list on demand from SimpleDB.
  * <p/>
+ *
  * User: treeder
  * Date: Feb 10, 2008
  * Time: 9:06:16 PM
  */
 public class LazyList extends AbstractList implements Serializable {
     private static Logger logger = Logger.getLogger(LazyList.class.getName());
-    private EntityManagerSimpleJPA em;
+    private transient EntityManagerSimpleJPA em;
     //    private Object instance;
     //    private String fieldName;
     //    private Object id;
     private Class genericReturnType;
     private String query;
-    private AnnotationInfo ai;
     //    private boolean loadedItems;
     private List<Item> items = new ArrayList<Item>();
     //    private int size;
+    /** Stores the actual objects for this list */
     private List backingList = new GrowthList();
     private int numRetrieved = 0;
     private String nextToken;
     private int maxToRetrievePerRequest = 100; // same as amazon default
     private int numPagesLoaded;
-    private Map<String, Future<ItemAndAttributes>> futuresMap = new ConcurrentHashMap();
+    private transient Map<String, Future<ItemAndAttributes>> futuresMap = new ConcurrentHashMap();
     /**
      * map to remember which pages have been loaded already.
      */
@@ -68,7 +69,7 @@ public class LazyList extends AbstractList implements Serializable {
 //        this.id = id;
         this.genericReturnType = tClass;
         this.query = query;
-        this.ai = em.getFactory().getAnnotationManager().getAnnotationInfo(tClass);
+
     }
 
     public boolean isEmpty() {
@@ -119,7 +120,7 @@ public class LazyList extends AbstractList implements Serializable {
         try {
             o = checkFuturesMap(item);
             if (o == null) {
-                o = checkCache(item);
+                o = checkCache(item); // todo: should this be swapped with checkFuturesMap and can cancel the future if for some reason it got cached between the future being added and here
                 if (o == null) {
                     throw new PersistenceException("SHOULD NEVER GET THIS EXCEPTION. getting item at position " + i + ", list.size=" + size());
                     /*List<ItemAttribute> atts = item.getAttributes();
@@ -166,9 +167,9 @@ public class LazyList extends AbstractList implements Serializable {
             return;
         }
 
-//        genericReturnType.getOwnerType()
         Domain domain;
         try {
+            AnnotationInfo ai = em.getAnnotationManager().getAnnotationInfo(genericReturnType);
             domain = em.getDomain(ai.getRootClass());
             if (domain == null) {
                 logger.warning("Domain does not exist for " + ai.getRootClass());

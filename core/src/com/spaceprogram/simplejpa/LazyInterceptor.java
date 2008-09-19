@@ -15,6 +15,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -31,7 +32,7 @@ public class LazyInterceptor implements MethodInterceptor, Serializable {
     private transient EntityManagerSimpleJPA em;
     /** Just for reference */
     private Map<String, String> foreignKeys;
-    /** Used to know which fields to delete */
+    /** So we know which fields to delete */
     private Map<String, Object> nulledFields = new HashMap<String, Object>();
     private boolean dirty;
 
@@ -85,7 +86,9 @@ public class LazyInterceptor implements MethodInterceptor, Serializable {
                 Class retType = method.getReturnType();
                 logger.fine("loading ManyToOne object for type=" + retType + " with id=" + foreignKey);
                 Object toSet = em.find(retType, foreignKey);
-                logger.finest("got object for ManyToOne=" + toSet);
+                if(logger.isLoggable(Level.FINEST)){
+                    logger.finest("got object for ManyToOne=" + toSet);
+                }
                 String setterName = em.getSetterNameFromGetter(method);
                 Method setter = obj.getClass().getMethod(setterName, retType);
                 setter.invoke(obj, toSet);
@@ -105,7 +108,6 @@ public class LazyInterceptor implements MethodInterceptor, Serializable {
                 Method setter = obj.getClass().getMethod(setterName, retType);
                 setter.invoke(obj, toSet);
             }
-
         }
         return false;
     }
@@ -132,5 +134,9 @@ public class LazyInterceptor implements MethodInterceptor, Serializable {
     public void reset() {
 //        System.out.println("Resetting nulled fields.");
         nulledFields = new HashMap();
+    }
+
+    public EntityManagerSimpleJPA getEntityManager() {
+        return em;
     }
 }
