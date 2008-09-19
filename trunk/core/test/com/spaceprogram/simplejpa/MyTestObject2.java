@@ -5,6 +5,7 @@ import org.apache.commons.lang.builder.ReflectionToStringBuilder;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.ManyToOne;
+import java.io.Serializable;
 
 /**
  * User: treeder
@@ -12,7 +13,7 @@ import javax.persistence.ManyToOne;
  * Time: 7:55:18 PM
  */
 @Entity
-public class MyTestObject2 {
+public class MyTestObject2 implements Serializable {
     private String id;
     private String name;
     private Integer someInt;
@@ -20,7 +21,6 @@ public class MyTestObject2 {
     private MyTestObject4 myTestObject4;
 
     public MyTestObject2() {
-        System.out.println("constructing testobject2");
     }
 
     public MyTestObject2(String name, Integer someInt) {

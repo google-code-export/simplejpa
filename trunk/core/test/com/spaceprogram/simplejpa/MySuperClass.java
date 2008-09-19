@@ -2,6 +2,7 @@ package com.spaceprogram.simplejpa;
 
 import javax.persistence.Id;
 import javax.persistence.MappedSuperclass;
+import java.io.Serializable;
 
 /**
  * User: treeder
@@ -9,7 +10,7 @@ import javax.persistence.MappedSuperclass;
  * Time: 11:29:51 AM
  */
 @MappedSuperclass
-public class MySuperClass {
+public class MySuperClass implements Serializable {
 
     private String id;
 

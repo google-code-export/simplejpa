@@ -1,12 +1,17 @@
 package com.spaceprogram.simplejpa.cache;
 
 import net.sf.ehcache.CacheManager;
+import net.sf.ehcache.Ehcache;
+import net.sf.ehcache.event.CacheEventListener;
+import net.sf.ehcache.jcache.JCache;
 import net.sf.ehcache.util.ClassLoaderUtil;
 import net.sf.jsr107cache.Cache;
 import net.sf.jsr107cache.CacheException;
 import net.sf.jsr107cache.CacheFactory;
 
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -24,6 +29,7 @@ public class EhCacheFactory implements CacheFactory, CacheFactory2 {
     private CacheManager manager;
     private static final String NET_SF_EHCACHE_CONFIGURATION_RESOURCE_NAME = "net.sf.ehcache.configurationResourceName";
     private boolean initializing;
+    private List<CacheEventListener> listeners = new ArrayList<CacheEventListener>();
 
     public synchronized void init(Map properties) throws CacheException {
         if (manager != null) {
@@ -72,12 +78,22 @@ public class EhCacheFactory implements CacheFactory, CacheFactory2 {
             throw new CacheException("CacheFactory was not initialized. Call init() before creating a cache.");
         }
         try {
-            Cache cache = manager.getJCache(name);
+            JCache cache = manager.getJCache(name);
             if (cache == null) {
                 log.warning("Could not find a specific ehcache configuration for cache named [" + name + "]; using defaults.");
                 manager.addCache(name);
                 cache = manager.getJCache(name);
-                log.fine("Created cache: " + name);
+            }
+            Ehcache backingCache = cache.getBackingCache();
+            if (!backingCache.getCacheEventNotificationService().hasCacheEventListeners()) {
+                if (listeners.size() > 0) {
+                    for (CacheEventListener listener : listeners) {
+                        if (!backingCache.getCacheEventNotificationService().getCacheEventListeners().contains(listener)) {
+                            backingCache.getCacheEventNotificationService().registerListener(listener);
+                        } else {
+                        }
+                    }
+                }
             }
             return cache;
         } catch (net.sf.ehcache.CacheException e) {
@@ -99,6 +115,10 @@ public class EhCacheFactory implements CacheFactory, CacheFactory2 {
 
     public CacheManager getCacheManager() {
         return manager;
+    }
+
+    public void addDefaultListener(CacheEventListener cacheEventListener) {
+        listeners.add(cacheEventListener);
     }
 
     private URL loadResource(String configurationResourceName) {

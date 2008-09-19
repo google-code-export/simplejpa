@@ -746,8 +746,6 @@ public class PersistenceTests extends BaseTestClass {
         em.close();
 
         em = factory.createEntityManager();
-
-        em = factory.createEntityManager();
         {
             Query query = em.createQuery("select o from MyTestObject o where o.name like :x");
             query.setParameter("x", "Scooby 'd%");

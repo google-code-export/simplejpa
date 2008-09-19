@@ -6,9 +6,9 @@ import com.xerox.amazonws.sdb.Domain;
 import com.xerox.amazonws.sdb.ListDomainsResult;
 import com.xerox.amazonws.sdb.SDBException;
 import com.xerox.amazonws.sdb.SimpleDB;
+import net.sf.ehcache.CacheManager;
 import net.sf.jsr107cache.Cache;
 import net.sf.jsr107cache.CacheException;
-import net.sf.ehcache.CacheManager;
 import org.scannotation.AnnotationDB;
 import org.scannotation.ClasspathUrlFinder;
 
@@ -76,7 +76,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
      * same as domainsList, but map access
      */
     private Map<String, Domain> domainMap = new HashMap<String, Domain>();
-    
+
     private int numExecutorThreads = 50;
     public static final String DTYPE = "DTYPE";
 
@@ -91,6 +91,10 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     private CacheFactory2 cacheFactory;
     private boolean sessionless;
     private boolean cacheless;
+    /**
+     * Used for sessionless, could be used as a singleton for getEntityManager()
+     */
+//    private EntityManagerSimpleJPA globalEntityManager;
 
     /**
      * This one is generally called via the PersistenceProvider.
@@ -126,7 +130,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         }
         this.persistenceUnitName = persistenceUnitName;
         this.props = props;
-        if(props == null){
+        if (props == null) {
             try {
                 loadProps2();
             } catch (IOException e) {
@@ -141,11 +145,11 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         awsSecretKey = (String) props.get("secretKey");
         printQueries = Boolean.valueOf((String) props.get("printQueries"));
         cacheFactoryClassname = (String) props.get("cacheFactory");
-        sessionless = Boolean.valueOf((String)props.get("sessionless"));
-        if(awsAccessKey == null || awsAccessKey.length() == 0) {
+        sessionless = Boolean.valueOf((String) props.get("sessionless"));
+        if (awsAccessKey == null || awsAccessKey.length() == 0) {
             throw new PersistenceException("AWS Access Key not found. It is a required property.");
         }
-         if(awsSecretKey == null || awsSecretKey.length() == 0) {
+        if (awsSecretKey == null || awsSecretKey.length() == 0) {
             throw new PersistenceException("AWS Secret Key not found. It is a required property.");
         }
 
@@ -202,7 +206,8 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     }
 
     private void initSecondLevelCache() {
-        if(cacheFactoryClassname != null){
+        System.out.println("Initing second level cache: " + cacheFactoryClassname);
+        if (cacheFactoryClassname != null) {
             try {
                 Class<CacheFactory2> cacheFactoryClass = (Class<CacheFactory2>) Class.forName(cacheFactoryClassname);
                 cacheFactory = cacheFactoryClass.newInstance();
@@ -211,7 +216,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
                 throw new RuntimeException(e);
             }
         }
-        if(cacheFactory == null){
+        if (cacheFactory == null) {
             cacheFactory = new NoopCacheFactory();
         }
     }
@@ -231,7 +236,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         Properties props2 = new Properties();
         String propsFileName = "/simplejpa.properties";
         InputStream stream = this.getClass().getResourceAsStream(propsFileName);
-        if(stream == null){
+        if (stream == null) {
             throw new FileNotFoundException(propsFileName + " not found on classpath. Could not initialize SimpleJPA.");
         }
         props2.load(stream);
@@ -421,17 +426,21 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     /**
      * Turns off caches. Useful for testing.
      * This will also shutdown and recreate any existing cache if cacheless is true.
-     * 
+     *
      * @param cacheless
      */
     public void setCacheless(boolean cacheless) {
         this.cacheless = cacheless;
-        if(cacheless){
+        if (cacheless) {
             cacheFactory.shutdown();
             cacheFactory = new NoopCacheFactory();
         } else {
             cacheFactory.shutdown();
             initSecondLevelCache();
         }
+    }
+
+    public CacheFactory2 getCacheFactory() {
+        return cacheFactory;
     }
 }

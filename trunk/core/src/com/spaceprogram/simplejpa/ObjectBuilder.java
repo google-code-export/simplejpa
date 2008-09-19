@@ -26,10 +26,13 @@ public class ObjectBuilder {
     private static Logger logger = Logger.getLogger(ObjectBuilder.class.getName());
 
     public static <T> T buildObject(EntityManagerSimpleJPA em, Class<T> tClass, Object id, List<ItemAttribute> atts) {
-        T newInstance = em.cacheGet(tClass, id);
+        T newInstance;
+        /*
+        Why was this here?  Should we merge if it exists though?
+        newInstance = em.cacheGet(tClass, id);
         if (newInstance != null) {
             return newInstance;
-        }
+        }*/
         AnnotationInfo ai = em.getFactory().getAnnotationManager().getAnnotationInfo(tClass);
         try {
 //            newInstance = tClass.newInstance();

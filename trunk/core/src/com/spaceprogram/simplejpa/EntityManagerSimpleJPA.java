@@ -6,9 +6,9 @@ import com.spaceprogram.simplejpa.operations.Save;
 import com.spaceprogram.simplejpa.query.JPAQuery;
 import com.spaceprogram.simplejpa.query.JPAQueryParser;
 import com.spaceprogram.simplejpa.query.QueryImpl;
+import com.spaceprogram.simplejpa.stats.OpStats;
 import com.spaceprogram.simplejpa.util.AmazonSimpleDBUtil;
 import com.spaceprogram.simplejpa.util.ConcurrentRetriever;
-import com.spaceprogram.simplejpa.stats.OpStats;
 import com.xerox.amazonws.sdb.Domain;
 import com.xerox.amazonws.sdb.Item;
 import com.xerox.amazonws.sdb.ItemAttribute;
@@ -46,6 +46,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -226,20 +227,26 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
         try {
             T ob = cacheGet(tClass, id);
             if (ob != null) {
-                logger.finest("found in cache: " + ob);
+                if(logger.isLoggable(Level.FINEST)){
+                    logger.finest("found in cache: " + ob);
+                }
                 return ob;
             }
-            Domain domain = getDomain(tClass);
-            Item item = domain.getItem(id.toString());
-//            logger.fine("got back item=" + item);
-            if (item == null) return null;
-            // todo: update stats for this get
-            List<ItemAttribute> atts = item.getAttributes();
-            if (atts == null || atts.size() == 0) return null;
-            return buildObject(tClass, id, atts);
+            return findInDb(tClass, id);
         } catch (SDBException e) {
             throw new PersistenceException(e);
         }
+    }
+
+    private <T> T findInDb(Class<T> tClass, Object id) throws SDBException {
+        Domain domain = getDomain(tClass);
+        Item item = domain.getItem(id.toString());
+//            logger.fine("got back item=" + item);
+        if (item == null) return null;
+        // todo: update stats for this get
+        List<ItemAttribute> atts = item.getAttributes();
+        if (atts == null || atts.size() == 0) return null;
+        return buildObject(tClass, id, atts);
     }
 
     public void renameField(Class tClass, String oldAttributeName, String newAttributeName) {
@@ -355,7 +362,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
                 o = (T) c.get(id);
                 if (o != null) {
                     logger.finest("Got item from second level cache!");
-                    replaceEntityManager(o);
+                    replaceEntityManager(o, this);
                 }
             }
         }
@@ -454,7 +461,8 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
     }
 
     public void flush() {
-        throw new NotImplementedException("TODO");
+        // we're always flushed in the current version so this doesn't have to do anything
+//        throw new NotImplementedException("TODO");
     }
 
     public void setFlushMode(FlushModeType flushModeType) {
@@ -474,11 +482,23 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
     }
 
     public void clear() {
-        throw new NotImplementedException("TODO");
+        checkClosed();
+        // this is really only useful with transactions
+        if(sessionCache != null){
+            sessionCache = new ConcurrentHashMap();
+        }
+    }
+
+    private void checkClosed() {
+        if(!isOpen()) {
+            throw new IllegalStateException("EntityManager has been closed.");
+        }
     }
 
     public boolean contains(Object o) {
-        throw new NotImplementedException("TODO");
+        checkClosed();
+        Object ob = cacheGet(o.getClass(), getId(o));
+        return ob != null;
     }
 
     public Query createQuery(String s) {
@@ -528,7 +548,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
     }
 
     public boolean isOpen() {
-        return !closed;
+        return sessionless || !closed;
     }
 
     public EntityTransaction getTransaction() {
@@ -620,12 +640,11 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
         return lastOpStats;
     }
 
-    public <T> void replaceEntityManager(T newInstance) {
+    public static <T> void replaceEntityManager(T newInstance, EntityManagerSimpleJPA em) {
         if (newInstance instanceof Factory) {
             Factory factory = (Factory) newInstance;
-//                factory.setCallback(0, new LazyInterceptor(em));
             LazyInterceptor interceptor = (LazyInterceptor) factory.getCallback(0);
-            interceptor.setEntityManager(this);
+            interceptor.setEntityManager(em);
         }
     }
 
