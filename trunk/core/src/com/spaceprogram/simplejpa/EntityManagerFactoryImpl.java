@@ -77,7 +77,8 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
      */
     private Map<String, Domain> domainMap = new HashMap<String, Domain>();
 
-    private int numExecutorThreads = 50;
+    private static final int DEFAULT_GET_THREADS = 100;
+    private int numExecutorThreads = DEFAULT_GET_THREADS;
     public static final String DTYPE = "DTYPE";
 
 
@@ -146,6 +147,8 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         printQueries = Boolean.valueOf((String) props.get("printQueries"));
         cacheFactoryClassname = (String) props.get("cacheFactory");
         sessionless = Boolean.valueOf((String) props.get("sessionless"));
+        String prop = (String) props.get("threads");
+        if(prop != null) numExecutorThreads = Integer.parseInt(prop);
         if (awsAccessKey == null || awsAccessKey.length() == 0) {
             throw new PersistenceException("AWS Access Key not found. It is a required property.");
         }

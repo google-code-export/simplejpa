@@ -48,7 +48,7 @@ public class QueryImpl implements Query {
     private JPAQuery q;
     private Map<String, Object> paramMap = new HashMap<String, Object>();
 
-    public static String conditionRegex = "(<>)|(>=)|=|>|(<=)|\\band\\b|\\bor\\b|\\bis\\b|\\blike\\b"; //"[(<>)(>=)=>(<=)]+|and|or";
+    public static String conditionRegex = "(<>)|(>=)|=|>|<|(<=)|\\band\\b|\\bor\\b|\\bis\\b|\\blike\\b";
     private Integer maxResults;
 
     public QueryImpl(EntityManagerSimpleJPA em, JPAQuery q) {
