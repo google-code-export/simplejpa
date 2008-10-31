@@ -106,10 +106,10 @@ public class LazyList extends AbstractList implements Serializable {
         if (backingList.size() > i) {
             o = backingList.get(i);
             if (o != null) {
-                if (o instanceof Future) {
+                /*if (o instanceof Future) {
                     Future future = (Future) o;
 
-                }
+                }*/
                 logger.finest("object already loaded in backing list: " + o);
                 return o;
             }
@@ -122,15 +122,21 @@ public class LazyList extends AbstractList implements Serializable {
             if (o == null) {
                 o = checkCache(item); // todo: should this be swapped with checkFuturesMap and can cancel the future if for some reason it got cached between the future being added and here
                 if (o == null) {
-                    throw new PersistenceException("SHOULD NEVER GET THIS EXCEPTION. getting item at position " + i + ", list.size=" + size());
-                    /*List<ItemAttribute> atts = item.getAttributes();
-                    o = em.buildObject(genericReturnType, item.getIdentifier(), atts);*/
+                    // get from DB
+                    o = em.getItemAttributesBuildAndCache(genericReturnType, item.getIdentifier(), item);
+
                 } else {
                     if (logger.isLoggable(Level.FINEST)) logger.finest("cache hit in lazy list: " + o);
+                }
+                if(o == null){
+                    // can this ever happen??  perhaps if the item gets deleted somewhere along the way?
+                    throw new PersistenceException("SHOULD NEVER GET THIS EXCEPTION. getting item at position " + i + ", list.size=" + size());
                 }
             }
             putInBackingList(i, o);
             return o;
+        } catch (PersistenceException e) {
+            throw e;
         } catch (Exception e) {
             throw new PersistenceException(e);
         }
@@ -199,13 +205,10 @@ public class LazyList extends AbstractList implements Serializable {
                     if (ExceptionHelper.isDomainDoesNotExist(e)) {
                         items = new ArrayList<Item>(); // no need to throw here
                     } else {
-                        throw new PersistenceException("Query failed: " + query, e);
+                        throw new PersistenceException("Query failed: " + domain.getName() + query, e);
                     }
                 }
                 logger.finer("got " + items.size() + " for lazy list");
-                // todo: we really need the size of the full list here. Or load up all the ids here via multiple calls with next token
-                //            size = items.size();
-                //            loadedItems = true;
             }
         } catch (SDBException e) {
             throw new PersistenceException(e);
@@ -241,7 +244,7 @@ public class LazyList extends AbstractList implements Serializable {
 
                 for (Item item : itemsToGet) {
                     // todo: Make this async do the buildObject call so it gets in the cache as soon as possible
-                    Callable<ItemAndAttributes> callable = new GetAttributes(item);
+                    Callable<ItemAndAttributes> callable = new GetAttributes(item, em);
                     Future<ItemAndAttributes> itemAndAttributesFuture = em.getExecutor().submit(callable);
                     // todo:  em.statsGets(attributes.size(), duration2); - put this into the Callable
                     futuresMap.put(item.getIdentifier(), itemAndAttributesFuture);

@@ -68,7 +68,6 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
      * used for converting numbers to strings
      */
     public static final BigDecimal OFFSET_VALUE = new BigDecimal(Long.MIN_VALUE).negate();
-    private int queryCount;
     private OpStats lastOpStats = new OpStats(); // todo: thread local this
     private OpStats totalOpStats = new OpStats();
 
@@ -243,6 +242,19 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
         Item item = domain.getItem(id.toString());
 //            logger.fine("got back item=" + item);
         if (item == null) return null;
+        return getItemAttributesBuildAndCache(tClass, id, item);
+
+    }
+
+    /**
+     * If you already have reference to an Item, can use this build the object and cache it.
+     * @param tClass
+     * @param id
+     * @param item
+     * @return
+     * @throws SDBException
+     */
+    public <T> T getItemAttributesBuildAndCache(Class<T> tClass, Object id, Item item) throws SDBException {
         // todo: update stats for this get
         List<ItemAttribute> atts = item.getAttributes();
         if (atts == null || atts.size() == 0) return null;
@@ -574,18 +586,14 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
     }
 
     public void incrementQueryCount() {
-        queryCount++;
+        totalOpStats.queries.incrementAndGet();
     }
 
     /**
      * @return the number of actual queries sent to amazon.
      */
     public int getQueryCount() {
-        return queryCount;
-    }
-
-    public void setQueryCount(int queryCount) {
-        this.queryCount = queryCount;
+        return totalOpStats.queries.get();
     }
 
     /**
@@ -600,7 +608,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
     public void listAllObjectsRaw(Class c) throws SDBException, ExecutionException, InterruptedException {
         Domain d = getDomain(c);
         QueryResult qr = d.listItems();
-        List<ItemAndAttributes> ia = ConcurrentRetriever.getAttributesFromSdb(qr.getItemList(), getExecutor());
+        List<ItemAndAttributes> ia = ConcurrentRetriever.getAttributesFromSdb(qr.getItemList(), getExecutor(), this);
         for (ItemAndAttributes itemAndAttributes : ia) {
             System.out.println("item=" + itemAndAttributes.getItem().getIdentifier());
             List<ItemAttribute> atts = itemAndAttributes.getAtts();

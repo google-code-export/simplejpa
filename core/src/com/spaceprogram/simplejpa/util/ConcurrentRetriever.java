@@ -19,21 +19,21 @@ public class ConcurrentRetriever {
 
     public static List<ItemAndAttributes> test(EntityManagerSimpleJPA em, Domain domain) throws SDBException, ExecutionException, InterruptedException {
         QueryResult result = domain.listItems();
-        return getAttributesFromSdb(result.getItemList(), em.getExecutor());
+        return getAttributesFromSdb(result.getItemList(), em.getExecutor(), em);
     }
 
-    public static List<ItemAndAttributes> getAttributesFromSdb(List<Item> items, Executor executor) throws SDBException, InterruptedException, ExecutionException {
+    public static List<ItemAndAttributes> getAttributesFromSdb(List<Item> items, Executor executor, EntityManagerSimpleJPA em) throws SDBException, InterruptedException, ExecutionException {
         if (parallel) {
-            return getParallel(items, executor);
+            return getParallel(items, executor, em);
         } else {
             return getSerially(items);
         }
     }
 
-    private static List<ItemAndAttributes> getParallel(List<Item> items, Executor executor) throws InterruptedException, ExecutionException {
+    private static List<ItemAndAttributes> getParallel(List<Item> items, Executor executor, EntityManagerSimpleJPA em) throws InterruptedException, ExecutionException {
         CompletionService<ItemAndAttributes> ecs = new ExecutorCompletionService<ItemAndAttributes>(executor);
         for (Item item : items) {
-            Callable callable = new GetAttributes(item);
+            Callable callable = new GetAttributes(item, em);
             ecs.submit(callable);
         }
         List<ItemAndAttributes> ret = new ArrayList<ItemAndAttributes>();

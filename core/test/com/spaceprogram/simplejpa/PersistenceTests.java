@@ -1,6 +1,7 @@
 package com.spaceprogram.simplejpa;
 
 import com.xerox.amazonws.sdb.SDBException;
+import org.apache.commons.lang.time.DateUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -9,10 +10,11 @@ import javax.persistence.PersistenceException;
 import javax.persistence.Query;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.util.Calendar;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
-import java.util.Comparator;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
@@ -765,6 +767,37 @@ public class PersistenceTests extends BaseTestClass {
             Assert.assertEquals(1, obs.size());
         }
 
+        em.close();
+    }
+
+    @Test
+    public void testDates() throws IOException {
+        EntityManager em = factory.createEntityManager();
+
+        MyTestObject object = new MyTestObject();
+        object.setName("Scooby 'doo");
+        object.setBirthday(DateUtils.add(new Date(), Calendar.DAY_OF_MONTH, -5));
+        em.persist(object);
+        String id = object.getId();
+        object = new MyTestObject();
+        object.setName("Shaggy 2");
+        object.setBirthday(new Date());
+        em.persist(object);
+
+        em.close();
+
+        em = factory.createEntityManager();
+        {
+            Query query = em.createQuery("select o from MyTestObject o where o.birthday > :from and o.birthday < :to and o.id = :id");
+            query.setParameter("from", DateUtils.add(new Date(), Calendar.DAY_OF_MONTH, -7));
+            query.setParameter("to", DateUtils.add(new Date(), Calendar.DAY_OF_MONTH, -5));
+            query.setParameter("id", id);
+            List<MyTestObject> obs = query.getResultList();
+            for (MyTestObject ob : obs) {
+                System.out.println(ob);
+            }
+            Assert.assertEquals(1, obs.size());
+        }
         em.close();
     }
 
