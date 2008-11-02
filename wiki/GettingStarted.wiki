@@ -45,8 +45,6 @@ For more configuration options, see [Configuration].
 {{{
 // Create EntityManagerFactory. This should be a global object that you reuse.
 private static EntityManagerFactoryImpl factory = new EntityManagerFactoryImpl("persistenceUnitName", null);
-// now load sdb.properties (todo: change to persistence.xml)
-factory.loadProps(); 
 }}}
 
 == Get EntityManager's from the Factory ==
