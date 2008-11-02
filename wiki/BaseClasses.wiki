@@ -4,4 +4,4 @@
 
 There are a couple classes you can extend to get some common functionality.
 
-IdableBase and IdableTimestampedBase. IdableBase has an id field with appropriate annotations and IdableTimestampedBase extends IdableBase and adds created and updated Date fields that will automatically get set/updated when inserted or updated.
+IdedBase and IdedTimestampedBase. IdedBase has an id field with appropriate annotations and IdedTimestampedBase extends IdedBase and adds created and updated Date fields that will automatically get set/updated when inserted or updated.
