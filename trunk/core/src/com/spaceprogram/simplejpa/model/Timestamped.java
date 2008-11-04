@@ -1,4 +1,4 @@
-package com.spaceprogram.simplejpa;
+package com.spaceprogram.simplejpa.model;
 
 import java.util.Date;
 
