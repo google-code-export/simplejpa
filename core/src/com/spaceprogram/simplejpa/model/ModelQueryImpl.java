@@ -7,19 +7,19 @@ import java.util.List;
  * Date: Oct 18, 2008
  * Time: 4:39:13 PM
  */
-public class SimpleQueryImpl implements SimpleQuery {
+public class ModelQueryImpl implements ModelQuery {
     private Class<?> aClass;
 
-    public SimpleQueryImpl(Class<?> aClass) {
+    public ModelQueryImpl(Class<?> aClass) {
 
         this.aClass = aClass;
     }
 
-    public SimpleQuery filter(String attribute, String comparison, String value) {
+    public ModelQuery filter(String attribute, String comparison, String value) {
         return null;
     }
 
-    public SimpleQuery order(String attribute, String direction) {
+    public ModelQuery order(String attribute, String direction) {
         return null;
     }
 

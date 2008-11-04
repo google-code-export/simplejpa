@@ -356,7 +356,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 
     public SimpleDB getSimpleDb() {
         SimpleDB db = new SimpleDB(awsAccessKey, awsSecretKey);
-        db.setSignatureVersion(0); // todo: TEMPORARY UNTIL SDB FIXES THE UNICODE PROBLEM FOR REST QUERIES
+//        db.setSignatureVersion(0); // todo: TEMPORARY UNTIL SDB FIXES THE UNICODE PROBLEM FOR REST QUERIES
         return db;
     }
 

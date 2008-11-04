@@ -16,7 +16,7 @@ query.filter('title =', 'Foo').order('-date').ancestor(key)
  * Date: Oct 18, 2008
  * Time: 4:32:59 PM
  */
-public interface SimpleQuery {
+public interface ModelQuery {
     /**
      *
      * @param attribute eg: "title"
@@ -24,7 +24,7 @@ public interface SimpleQuery {
      * @param value eg: "some title"
      * @return
      */
-    SimpleQuery filter(String attribute, String comparison, String value);
+    ModelQuery filter(String attribute, String comparison, String value);
 
     /**
      *
@@ -32,7 +32,7 @@ public interface SimpleQuery {
      * @param direction eg: "asc" or "desc"
      * @return
      */
-    SimpleQuery order(String attribute, String direction);
+    ModelQuery order(String attribute, String direction);
 
     /**
      *

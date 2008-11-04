@@ -1,5 +1,7 @@
 package com.spaceprogram.simplejpa;
 
+import com.spaceprogram.simplejpa.model.Timestamped;
+
 import javax.persistence.PrePersist;
 import javax.persistence.PreUpdate;
 import java.util.Date;

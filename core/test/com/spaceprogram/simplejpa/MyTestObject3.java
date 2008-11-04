@@ -1,5 +1,8 @@
 package com.spaceprogram.simplejpa;
 
+import com.spaceprogram.simplejpa.model.TimestampEntityListener;
+import com.spaceprogram.simplejpa.model.Timestamped;
+
 import javax.persistence.Entity;
 import javax.persistence.EntityListeners;
 import java.util.Date;
@@ -11,7 +14,7 @@ import java.util.Date;
  */
 @Entity
 @EntityListeners({TimestampEntityListener.class})
-public class MyTestObject3 extends MySuperClass implements Timestamped{
+public class MyTestObject3 extends MySuperClass implements Timestamped {
     private String someField3;
 
     private Date created;

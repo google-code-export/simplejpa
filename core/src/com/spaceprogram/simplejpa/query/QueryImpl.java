@@ -12,6 +12,8 @@ import com.xerox.amazonws.sdb.SDBException;
 import org.apache.commons.lang.NotImplementedException;
 
 import javax.persistence.FlushModeType;
+import javax.persistence.NoResultException;
+import javax.persistence.NonUniqueResultException;
 import javax.persistence.PersistenceException;
 import javax.persistence.Query;
 import javax.persistence.TemporalType;
@@ -42,7 +44,7 @@ import java.util.regex.Pattern;
  * Date: Feb 8, 2008
  * Time: 7:33:20 PM
  */
-public class QueryImpl implements Query {
+public class QueryImpl implements SimpleQuery {
     private static Logger logger = Logger.getLogger(QueryImpl.class.getName());
     private EntityManagerSimpleJPA em;
     private JPAQuery q;
@@ -364,7 +366,23 @@ public class QueryImpl implements Query {
     }
 
     public Object getSingleResult() {
-        throw new NotImplementedException("TODO");
+        List resultList = getResultList();
+        int size = resultList.size();
+        if (size > 1) {
+            throw new NonUniqueResultException();
+        } else if (size == 0){
+            throw new NoResultException();
+        }
+        return resultList.get(0);
+    }
+
+    public Object getSingleResultNoThrow(){
+        List resultList = getResultList();
+        int size = resultList.size();
+        if(size > 0){
+            return resultList.get(0);
+        }
+        return null;
     }
 
     public int executeUpdate() {

@@ -13,10 +13,11 @@ import java.io.Serializable;
  * Time: 4:28:14 PM
  */
 public class Model implements Serializable {
-    public void persist(){
 
+    public void persist(){
     }
-    public static SimpleQuery query() throws ClassNotFoundException {
+
+    public static ModelQuery query() throws ClassNotFoundException {
         StackTraceElement[] stackTraceElements = Thread.currentThread().getStackTrace();
         String entityClass = null;
         for (int i = 0; i < Thread.currentThread().getStackTrace().length; i++) {
@@ -33,7 +34,7 @@ public class Model implements Serializable {
         return query(Class.forName(entityClass));
     }
 
-    public static SimpleQuery query(Class c) throws ClassNotFoundException {
-        return new SimpleQueryImpl(c);
+    public static ModelQuery query(Class c) throws ClassNotFoundException {
+        return new ModelQueryImpl(c);
     }
 }
