@@ -89,7 +89,6 @@ Now to persist it:
 MyObject ob = new MyObject();
 ob.setName("Scooby doo");
 em.persist(ob);
-em.getTransaction().commit();
 }}}
 
 That's it!
@@ -102,7 +101,6 @@ See [JPAQuery]
 {{{
 MyObject ob...
 em.remove(ob);
-em.getTransaction().commit();
 }}}
 
 = Call commit when you want to commit your changes to the database =
