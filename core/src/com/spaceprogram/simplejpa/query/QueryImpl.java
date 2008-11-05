@@ -17,6 +17,7 @@ import javax.persistence.NonUniqueResultException;
 import javax.persistence.PersistenceException;
 import javax.persistence.Query;
 import javax.persistence.TemporalType;
+import javax.persistence.ManyToOne;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -64,55 +65,12 @@ public class QueryImpl implements SimpleQuery {
         Class tClass = em.ensureClassIsEntity(obClass);
         try {
             // convert to amazon query
-            Domain d = em.getDomain(tClass);
-            if (d == null) {
-                return new ArrayList();
-            }
-            StringBuilder amazonQuery;
-            if (q.getFilter() != null) {
-                amazonQuery = toAmazonQuery(tClass, q);
-                if (amazonQuery == null) {
-                    return new ArrayList();
-                }
-            } else {
-                amazonQuery = new StringBuilder();
-            }
-            AnnotationInfo ai = em.getAnnotationManager().getAnnotationInfo(tClass);
-            if (ai.getDiscriminatorValue() != null) {
-                if (amazonQuery.length() == 0) {
-                    amazonQuery = new StringBuilder();
-                } else {
-                    amazonQuery.append(" intersection ");
-                }
-                appendFilter(amazonQuery, EntityManagerFactoryImpl.DTYPE, "=", ai.getDiscriminatorValue());
-            }
 
-            // now for sorting
-            String orderBy = q.getOrdering();
-            if (orderBy != null && orderBy.length() > 0) {
-                amazonQuery.append(" sort ");
-                String orderByOrder = "asc";
-                String orderBySplit[] = orderBy.split(" ");
-                if (orderBySplit.length > 2) {
-                    throw new PersistenceException("Can only sort on a single attribute in SimpleDB. Your order by is: " + orderBy);
-                }
-                if (orderBySplit.length == 2) {
-                    orderByOrder = orderBySplit[1];
-                }
-                String orderByAttribute = orderBySplit[0];
-                String fieldSplit[] = orderByAttribute.split("\\.");
-                if (fieldSplit.length == 1) {
-                    orderByAttribute = fieldSplit[0];
-                } else if (fieldSplit.length == 2) {
-                    orderByAttribute = fieldSplit[1];
-                }
-                amazonQuery.append("'").append(orderByAttribute).append("'");
-                amazonQuery.append(" ").append(orderByOrder);
-            }
-            String logString = "amazonQuery: Domain=" + d.getName() + ", query=" + amazonQuery;
-            logger.fine(logString);
-            if (em.getFactory().isPrintQueries()) {
-                System.out.println(logString);
+            StringBuilder amazonQuery;
+            try {
+                amazonQuery = createAmazonQuery(tClass);
+            } catch (NoResultsException e) {
+                return new ArrayList();
             }
             String qToSend = amazonQuery != null ? amazonQuery.toString() : null;
             em.incrementQueryCount();
@@ -129,6 +87,63 @@ public class QueryImpl implements SimpleQuery {
         }
     }
 
+    public StringBuilder createAmazonQuery(Class tClass) throws NoResultsException, SDBException {
+        Domain d = em.getDomain(tClass);
+        if (d == null) {
+            throw new NoResultsException();
+        }
+        StringBuilder amazonQuery;
+        if (q.getFilter() != null) {
+            amazonQuery = toAmazonQuery(tClass, q);
+            if (amazonQuery == null) {
+                throw new NoResultsException();
+            }
+        } else {
+            amazonQuery = new StringBuilder();
+        }
+        AnnotationInfo ai = em.getAnnotationManager().getAnnotationInfo(tClass);
+        if (ai.getDiscriminatorValue() != null) {
+            if (amazonQuery.length() == 0) {
+                amazonQuery = new StringBuilder();
+            } else {
+                amazonQuery.append(" intersection ");
+            }
+            appendFilter(amazonQuery, EntityManagerFactoryImpl.DTYPE, "=", ai.getDiscriminatorValue());
+        }
+
+        // now for sorting
+        String orderBy = q.getOrdering();
+        if (orderBy != null && orderBy.length() > 0) {
+            amazonQuery.append(" sort ");
+            String orderByOrder = "asc";
+            String orderBySplit[] = orderBy.split(" ");
+            if (orderBySplit.length > 2) {
+                throw new PersistenceException("Can only sort on a single attribute in SimpleDB. Your order by is: " + orderBy);
+            }
+            if (orderBySplit.length == 2) {
+                orderByOrder = orderBySplit[1];
+            }
+            String orderByAttribute = orderBySplit[0];
+            String fieldSplit[] = orderByAttribute.split("\\.");
+            if (fieldSplit.length == 1) {
+                orderByAttribute = fieldSplit[0];
+            } else if (fieldSplit.length == 2) {
+                orderByAttribute = fieldSplit[1];
+            }
+            amazonQuery.append("'").append(orderByAttribute).append("'");
+            amazonQuery.append(" ").append(orderByOrder);
+        }
+        String logString = "amazonQuery: Domain=" + d.getName() + ", query=" + amazonQuery;
+        logger.fine(logString);
+        if (em.getFactory().isPrintQueries()) {
+            System.out.println(logString);
+        }
+        return amazonQuery;
+    }
+
+    /* public StringBuilder toAmazonQuery(){
+        return toAmazonQuery(
+    }*/
 
     public StringBuilder toAmazonQuery(Class tClass, JPAQuery q) {
         StringBuilder sb = new StringBuilder();
@@ -288,7 +303,7 @@ public class QueryImpl implements SimpleQuery {
     }
 
 
-    private String getParamValueAsStringForAmazonQuery(String param, Method getterForField) {
+    private String getParamValueAsStringForAmazonQuery(String param, Method getter) {
         String paramName = paramName(param);
         if (paramName == null) {
             // no colon, so just a value?
@@ -303,28 +318,33 @@ public class QueryImpl implements SimpleQuery {
         if (paramOb == null) {
             throw new PersistenceException("parameter is null for: " + paramName);
         }
-        Class retType = getterForField.getReturnType();
-        if (Integer.class.isAssignableFrom(retType)) {
-            Integer x = (Integer) paramOb;
-            param = AmazonSimpleDBUtil.encodeRealNumberRange(new BigDecimal(x), AmazonSimpleDBUtil.LONG_DIGITS, EntityManagerSimpleJPA.OFFSET_VALUE).toString();
-            logger.finer("encoded int " + x + " to " + param);
-        } else if (Long.class.isAssignableFrom(retType)) {
-            Long x = (Long) paramOb;
-            param = AmazonSimpleDBUtil.encodeRealNumberRange(new BigDecimal(x), AmazonSimpleDBUtil.LONG_DIGITS, EntityManagerSimpleJPA.OFFSET_VALUE).toString();
-        } else if (Double.class.isAssignableFrom(retType)) {
-            Double x = (Double) paramOb;
-            param = AmazonSimpleDBUtil.encodeRealNumberRange(new BigDecimal(x), AmazonSimpleDBUtil.LONG_DIGITS, AmazonSimpleDBUtil.LONG_DIGITS,
-                    EntityManagerSimpleJPA.OFFSET_VALUE).toString();
-        } else if (BigDecimal.class.isAssignableFrom(retType)) {
-            BigDecimal x = (BigDecimal) paramOb;
-            param = AmazonSimpleDBUtil.encodeRealNumberRange(x, AmazonSimpleDBUtil.LONG_DIGITS, AmazonSimpleDBUtil.LONG_DIGITS,
-                    EntityManagerSimpleJPA.OFFSET_VALUE).toString();
-        } else if (Date.class.isAssignableFrom(retType)) {
-            Date x = (Date) paramOb;
-            param = AmazonSimpleDBUtil.encodeDate(x);
+        if (getter.getAnnotation(ManyToOne.class) != null) {
+            String id2 = em.getId(paramOb);
+            param = EscapeUtils.escapeQueryParam(id2);
         } else {
-            // only thing supported now is String
-            param = EscapeUtils.escapeQueryParam(paramOb.toString());
+            Class retType = getter.getReturnType();
+            if (Integer.class.isAssignableFrom(retType)) {
+                Integer x = (Integer) paramOb;
+                param = AmazonSimpleDBUtil.encodeRealNumberRange(new BigDecimal(x), AmazonSimpleDBUtil.LONG_DIGITS, EntityManagerSimpleJPA.OFFSET_VALUE).toString();
+                logger.finer("encoded int " + x + " to " + param);
+            } else if (Long.class.isAssignableFrom(retType)) {
+                Long x = (Long) paramOb;
+                param = AmazonSimpleDBUtil.encodeRealNumberRange(new BigDecimal(x), AmazonSimpleDBUtil.LONG_DIGITS, EntityManagerSimpleJPA.OFFSET_VALUE).toString();
+            } else if (Double.class.isAssignableFrom(retType)) {
+                Double x = (Double) paramOb;
+                param = AmazonSimpleDBUtil.encodeRealNumberRange(new BigDecimal(x), AmazonSimpleDBUtil.LONG_DIGITS, AmazonSimpleDBUtil.LONG_DIGITS,
+                        EntityManagerSimpleJPA.OFFSET_VALUE).toString();
+            } else if (BigDecimal.class.isAssignableFrom(retType)) {
+                BigDecimal x = (BigDecimal) paramOb;
+                param = AmazonSimpleDBUtil.encodeRealNumberRange(x, AmazonSimpleDBUtil.LONG_DIGITS, AmazonSimpleDBUtil.LONG_DIGITS,
+                        EntityManagerSimpleJPA.OFFSET_VALUE).toString();
+            } else if (Date.class.isAssignableFrom(retType)) {
+                Date x = (Date) paramOb;
+                param = AmazonSimpleDBUtil.encodeDate(x);
+            } else {
+                // only thing supported now is String
+                param = EscapeUtils.escapeQueryParam(paramOb.toString());
+            }
         }
         return param;
     }
@@ -370,16 +390,16 @@ public class QueryImpl implements SimpleQuery {
         int size = resultList.size();
         if (size > 1) {
             throw new NonUniqueResultException();
-        } else if (size == 0){
+        } else if (size == 0) {
             throw new NoResultException();
         }
         return resultList.get(0);
     }
 
-    public Object getSingleResultNoThrow(){
+    public Object getSingleResultNoThrow() {
         List resultList = getResultList();
         int size = resultList.size();
-        if(size > 0){
+        if (size > 0) {
             return resultList.get(0);
         }
         return null;
