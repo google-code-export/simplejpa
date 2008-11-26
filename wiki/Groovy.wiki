@@ -10,6 +10,7 @@ groovyBeans=true
 Which will ignore extra methods that Groovy adds to the beans. Then you have 
 to give SimpleJPA the Groovy classpath so SimpleJPA can find the entities 
 (which is easy as you'll see below). Here's some sample code: 
+
 OUR ENTITY: 
 {{{
 @Entity 
