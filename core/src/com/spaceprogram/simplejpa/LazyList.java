@@ -32,14 +32,9 @@ import java.util.logging.Logger;
 public class LazyList extends AbstractList implements Serializable {
     private static Logger logger = Logger.getLogger(LazyList.class.getName());
     private transient EntityManagerSimpleJPA em;
-    //    private Object instance;
-    //    private String fieldName;
-    //    private Object id;
     private Class genericReturnType;
     private String query;
-    //    private boolean loadedItems;
     private List<Item> items = new ArrayList<Item>();
-    //    private int size;
     /** Stores the actual objects for this list */
     private List backingList = new GrowthList();
     private int numRetrieved = 0;
@@ -64,9 +59,6 @@ public class LazyList extends AbstractList implements Serializable {
     public LazyList(EntityManagerSimpleJPA em, Class tClass, String query) {
         this();
         this.em = em;
-//        this.instance = instance;
-//        this.fieldName = fieldName;
-//        this.id = id;
         this.genericReturnType = tClass;
         this.query = query;
 
