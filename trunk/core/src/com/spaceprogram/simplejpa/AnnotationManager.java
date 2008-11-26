@@ -23,6 +23,11 @@ public class AnnotationManager {
     // todo: implement EntityListeners for timestamps
     private Map<String, AnnotationInfo> annotationMap = new HashMap<String, AnnotationInfo>();
     private Map<String, AnnotationInfo> discriminatorMap = new HashMap<String, AnnotationInfo>();
+    private SimpleJPAConfig config;
+
+    public AnnotationManager(SimpleJPAConfig config) {
+        this.config = config;
+    }
 
     public AnnotationInfo getAnnotationInfo(Object o) {
         Class c = o.getClass();
@@ -145,7 +150,10 @@ public class AnnotationManager {
     private void putMethods(AnnotationInfo ai, Method[] methods) {
         for (Method method : methods) {
 //            logger.fine("method=" + method.getName());
-            if (!method.getName().startsWith("get")) continue;
+            String methodName = method.getName();
+            if (!methodName.startsWith("get")) continue;
+//            System.out.println("method=" + methodName);
+            if(config.isGroovyBeans() && (methodName.equals("getProperty") || methodName.equals("getMetaClass"))) continue;
             Id id = method.getAnnotation(Id.class);
             if (id != null) ai.setIdMethod(method);
             Transient transientM = method.getAnnotation(Transient.class);

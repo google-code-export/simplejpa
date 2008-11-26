@@ -3,6 +3,8 @@ package com.spaceprogram.simplejpa.model;
 import java.io.Serializable;
 
 /**
+ * NOTE: Just toying with this idea, you probably shouldn't use it... yet.
+ *
  * Adds functionality to an object to allow it to persist itself. If you'd like to use this functionality,
  * just extend this class. You can use a common base class in your own model that extends this class
  * to make this easy to swap out (which you might have already for IDs and dates anyways).

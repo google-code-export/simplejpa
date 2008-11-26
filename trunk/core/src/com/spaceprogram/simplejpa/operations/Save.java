@@ -56,7 +56,7 @@ public class Save implements Callable {
         this.em = entityManager;
         this.o = o;
         long start = System.currentTimeMillis();
-        id = prePersist(o); // could probably move this inside the Save
+        id = prePersist(o);
         if(logger.isLoggable(Level.FINE)) logger.fine("prePersist time=" + (System.currentTimeMillis() - start));
 
     }
@@ -74,9 +74,10 @@ public class Save implements Callable {
         if (id == null) {
             newObject = true;
             id = UUID.randomUUID().toString();
+//            System.out.println("new object, setting id");
+            AnnotationInfo ai = em.getFactory().getAnnotationManager().getAnnotationInfo(o);
+            em.setFieldValue(o.getClass(), o, ai.getIdMethod(), id);
         }
-        AnnotationInfo ai = em.getFactory().getAnnotationManager().getAnnotationInfo(o);
-        em.setFieldValue(o.getClass(), o, ai.getIdMethod(), id);
         em.cachePut(id, o);
         return id;
     }

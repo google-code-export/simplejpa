@@ -58,7 +58,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     /**
      * Stores annotation info about our entities for easy retrieval when needed
      */
-    private AnnotationManager annotationManager = new AnnotationManager();
+    private AnnotationManager annotationManager;
     /**
      * for all the concurrent action.
      * todo: It might make sense to have two executors, one fast one for queries, and one slow one used for slow things like puts/deletes
@@ -92,10 +92,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     private CacheFactory2 cacheFactory;
     private boolean sessionless;
     private boolean cacheless;
-    /**
-     * Used for sessionless, could be used as a singleton for getEntityManager()
-     */
-//    private EntityManagerSimpleJPA globalEntityManager;
+    public SimpleJPAConfig config;
 
     /**
      * This one is generally called via the PersistenceProvider.
@@ -105,7 +102,6 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
      */
     public EntityManagerFactoryImpl(PersistenceUnitInfo persistenceUnitInfo, Map props) {
         this(persistenceUnitInfo != null ? persistenceUnitInfo.getPersistenceUnitName() : null, props);
-        init(null);
     }
 
     /**
@@ -129,7 +125,9 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         if (persistenceUnitName == null) {
             throw new IllegalArgumentException("Must have a persistenceUnitName!");
         }
+        config = new SimpleJPAConfig();
         this.persistenceUnitName = persistenceUnitName;
+        annotationManager = new AnnotationManager(config);
         this.props = props;
         if (props == null) {
             try {
@@ -144,9 +142,10 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     private void init(Set<String> libsToScan) {
         awsAccessKey = (String) props.get("accessKey");
         awsSecretKey = (String) props.get("secretKey");
-        printQueries = Boolean.valueOf((String) props.get("printQueries"));
+        printQueries = Boolean.parseBoolean((String) props.get("printQueries"));
         cacheFactoryClassname = (String) props.get("cacheFactory");
-        sessionless = Boolean.valueOf((String) props.get("sessionless"));
+        sessionless = Boolean.parseBoolean((String) props.get("sessionless"));
+        config.setGroovyBeans(Boolean.parseBoolean((String) props.get("groovyBeans")));
         String prop = (String) props.get("threads");
         if(prop != null) numExecutorThreads = Integer.parseInt(prop);
         if (awsAccessKey == null || awsAccessKey.length() == 0) {
@@ -178,6 +177,10 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
                 }
                 urls = urls2;
             }
+            System.out.println("classpath=" + System.getProperty("java.class.path"));
+            for (URL url : urls) {
+                    logger.warning(url.toString());
+                }
             if (logger.isLoggable(Level.FINE)) {
                 logger.fine("classpath urls:");
                 for (URL url : urls) {
