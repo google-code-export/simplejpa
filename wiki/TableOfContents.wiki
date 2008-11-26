@@ -3,6 +3,7 @@
 
   * WhatsSupported
   * GettingStarted
+  * [Configuration]
   * WebApplications
   * [JPAQuery JPAQuery]
   * DatabaseNamingConventions
