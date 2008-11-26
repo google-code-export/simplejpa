@@ -1,6 +1,8 @@
 #summary Running SimpleJPA in sessionless mode
 #labels Phase-Deploy,Phase-Implementation
 
+*NOTE: This is the default mode now.*
+
 = Introduction =
 
 There's a config setting in SimpleJPA, "sessionless", that enables SimpleJPA to run without the concept of sessions as you would be used to with Hibernate. Since SimpleDB has no concept of open connections, no transactions, no commits, no rollbacks, etc, SimpleJPA can follow along those lines too.
