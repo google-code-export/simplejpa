@@ -17,7 +17,7 @@ SimpleJPA queries are a subset of the JPA spec due to the limitations of SimpleD
   * OR
   * IS NULL
   * IS NOT NULL
-  * LIKE - only starts with due to SimpleDB limitations.
+  * LIKE - only "starts-with" due to SimpleDB limitations.
   * ORDER BY
 
 = Limitations =
@@ -71,3 +71,21 @@ List<MyTestObject3> obs = query.getResultList();
 }}}
 
 This will return all MyTestObject3's that start with "fred and".
+
+= QueryBuilder =
+
+QueryBuilder helps with creating parameterized queries.
+
+Example usage:
+
+{{{
+private List<Book> getBooks(BookFilter filter) {
+    QueryBuilder qb = new QueryBuilderImpl();
+    qb.append("select o from Book o where 1 = 1");
+    if (filter.getTitle() != null) {
+        qb.append(" and o.title = :title", "title", filter.getTitle());
+    }
+    Query q = qb.makeQuery(em());
+    return q.getResultList();
+}
+}}}
