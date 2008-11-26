@@ -1,0 +1,41 @@
+#summary Using SimpleJPA in Groovy
+
+= Introduction =
+
+I just started playing around with [http://groovy.codehaus.org/ Groovy] (and have to say I'm really digging it) and tried to get SimpleJPA working with it.  Mission accomplished. To make it work nicely, I've added a configuration parameter to SimpleJPA: 
+{{{
+groovyBeans=true 
+}}}
+
+Which will ignore extra methods that Groovy adds to the beans. Then you have 
+to give SimpleJPA the Groovy classpath so SimpleJPA can find the entities 
+(which is easy as you'll see below). Here's some sample code: 
+OUR ENTITY: 
+{{{
+@Entity 
+class Book extends IdedTimestampedBase { 
+  String title 
+  String summary 
+} 
+}}}
+
+That's all the code you need to make an Entity. Beautiful. 
+
+GROOVY SCRIPT USING THE ENTITY: 
+
+{{{
+// get the libraries to scan for @Entity 
+def urls = this.class.classLoader.rootLoader.getURLs() 
+def libsToScan = [] as Set 
+urls.each {libsToScan.add(it.getFile())} 
+// create EntityManagerFactory 
+def emf = new EntityManagerFactoryImpl("TEST-GROOVY", null, libsToScan) 
+// get EntityMananger from factory 
+def em = emf.createEntityManager() 
+// persist a Book 
+def book = new Book(title:"Some book title", summary:"summary of book") 
+em.persist(book) 
+// find the book 
+def book2 = em.find(Book.class, book.id) 
+println("got book: ${book2.title}") 
+}}}
