@@ -14,4 +14,7 @@ This page has all the available options in simplejpa.properties
 || cacheFactory = com.spaceprogram.simplejpa.cache.EhCacheFactory || optional || no caching || Cache factory for SecondLevelCache ||
 || net.sf.ehcache.configurationResourceName = /ehcache-test.xml || required if cacheFactory is used || ehcache.xml || configuration file for ehcache ||
 || sessionless = true/false || optional || true || If true, enable [Sessionless] mode ||
-|| threads = 100 || optional || 100 || Set the number of threads SimpleJPA will use ||
+|| threads = X || optional || 100 || Set the number of threads SimpleJPA will use ||
+|| groovyBeans=true/false || optional || false || enables support for Groovy Beans as @Entity objects ||
+
+
