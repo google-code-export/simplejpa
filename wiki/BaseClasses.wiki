@@ -4,4 +4,20 @@
 
 There are a couple classes you can extend to get some common functionality.
 
-IdedBase and IdedTimestampedBase. IdedBase has an id field with appropriate annotations and IdedTimestampedBase extends IdedBase and adds created and updated Date fields that will automatically get set/updated when inserted or updated.
+  * IdedBase - has an id field @Id annotation
+  * [http://www.google.com/codesearch?hl=en&q=show:Cd2TNPgmc_s:d2FrQKvJBGg:Cd2TNPgmc_s&sa=N&ct=rd&cs_p=http://simplejpa.googlecode.com/svn&cs_f=trunk/core/src/com/spaceprogram/simplejpa/model/IdedTimestampedBase.java IdedTimestampedBase] - extends IdedBase and adds created and updated Date fields that will automatically get set/updated when inserted or updated.
+
+So you can easily make a ready to go entity just by extending one of these objects.
+
+{{{
+public class Book extends IdedTimestampedBase {
+   private String title;
+   
+   public void getTitle(){
+      return title;
+   }
+   public void setTitle(String title){
+      this.title = title;
+   }
+}
+}}}
