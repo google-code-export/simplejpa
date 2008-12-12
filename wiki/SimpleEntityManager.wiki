@@ -13,5 +13,36 @@ To use the SimpleEntityManager interface, simply cast the EntityManager you norm
 SimpleEntityManager em = (SimpleEntityManager) factory.createEntityManager();
 }}}
 
+Then you can use these methods:
+
+{{{
+ /**
+     * This is the same as persist(Object), but will return immediately and do the actual
+     * save to the database in the background.
+     *
+     * You can use the Future that is returned to make see if any exceptions occurred while doing the save by
+     * calling Future.get() and wrapping that in a try/catch. If an Exception occurred, you will get an
+     * ExecutionException and you can call getCause() on that to get the original exception.
+     * ie:
+     * try {
+     *    future.get(); // this will block until the task has completed.
+     * } catch (ExecutionException ex){
+     *    ex.getCause().printStackTrace();
+     * }
+     *
+     * @param o the object to persist.
+     * @return the Future representing the persist task.
+     */
+    Future persistAsync(Object o);
+
+    /**
+     * Removes an object asynchronously. This method returns immediately and queues up the remove for processing.
+     * 
+     * @param o
+     * @return
+     */
+    Future removeAsync(Object o);
+}}}
+
 See javadoc at for details on the new methods:
 http://code.google.com/p/simplejpa/source/browse/trunk/core/src/com/spaceprogram/simplejpa/SimpleEntityManager.java
