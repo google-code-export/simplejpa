@@ -72,6 +72,15 @@ List<MyTestObject3> obs = query.getResultList();
 
 This will return all MyTestObject3's that start with "fred and".
 
+Sort query:
+
+{{{
+query = entityManager.createQuery("select o from MyTestObject o where o.income = :income and o.age = :age order by o.age");
+query.setParameter("income", 50507.0);
+query.setParameter("age", 12);
+List<MyTestObject> obs = query.getResultList();
+}}}
+
 = QueryBuilder =
 
 QueryBuilder helps with creating parameterized queries.
