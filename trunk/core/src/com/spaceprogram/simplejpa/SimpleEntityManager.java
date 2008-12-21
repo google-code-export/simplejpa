@@ -40,5 +40,14 @@ public interface SimpleEntityManager extends EntityManager {
      */
     Future removeAsync(Object o);
 
+    /**
+     * Like find(), but returns a Future. Use future.get() to obtain the object.
+     *
+     * @param tClass
+     * @param o
+     * @return
+     */
+    <T> Future<T> findAsync(Class<T> tClass, Object o);
+
 
 }
