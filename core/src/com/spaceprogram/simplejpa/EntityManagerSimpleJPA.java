@@ -2,6 +2,7 @@ package com.spaceprogram.simplejpa;
 
 import com.spaceprogram.simplejpa.AnnotationManager.ClassMethodEntry;
 import com.spaceprogram.simplejpa.operations.Delete;
+import com.spaceprogram.simplejpa.operations.Find;
 import com.spaceprogram.simplejpa.operations.Save;
 import com.spaceprogram.simplejpa.query.JPAQuery;
 import com.spaceprogram.simplejpa.query.JPAQueryParser;
@@ -97,6 +98,11 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
 
     public Future removeAsync(Object o) {
         Future future = getExecutor().submit(new Delete(this, o));
+        return future;
+    }
+
+    public <T> Future<T> findAsync(Class<T> tClass, Object o) {
+        Future<T> future = getExecutor().submit(new Find(this, tClass, o));
         return future;
     }
 
