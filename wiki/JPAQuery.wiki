@@ -88,6 +88,13 @@ QueryBuilder helps with creating parameterized queries.
 Example usage:
 
 {{{
+// the one liner
+Query qb = new QueryBuilderImpl()
+   .append("select o from IndexStats o where o.numKeywords < :x", "x", 10).makeQuery(em);
+   List<IndexStats> resultList = qb.getResultList();
+}}}
+
+{{{
 private List<Book> getBooks(BookFilter filter) {
     QueryBuilder qb = new QueryBuilderImpl();
     qb.append("select o from Book o where 1 = 1");
