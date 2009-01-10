@@ -14,9 +14,9 @@ import javax.persistence.EntityManager;
  */
 public interface QueryBuilder {
 
-    void append(String s);
+    QueryBuilder append(String s);
 
-    void append(String s, String parameterName, Object parameterValue);
+    QueryBuilder append(String s, String parameterName, Object parameterValue);
 
     Query makeQuery(EntityManager em);
 }

@@ -1,8 +1,13 @@
 package com.spaceprogram.simplejpa;
 
 import javax.persistence.*;
+import java.beans.BeanInfo;
+import java.beans.IntrospectionException;
+import java.beans.Introspector;
+import java.beans.PropertyDescriptor;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -18,7 +23,7 @@ import java.util.logging.Logger;
  */
 public class AnnotationManager {
 
-     private static Logger logger = Logger.getLogger(AnnotationManager.class.getName());
+    private static Logger logger = Logger.getLogger(AnnotationManager.class.getName());
 
     // todo: implement EntityListeners for timestamps
     private Map<String, AnnotationInfo> annotationMap = new HashMap<String, AnnotationInfo>();
@@ -42,10 +47,15 @@ public class AnnotationManager {
 
     public AnnotationInfo getAnnotationInfo(Class c) {
         c = stripEnhancerClass(c);
-        AnnotationInfo ai = getAnnotationMap().get(c.getName());
+        AnnotationInfo ai = getAnnotationInfo(c.getName());
         if (ai == null) {
             ai = putAnnotationInfo(c);
         }
+        return ai;
+    }
+
+    private AnnotationInfo getAnnotationInfo(String className) {
+        AnnotationInfo ai = getAnnotationMap().get(className);
         return ai;
     }
 
@@ -58,19 +68,14 @@ public class AnnotationManager {
     public static Class stripEnhancerClass(Class c) {
         String className = c.getName();
         className = stripEnhancerClass(className);
-        c = getClass(className);
+        if(className.equals(c.getName())){
+            // no change, did this to fix groovy issue
+            return c;
+        } else {
+            c = getClass(className, c.getClassLoader());
+        }
         return c;
     }
-
-    public static Class getClass(String obClass) {
-        try {
-            Class c = Class.forName(obClass);
-            return c;
-        } catch (ClassNotFoundException e) {
-            throw new PersistenceException(e);
-        }
-    }
-
 
     public static String stripEnhancerClass(String className) {
         int enhancedIndex = className.indexOf("$$EnhancerByCGLIB");
@@ -80,6 +85,38 @@ public class AnnotationManager {
         return className;
     }
 
+
+    /**
+     *
+     * @param obClass
+     * @param classLoader pass in null if you want to use the current threads classloader only
+     * @return
+     */
+    public static Class getClass(String obClass, ClassLoader classLoader) {
+        try {
+            Class c = null;
+            try {
+                c = Class.forName(obClass, true, Thread.currentThread().getContextClassLoader());
+            } catch (ClassNotFoundException e) {
+                try {
+                    c = Class.forName(obClass);
+                } catch (ClassNotFoundException e1) {
+//                    e1.printStackTrace();
+//                    System.out.println("THIRD LEVEL CLASS LODER");
+//                    c = obClass.getClass().getClassLoader().loadClass(obClass);
+                    if(classLoader == null){
+                        throw e1;
+                    } else {
+                        c = classLoader.loadClass(obClass);
+                    }
+                }
+            }
+            return c;
+        } catch (ClassNotFoundException e) {
+            throw new PersistenceException(e);
+        }
+    }
+
     /**
      * Gets all the annotation info for a particular class and puts it in our annotation info cache.
      *
@@ -87,6 +124,12 @@ public class AnnotationManager {
      * @return
      */
     public AnnotationInfo putAnnotationInfo(Class c) {
+        {
+            Entity entity = (Entity) c.getAnnotation(Entity.class);
+            if(entity == null){
+                throw new PersistenceException("Class not marked as an @Entity: " + c.getName());
+            }
+        }
         AnnotationInfo ai = new AnnotationInfo();
         ai.setClassAnnotations(c.getAnnotations());
         ai.setMainClass(c);
@@ -96,29 +139,14 @@ public class AnnotationManager {
             MappedSuperclass mappedSuperclass = (MappedSuperclass) superClass.getAnnotation(MappedSuperclass.class);
             Entity entity = (Entity) superClass.getAnnotation(Entity.class);
             Inheritance inheritance = (Inheritance) superClass.getAnnotation(Inheritance.class);
-            /*
-            This inheritance stuff might be a problem the way we're doing it on demand. We might need to
-            get all the annotation info when first loading the factory so we know all the subclasses and what not.
-            For now, just won't use a discriminator when querying on the root class, but can't have multiple levels this way.
-             */
             if (mappedSuperclass != null || entity != null) {
-                Method[] methods = superClass.getDeclaredMethods();
-                putMethods(ai, methods);
+                putMethods(ai, superClass);
                 if (entity != null) {
-                    /*Don't think this applies anymore
-                    if (inheritance == null) {
-                        throw new PersistenceException("Must use the @Inheritance annotation on " + superClass.getName() + " when using inherited entities.");
-                    } else {*/
                     rootClass = superClass;
-//                    }
                 }
                 putEntityListeners(ai, superClass);
             }
-
-
         }
-        /* Inheritance inheritance = (Inheritance) c.getAnnotation(Inheritance.class);
-        */
         if (rootClass != null) {
             ai.setRootClass(rootClass);
             DiscriminatorValue dv = (DiscriminatorValue) c.getAnnotation(DiscriminatorValue.class);
@@ -136,8 +164,8 @@ public class AnnotationManager {
         } else {
             ai.setRootClass(c);
         }
-        Method[] methods = c.getDeclaredMethods();
-        putMethods(ai, methods);
+        putMethods(ai, c);
+        putProperties(ai, c);
         if (ai.getIdMethod() == null) {
             throw new PersistenceException("No ID method specified for: " + c.getName());
         }
@@ -147,13 +175,15 @@ public class AnnotationManager {
         return ai;
     }
 
-    private void putMethods(AnnotationInfo ai, Method[] methods) {
+    private void putMethods(AnnotationInfo ai, Class c) {
+        Method[] methods = c.getDeclaredMethods();
         for (Method method : methods) {
 //            logger.fine("method=" + method.getName());
             String methodName = method.getName();
             if (!methodName.startsWith("get")) continue;
 //            System.out.println("method=" + methodName);
-            if(config.isGroovyBeans() && (methodName.equals("getProperty") || methodName.equals("getMetaClass"))) continue;
+            if (config.isGroovyBeans() && (methodName.equals("getProperty") || methodName.equals("getMetaClass")))
+                continue;
             Id id = method.getAnnotation(Id.class);
             if (id != null) ai.setIdMethod(method);
             Transient transientM = method.getAnnotation(Transient.class);
@@ -162,6 +192,31 @@ public class AnnotationManager {
         }
     }
 
+
+    /**
+     * For field based annotations.
+     *
+     * @param ai
+     * @param c
+     */
+    private void putProperties(AnnotationInfo ai, Class c) {
+        for (Field field : c.getDeclaredFields()) {
+            Id id = field.getAnnotation(Id.class);
+            if (id != null) {
+                try {
+                    BeanInfo info = Introspector.getBeanInfo(c);
+                    for (PropertyDescriptor descriptor : info.getPropertyDescriptors()) {
+                        if (descriptor.getName().equals(field.getName())) {
+                            ai.setIdMethod(descriptor.getReadMethod());
+                            break;
+                        }
+                    }
+                } catch (IntrospectionException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+    }
 
     private void putEntityListeners(AnnotationInfo ai, Class c) {
         EntityListeners listeners = (EntityListeners) c.getAnnotation(EntityListeners.class);
@@ -174,7 +229,7 @@ public class AnnotationManager {
     @SuppressWarnings("unchecked")
     private void putEntityListeners(AnnotationInfo ai, EntityListeners entityListeners) {
         Class[] entityListenerClasses = entityListeners.value();
-        if(entityListenerClasses == null) return;
+        if (entityListenerClasses == null) return;
 
         Map<Class, List<ClassMethodEntry>> listeners = ai.getEntityListeners();
 
