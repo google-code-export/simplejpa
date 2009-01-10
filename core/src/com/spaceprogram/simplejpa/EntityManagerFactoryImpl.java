@@ -144,10 +144,15 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         awsSecretKey = (String) props.get("secretKey");
         printQueries = Boolean.parseBoolean((String) props.get("printQueries"));
         cacheFactoryClassname = (String) props.get("cacheFactory");
-        sessionless = Boolean.parseBoolean((String) props.get("sessionless"));
+        String s1 = (String) props.get("sessionless");
+        if (s1 == null) {
+            sessionless = true;
+        } else {
+            sessionless = Boolean.parseBoolean(s1);
+        }
         config.setGroovyBeans(Boolean.parseBoolean((String) props.get("groovyBeans")));
         String prop = (String) props.get("threads");
-        if(prop != null) numExecutorThreads = Integer.parseInt(prop);
+        if (prop != null) numExecutorThreads = Integer.parseInt(prop);
         if (awsAccessKey == null || awsAccessKey.length() == 0) {
             throw new PersistenceException("AWS Access Key not found. It is a required property.");
         }
@@ -179,8 +184,8 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
             }
             System.out.println("classpath=" + System.getProperty("java.class.path"));
             for (URL url : urls) {
-                    logger.warning(url.toString());
-                }
+                logger.info("Scanning: " + url.toString());
+            }
             if (logger.isLoggable(Level.FINE)) {
                 logger.fine("classpath urls:");
                 for (URL url : urls) {
@@ -192,13 +197,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
             entities = annotationDB.getAnnotationIndex().get(Entity.class.getName());
             if (entities != null) {
                 for (String entity : entities) {
-                    System.out.println("entity=" + entity);
-                    entityMap.put(entity, entity);
-                    // also add simple name to it
-                    String simpleName = entity.substring(entity.lastIndexOf(".") + 1);
-                    entityMap.put(simpleName, entity);
-                    Class c = getAnnotationManager().getClass(entity);
-                    getAnnotationManager().putAnnotationInfo(c);
+                    initEntity(entity);
                 }
             }
             System.out.println("Finished scanning for entity classes.");
@@ -209,6 +208,16 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private void initEntity(String entity) {
+        System.out.println("entity=" + entity);
+        entityMap.put(entity, entity);
+        // also add simple name to it
+        String simpleName = entity.substring(entity.lastIndexOf(".") + 1);
+        entityMap.put(simpleName, entity);
+        Class c = getAnnotationManager().getClass(entity, null);
+        getAnnotationManager().putAnnotationInfo(c);
     }
 
     private void initSecondLevelCache() {

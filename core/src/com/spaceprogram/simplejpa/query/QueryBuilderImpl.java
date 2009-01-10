@@ -16,13 +16,29 @@ public class QueryBuilderImpl implements QueryBuilder {
     private static Logger logger = Logger.getLogger(QueryBuilderImpl.class.getName());
     private StringBuffer sb = new StringBuffer();
     private Map params = new HashMap();
-    public void append(String s) {
-        sb.append(s);
+    
+    public QueryBuilderImpl append(String s) {
+        sb.append(" ").append(s);
+        return this;
     }
 
-    public void append(String s, String parameterName, Object parameterValue) {
-        sb.append(s);
+    /**
+     *
+     *
+     *
+     * @param s This is the piece of the query to append, for example: and "o.someField3 like :x"
+     * @param parameterName the name of the param to replace, for example: "x"
+     * @param parameterValue the value for "x"
+     */
+    public QueryBuilderImpl append(String s, String parameterName, Object parameterValue) {
+        append(s);
+        set(parameterName, parameterValue);
+        return this;
+    }
+
+    public QueryBuilderImpl set(String parameterName, Object parameterValue){
         params.put(parameterName, parameterValue);
+        return this;
     }
 
     public Query makeQuery(EntityManager em) {

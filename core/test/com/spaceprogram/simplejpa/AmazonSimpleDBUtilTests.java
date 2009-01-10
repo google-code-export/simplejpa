@@ -12,6 +12,13 @@ import java.math.BigDecimal;
  * Time: 5:36:59 PM
  */
 public class AmazonSimpleDBUtilTests {
+
+    @Test
+    public void testSimpleJPADefaults(){
+        long x = 12345L;
+        String encoded = EntityManagerSimpleJPA.padOrConvertIfRequired(x);
+        System.out.println("encoded=" + encoded);
+    }
     @Test
     public void testInt() {
         System.out.println("MAX INT=" + Integer.MAX_VALUE);

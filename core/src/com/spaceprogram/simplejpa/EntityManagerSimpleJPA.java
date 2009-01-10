@@ -132,7 +132,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
         return s3;
     }
 
-    public String padOrConvertIfRequired(Object ob) {
+    public static String padOrConvertIfRequired(Object ob) {
         if (ob instanceof Integer || ob instanceof Long) {
             // then pad
             return AmazonSimpleDBUtil.encodeRealNumberRange(new BigDecimal(ob.toString()), AmazonSimpleDBUtil.LONG_DIGITS, OFFSET_VALUE);
@@ -180,8 +180,8 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
 
 
     public void checkEntity(Object o) {
-        String className = o.getClass().getName();
-        ensureClassIsEntity(className);
+//        String className = o.getClass().getName();
+//        ensureClassIsEntity(className); THIS IS DONE IN getAnnotationInfo now
         // now if it the reflection data hasn't been cached, do it now
         AnnotationInfo ai = factory.getAnnotationManager().getAnnotationInfo(o);
         String domainName = getDomainName(o.getClass());
@@ -192,9 +192,10 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
         className = factory.getAnnotationManager().stripEnhancerClass(className);
         String fullClassName = factory.getEntityMap().get(className);
         if (fullClassName == null) {
-            throw new PersistenceException("Object not marked as an Entity: " + className);
+//            throw new PersistenceException("Class not marked as an Entity: " + className);
+            fullClassName = className;
         }
-        Class tClass = factory.getAnnotationManager().getClass(fullClassName);
+        Class tClass = factory.getAnnotationManager().getClass(fullClassName, null);
         AnnotationInfo ai = factory.getAnnotationManager().getAnnotationInfo(tClass); // sets up metadata if not already done
         return tClass;
     }
