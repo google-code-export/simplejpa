@@ -22,10 +22,8 @@ import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.jets3t.service.S3Service;
 import org.jets3t.service.S3ServiceException;
-import org.jets3t.service.impl.rest.httpclient.RestS3Service;
 import org.jets3t.service.model.S3Bucket;
 import org.jets3t.service.model.S3Object;
-import org.jets3t.service.security.AWSCredentials;
 
 import javax.persistence.EntityTransaction;
 import javax.persistence.FlushModeType;
@@ -59,7 +57,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
 
     private static Logger logger = Logger.getLogger(EntityManagerSimpleJPA.class.getName());
     private boolean closed = false;
-    private EntityManagerFactoryImpl factory;
+    public EntityManagerFactoryImpl factory;
     private boolean sessionless;
     /**
      * cache is used to store objects retrieved in this EntityManager session
@@ -119,17 +117,6 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
 
     public String s3ObjectId(String id, Method getter) {
         return id + "-" + NamingHelper.attributeName(getter);
-    }
-
-    public String s3bucketName() {
-        return factory.getPersistenceUnitName() + "-lobs";
-    }
-
-    public S3Service getS3Service() throws S3ServiceException {
-        S3Service s3;
-        AWSCredentials awsCredentials = new AWSCredentials(factory.getAwsAccessKey(), factory.getAwsSecretKey());
-        s3 = new RestS3Service(awsCredentials);
-        return s3;
     }
 
     public static String padOrConvertIfRequired(Object ob) {
@@ -246,7 +233,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
 
     private <T> T findInDb(Class<T> tClass, Object id) throws SDBException {
         Domain domain = getDomain(tClass);
-        Item item = domain.getItem(id.toString());
+        SdbItem item = new SdbItemImpl2(domain.getItem(id.toString()));
 //            logger.fine("got back item=" + item);
         if (item == null) return null;
         return getItemAttributesBuildAndCache(tClass, id, item);
@@ -261,7 +248,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
      * @return
      * @throws SDBException
      */
-    public <T> T getItemAttributesBuildAndCache(Class<T> tClass, Object id, Item item) throws SDBException {
+    public <T> T getItemAttributesBuildAndCache(Class<T> tClass, Object id, SdbItem item) throws SDBException {
         // todo: update stats for this get
         List<ItemAttribute> atts = item.getAttributes();
         if (atts == null || atts.size() == 0) return null;
@@ -579,8 +566,8 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
     }
 
     public Object getObjectFromS3(String idOnS3) throws S3ServiceException, IOException, ClassNotFoundException {
-        S3Service s3 = getS3Service();
-        S3Bucket bucket = s3.createBucket(s3bucketName());
+        S3Service s3 = factory.getS3Service();
+        S3Bucket bucket = s3.createBucket(factory.s3bucketName());
         S3Object s3o = s3.getObject(bucket, idOnS3);
         logger.fine("got s3object=" + s3o);
         if (s3o != null) {
@@ -615,7 +602,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
     public void listAllObjectsRaw(Class c) throws SDBException, ExecutionException, InterruptedException {
         Domain d = getDomain(c);
         QueryResult qr = d.listItems();
-        List<ItemAndAttributes> ia = ConcurrentRetriever.getAttributesFromSdb(qr.getItemList(), getExecutor(), this);
+        List<ItemAndAttributes> ia = ConcurrentRetriever.getAttributesFromSdb(toSdbItem(qr), getExecutor(), this);
         for (ItemAndAttributes itemAndAttributes : ia) {
             System.out.println("item=" + itemAndAttributes.getItem().getIdentifier());
             List<ItemAttribute> atts = itemAndAttributes.getAtts();
@@ -623,6 +610,15 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
                 System.out.println("\t=" + att.getName() + "=" + att.getValue());
             }
         }
+    }
+
+    private List<SdbItem> toSdbItem(QueryResult qr) {
+        List<SdbItem> ret = new ArrayList<SdbItem>();
+        List<Item> items = qr.getItemList();
+        for (Item item : items) {
+            ret.add(new SdbItemImpl2(item));
+        }
+        return ret;
     }
 
     public void invokeEntityListener(Object o, Class event) {
@@ -687,5 +683,11 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
         totalOpStats.got(numItems, duration2);
     }
 
-   
+    public S3Bucket getS3Bucket() throws S3ServiceException {
+        return factory.getBucket();
+    }
+
+    public S3Service getS3Service() throws S3ServiceException {
+        return factory.getS3Service();
+    }
 }

@@ -139,7 +139,7 @@ public class Save implements Callable {
                 logger.fine("putting lob to s3");
                 long start3 = System.currentTimeMillis();
                 s3 = em.getS3Service();
-                S3Bucket bucket = s3.createBucket(em.s3bucketName()); // todo: only do this once per EMFactory
+                S3Bucket bucket = em.getS3Bucket(); 
                 String s3ObjectId = em.s3ObjectId(id, getter);
                 S3Object s3Object = new S3Object(bucket, s3ObjectId);
                 ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -214,9 +214,9 @@ public class Save implements Callable {
             if (!newObject && attsToDelete.size() > 0) {
                 // not enhanced, but still have to deal with deleted attributes
                 start2 = System.currentTimeMillis();
-                for (ItemAttribute itemAttribute : attsToDelete) {
-                    System.out.println("itemAttr=" + itemAttribute.getName() + ": " + itemAttribute.getValue());
-                }
+//                for (ItemAttribute itemAttribute : attsToDelete) {
+//                    System.out.println("itemAttr=" + itemAttribute.getName() + ": " + itemAttribute.getValue());
+//                }
                 item.deleteAttributes(attsToDelete);
                 // todo: what about lobs?  need to delete from s3
                 duration2 = System.currentTimeMillis() - start2;

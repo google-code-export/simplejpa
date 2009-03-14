@@ -51,8 +51,7 @@ public class SimpleJPAUtil {
                 throw new PersistenceException("SimpleJPAUtil requires a call to setPersistenceUnitName before using.");
             }
             entityManagerFactory = new EntityManagerFactoryImpl(persistenceUnitName, null, libsToScan);
-            entityManagerFactory.loadProps();
-//           todo: use Persistence class: entityManagerFactory = Persistence.createEntityManagerFactory(persistenceUnitName != null ? persistenceUnitName : DEFAULT_PERSISTENCE_UNIT);
+            //           todo: use Persistence class: entityManagerFactory = Persistence.createEntityManagerFactory(persistenceUnitName != null ? persistenceUnitName : DEFAULT_PERSISTENCE_UNIT);
         } catch (Throwable ex) {
             // Log exception!
             ex.printStackTrace();

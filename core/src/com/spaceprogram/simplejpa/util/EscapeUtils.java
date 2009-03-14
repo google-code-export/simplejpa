@@ -1,7 +1,5 @@
 package com.spaceprogram.simplejpa.util;
 
-import org.apache.commons.lang.StringUtils;
-
 /**
  * User: treeder
  * Date: Aug 18, 2008
@@ -15,7 +13,7 @@ public class EscapeUtils {
         }
         String s = str;
         s = s.replace("\\", "\\\\");
-        s = s.replace("'", "\\'");
+        s = s.replace("'", "''");
         return s;
     }
 }

@@ -9,6 +9,11 @@ import com.xerox.amazonws.sdb.SimpleDB;
 import net.sf.ehcache.CacheManager;
 import net.sf.jsr107cache.Cache;
 import net.sf.jsr107cache.CacheException;
+import org.jets3t.service.model.S3Bucket;
+import org.jets3t.service.S3Service;
+import org.jets3t.service.S3ServiceException;
+import org.jets3t.service.impl.rest.httpclient.RestS3Service;
+import org.jets3t.service.security.AWSCredentials;
 import org.scannotation.AnnotationDB;
 import org.scannotation.ClasspathUrlFinder;
 
@@ -23,6 +28,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -76,6 +82,10 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
      * same as domainsList, but map access
      */
     private Map<String, Domain> domainMap = new HashMap<String, Domain>();
+    /**
+     * For s3 buckets.
+     */
+    private Map<String, S3Bucket> bucketMap = new HashMap();
 
     private static final int DEFAULT_GET_THREADS = 100;
     private int numExecutorThreads = DEFAULT_GET_THREADS;
@@ -115,6 +125,41 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     }
 
     /**
+     *  * SimpleJPA entity manager, which gets classes names instead of "libs-to-scan".
+     * @author Yair Ben-Meir
+     * @param persistenceUnitName
+     * @param props
+     * @param classNames
+     * @throws PersistenceException
+     */
+    public static EntityManagerFactoryImpl newInstanceWithClassNames(String persistenceUnitName,
+                                           Map<String, String> props, Set<String> classNames) throws PersistenceException {
+        return new EntityManagerFactoryImpl(persistenceUnitName, props, getLibsToScan(classNames));
+    }
+
+    private static Set<String> getLibsToScan(Set<String> classNames) throws PersistenceException {
+        Set<String> libs = new HashSet<String>();
+        for (String className : classNames) {
+            try {
+                Class<?> clazz = Class.forName(className);
+                URL resource = clazz.getResource(clazz.getSimpleName() + ".class");
+                if (resource.getProtocol().equals("jar")) {
+                    libs.add(resource.getFile().split("!")[0].substring(6));
+                } else if (resource.getProtocol().equals("file")) {
+                    libs.add(resource.getFile().substring(1));
+                } else {
+                    throw new PersistenceException("Unknown protocol in URL: " + resource);
+                }
+            }
+            catch (Throwable e) {
+                throw new PersistenceException("Failed getting lib of class: "
+                        + className, e);
+            }
+        }
+        return libs;
+    }
+
+    /**
      * Use this one in web applications, see: http://code.google.com/p/simplejpa/wiki/WebApplications
      *
      * @param persistenceUnitName
@@ -125,7 +170,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         if (persistenceUnitName == null) {
             throw new IllegalArgumentException("Must have a persistenceUnitName!");
         }
-        config = new SimpleJPAConfig();
+        config = new SimpleJPAConfig(); 
         this.persistenceUnitName = persistenceUnitName;
         annotationManager = new AnnotationManager(config);
         this.props = props;
@@ -457,5 +502,25 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 
     public CacheFactory2 getCacheFactory() {
         return cacheFactory;
+    }
+
+    public synchronized S3Bucket getBucket() throws S3ServiceException {
+        S3Bucket bucket = bucketMap.get(s3bucketName());
+        if(bucket != null){
+            return bucket;
+        }
+        bucket = getS3Service().createBucket(s3bucketName());
+        return bucket;
+    }
+
+    public S3Service getS3Service() throws S3ServiceException {
+        S3Service s3;
+        AWSCredentials awsCredentials = new AWSCredentials(getAwsAccessKey(), getAwsSecretKey());
+        s3 = new RestS3Service(awsCredentials);
+        return s3;
+    }
+
+    public String s3bucketName() {
+        return getPersistenceUnitName() + "-lobs";
     }
 }

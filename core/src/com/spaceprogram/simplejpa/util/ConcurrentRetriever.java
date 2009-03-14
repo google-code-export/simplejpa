@@ -2,12 +2,22 @@ package com.spaceprogram.simplejpa.util;
 
 import com.spaceprogram.simplejpa.EntityManagerSimpleJPA;
 import com.spaceprogram.simplejpa.ItemAndAttributes;
+import com.spaceprogram.simplejpa.SdbItem;
+import com.spaceprogram.simplejpa.SdbItemImpl2;
 import com.spaceprogram.simplejpa.operations.GetAttributes;
-import com.xerox.amazonws.sdb.*;
+import com.xerox.amazonws.sdb.Domain;
+import com.xerox.amazonws.sdb.Item;
+import com.xerox.amazonws.sdb.ItemAttribute;
+import com.xerox.amazonws.sdb.QueryResult;
+import com.xerox.amazonws.sdb.SDBException;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorCompletionService;
 
 /**
  * User: treeder
@@ -19,10 +29,14 @@ public class ConcurrentRetriever {
 
     public static List<ItemAndAttributes> test(EntityManagerSimpleJPA em, Domain domain) throws SDBException, ExecutionException, InterruptedException {
         QueryResult result = domain.listItems();
-        return getAttributesFromSdb(result.getItemList(), em.getExecutor(), em);
+        List<SdbItem> list = new ArrayList<SdbItem>();
+        for (Item item : result.getItemList()) {
+            list.add(new SdbItemImpl2(item));
+        }
+        return getAttributesFromSdb(list, em.getExecutor(), em);
     }
 
-    public static List<ItemAndAttributes> getAttributesFromSdb(List<Item> items, Executor executor, EntityManagerSimpleJPA em) throws SDBException, InterruptedException, ExecutionException {
+    public static List<ItemAndAttributes> getAttributesFromSdb(List<SdbItem> items, Executor executor, EntityManagerSimpleJPA em) throws SDBException, InterruptedException, ExecutionException {
         if (parallel) {
             return getParallel(items, executor, em);
         } else {
@@ -30,9 +44,9 @@ public class ConcurrentRetriever {
         }
     }
 
-    private static List<ItemAndAttributes> getParallel(List<Item> items, Executor executor, EntityManagerSimpleJPA em) throws InterruptedException, ExecutionException {
+    private static List<ItemAndAttributes> getParallel(List<SdbItem> items, Executor executor, EntityManagerSimpleJPA em) throws InterruptedException, ExecutionException {
         CompletionService<ItemAndAttributes> ecs = new ExecutorCompletionService<ItemAndAttributes>(executor);
-        for (Item item : items) {
+        for (SdbItem item : items) {
             Callable callable = new GetAttributes(item, em);
             ecs.submit(callable);
         }
@@ -47,9 +61,9 @@ public class ConcurrentRetriever {
         return ret;
     }
 
-    private static List<ItemAndAttributes> getSerially(List<Item> items) throws SDBException {
+    private static List<ItemAndAttributes> getSerially(List<SdbItem> items) throws SDBException {
         List<ItemAndAttributes> ret = new ArrayList<ItemAndAttributes>();
-        for (Item item : items) {
+        for (SdbItem item : items) {
 //            logger.fine("item=" + item.getIdentifier());
             List<ItemAttribute> atts = item.getAttributes();
             ret.add(new ItemAndAttributes(item, atts));

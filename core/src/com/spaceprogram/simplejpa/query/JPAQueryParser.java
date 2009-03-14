@@ -86,6 +86,7 @@ public class JPAQueryParser
     }
 
     /**
+     *
      * Compiler to process keywords contents. In the query the keywords often have
      * content values following them that represent the constituent parts of the query. This takes the keyword
      * and sets the constituent part accordingly.

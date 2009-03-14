@@ -8,19 +8,22 @@ import com.spaceprogram.simplejpa.NamingHelper;
 import com.spaceprogram.simplejpa.util.AmazonSimpleDBUtil;
 import com.spaceprogram.simplejpa.util.EscapeUtils;
 import com.xerox.amazonws.sdb.Domain;
+import com.xerox.amazonws.sdb.ItemAttribute;
+import com.xerox.amazonws.sdb.QueryWithAttributesResult;
 import com.xerox.amazonws.sdb.SDBException;
 import org.apache.commons.lang.NotImplementedException;
 
 import javax.persistence.FlushModeType;
+import javax.persistence.ManyToOne;
 import javax.persistence.NoResultException;
 import javax.persistence.NonUniqueResultException;
 import javax.persistence.PersistenceException;
 import javax.persistence.Query;
 import javax.persistence.TemporalType;
-import javax.persistence.ManyToOne;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -60,23 +63,43 @@ public class QueryImpl implements SimpleQuery {
     }
 
     public List getResultList() {
+
         String split[] = q.getFrom().split(" ");
         String obClass = split[0];
         Class tClass = em.ensureClassIsEntity(obClass);
         try {
             // convert to amazon query
 
-            StringBuilder amazonQuery;
+            AmazonQueryString amazonQuery;
             try {
                 amazonQuery = createAmazonQuery(tClass);
             } catch (NoResultsException e) {
                 return new ArrayList();
             }
-            String qToSend = amazonQuery != null ? amazonQuery.toString() : null;
+//            String qToSend = amazonQuery != null ? amazonQuery.toString() : null;
             em.incrementQueryCount();
-            LazyList ret = new LazyList(em, tClass, qToSend);
-            ret.setMaxResults(maxResults);
-            return ret;
+            if (amazonQuery.isCount()) {
+                Domain domain = em.getDomain(tClass);
+                String nextToken = null;
+                QueryWithAttributesResult qr;
+                long count = 0;
+                while ((qr = domain.selectItems(amazonQuery.getValue(), nextToken)) != null) {
+                    Map<String, List<ItemAttribute>> itemMap = qr.getItems();
+                    for (String id : itemMap.keySet()) {
+                        List<ItemAttribute> list = itemMap.get(id);
+                        for (ItemAttribute itemAttribute : list) {
+                            if(itemAttribute.getName().equals("Count")) count += Long.parseLong(itemAttribute.getValue());
+                        }
+                    }
+                    nextToken = qr.getNextToken();
+                    if(nextToken == null) break;
+                }
+                return Arrays.asList(count);
+            } else {
+                LazyList ret = new LazyList(em, tClass, amazonQuery.getValue());
+                ret.setMaxResults(maxResults);
+                return ret;
+            }
         } catch (SDBException e) {
             if (e.getMessage() != null && e.getMessage().contains("The specified domain does not exist")) {
                 return new ArrayList(); // no need to throw here
@@ -87,7 +110,13 @@ public class QueryImpl implements SimpleQuery {
         }
     }
 
-    public StringBuilder createAmazonQuery(Class tClass) throws NoResultsException, SDBException {
+    public AmazonQueryString createAmazonQuery(Class tClass) throws NoResultsException, SDBException {
+        String select = q.getResult();
+        boolean count = false;
+        if (select != null && select.contains("count")) {
+//            System.out.println("HAS COUNT: " + select);
+            count = true;
+        }
         Domain d = em.getDomain(tClass);
         if (d == null) {
             throw new NoResultsException();
@@ -106,15 +135,16 @@ public class QueryImpl implements SimpleQuery {
             if (amazonQuery.length() == 0) {
                 amazonQuery = new StringBuilder();
             } else {
-                amazonQuery.append(" intersection ");
+                amazonQuery.append(" and ");
             }
-            appendFilter(amazonQuery, EntityManagerFactoryImpl.DTYPE, "=", ai.getDiscriminatorValue());
+            appendFilter(amazonQuery, EntityManagerFactoryImpl.DTYPE, "=", "'" + ai.getDiscriminatorValue() + "'");
         }
 
         // now for sorting
         String orderBy = q.getOrdering();
         if (orderBy != null && orderBy.length() > 0) {
-            amazonQuery.append(" sort ");
+//            amazonQuery.append(" sort ");
+            amazonQuery.append(" order by ");
             String orderByOrder = "asc";
             String orderBySplit[] = orderBy.split(" ");
             if (orderBySplit.length > 2) {
@@ -130,15 +160,25 @@ public class QueryImpl implements SimpleQuery {
             } else if (fieldSplit.length == 2) {
                 orderByAttribute = fieldSplit[1];
             }
-            amazonQuery.append("'").append(orderByAttribute).append("'");
+//            amazonQuery.append("'");
+            amazonQuery.append(orderByAttribute);
+//            amazonQuery.append("'");
             amazonQuery.append(" ").append(orderByOrder);
         }
-        String logString = "amazonQuery: Domain=" + d.getName() + ", query=" + amazonQuery;
+        StringBuilder fullQuery = new StringBuilder();
+        fullQuery.append("select ");
+        fullQuery.append(count ? "count(*)" : "*");
+        fullQuery.append(" from `").append(d.getName()).append("` ");
+        if (amazonQuery.length() > 0) {
+            fullQuery.append("where ");
+            fullQuery.append(amazonQuery);
+        }
+        String logString = "amazonQuery: Domain=" + d.getName() + ", query=" + fullQuery;
         logger.fine(logString);
         if (em.getFactory().isPrintQueries()) {
             System.out.println(logString);
         }
-        return amazonQuery;
+        return new AmazonQueryString(fullQuery.toString(), count);
     }
 
     /* public StringBuilder toAmazonQuery(){
@@ -156,9 +196,9 @@ public class QueryImpl implements SimpleQuery {
             if (aok && i > 0) {
                 String andOr = whereTokens.get(i);
                 if (andOr.equalsIgnoreCase("OR")) {
-                    sb.append(" union ");
+                    sb.append(" or ");
                 } else {
-                    sb.append(" intersection ");
+                    sb.append(" and ");
                 }
             }
             if (i > 0) {
@@ -276,18 +316,20 @@ public class QueryImpl implements SimpleQuery {
         if (columnName == null) columnName = field;
         if (comparator.equals("is")) {
             if (param.equalsIgnoreCase("null")) {
-                appendFilter(sb, true, columnName, "starts-with", "");
+                sb.append(columnName).append(" is null");
+//                appendFilter(sb, true, columnName, "starts-with", "");
             } else if (param.equalsIgnoreCase("not null")) {
-                appendFilter(sb, false, columnName, "starts-with", "");
+                sb.append(columnName).append(" is not null");
+//                appendFilter(sb, false, columnName, "starts-with", "");
             } else {
                 throw new PersistenceException("Must use only 'is null' or 'is not null' with where condition containing 'is'");
             }
         } else if (comparator.equals("like")) {
-            comparator = "starts-with";
+            comparator = "like";
             String paramValue = getParamValueAsStringForAmazonQuery(param, getterForField);
-            System.out.println("param=" + paramValue + "___");
-            paramValue = paramValue.endsWith("%") ? paramValue.substring(0, paramValue.length() - 1) : paramValue;
-            System.out.println("param=" + paramValue + "___");
+//            System.out.println("param=" + paramValue + "___");
+//            paramValue = paramValue.endsWith("%") ? paramValue.substring(0, paramValue.length() - 1) : paramValue;
+//            System.out.println("param=" + paramValue + "___");
 //            param = param.startsWith("%") ? param.substring(1) : param;
             if (paramValue.startsWith("%")) {
                 throw new PersistenceException("SimpleDB only supports a wildcard query on the right side of the value (ie: starts-with).");
@@ -295,8 +337,8 @@ public class QueryImpl implements SimpleQuery {
             appendFilter(sb, columnName, comparator, paramValue);
         } else {
             String paramValue = getParamValueAsStringForAmazonQuery(param, getterForField);
-            logger.finest("paramValue=" + paramValue);
-            logger.finest("comp=[" + comparator + "]");
+            logger.finer("paramValue=" + paramValue);
+            logger.finer("comp=[" + comparator + "]");
             appendFilter(sb, columnName, comparator, paramValue);
         }
         return true;
@@ -306,12 +348,7 @@ public class QueryImpl implements SimpleQuery {
     private String getParamValueAsStringForAmazonQuery(String param, Method getter) {
         String paramName = paramName(param);
         if (paramName == null) {
-            // no colon, so just a value?
-            /*  try {
-                BigDecimal bd = new BigDecimal(param);
-            } catch (Exception e) {
-//                e.printStackTrace();
-            }*/
+            // no colon, so just a value
             return param;
         }
         Object paramOb = paramMap.get(paramName);
@@ -342,11 +379,10 @@ public class QueryImpl implements SimpleQuery {
                 Date x = (Date) paramOb;
                 param = AmazonSimpleDBUtil.encodeDate(x);
             } else {
-                // only thing supported now is String
                 param = EscapeUtils.escapeQueryParam(paramOb.toString());
             }
         }
-        return param;
+        return "'" + param + "'";
     }
 
     private String paramName(String param) {
@@ -357,32 +393,43 @@ public class QueryImpl implements SimpleQuery {
     }
 
     private void appendFilterMultiple(StringBuilder sb, String field, String comparator, List params) {
-        sb.append("[");
+//        sb.append("[");
         int count = 0;
         for (Object param : params) {
             if (count > 0) {
-                sb.append("]").append(" intersection ").append("[");
+//                sb.append("]");
+                sb.append(" and ");
+//                sb.append("[");
 //                sb.append(" OR ");
             }
-            sb.append("'").append(field).append("' ").append(comparator).append(" '").append(param).append("'");
+//            sb.append("'");
+            sb.append(field);
+//            sb.append("' ");
+            sb.append(comparator).append(" '").append(param).append("'");
             count++;
         }
-        sb.append("]");
+//        sb.append("]");
     }
 
     private void appendFilter(StringBuilder sb, String field, String comparator, String param) {
-        appendFilter(sb, false, field, comparator, param);
+        appendFilter(sb, false, field, comparator, param, false);
     }
 
-    private void appendFilter(StringBuilder sb, boolean not, String field, String comparator, String param) {
+    private void appendFilter(StringBuilder sb, boolean not, String field, String comparator, String param, boolean quoteParam) {
         if (not) {
             sb.append("not ");
         }
-        sb.append("[");
-        sb.append("'").append(field).append("' ");
+//        sb.append("[");
+//        sb.append("'");
+        sb.append(field);
+//        sb.append("' ");
+        sb.append(" ");
         sb.append(comparator);
-        sb.append(" '").append(param).append("'");
-        sb.append("]");
+        sb.append(" ");
+        if (quoteParam) sb.append("'");
+        sb.append(param);
+        if (quoteParam) sb.append("'");
+//        sb.append("]");
     }
 
     public Object getSingleResult() {

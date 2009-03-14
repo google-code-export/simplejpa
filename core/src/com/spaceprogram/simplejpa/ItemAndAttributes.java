@@ -1,6 +1,5 @@
 package com.spaceprogram.simplejpa;
 
-import com.xerox.amazonws.sdb.Item;
 import com.xerox.amazonws.sdb.ItemAttribute;
 
 import java.util.List;
@@ -13,19 +12,19 @@ import java.util.List;
  * Time: 7:55:06 PM
  */
 public class ItemAndAttributes {
-    private Item item;
+    private SdbItem item;
     private List<ItemAttribute> atts;
 
-    public ItemAndAttributes(Item item, List<ItemAttribute> atts) {
+    public ItemAndAttributes(SdbItem item, List<ItemAttribute> atts) {
         this.item = item;
         this.atts = atts;
     }
 
-    public Item getItem() {
+    public SdbItem getItem() {
         return item;
     }
 
-    public void setItem(Item item) {
+    public void setItem(SdbItem item) {
         this.item = item;
     }
 
