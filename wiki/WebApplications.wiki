@@ -1,9 +1,21 @@
 #summary How to use SimpleJPA in a web application.
 #labels Featured,Phase-Support
 
-The only thing different here is the initial setup, you need to provide a list of jars from your WEB-INF/lib as well as the path to WEB-INF/classes since these aren't on the default java.class.path.
+The only thing different here is the initial setup, you need to provide a list of jars from your WEB-INF/lib as well as the path to WEB-INF/classes since these aren't on the default java.class.path.  
 
-= How To Add Extra Webapp Class Paths =
+There are two ways to get this to work:
+
+= Way 1: Pass in the class names for all your entities =
+
+The advantage to this is that you don't need the ServletContext or anything, just the one method:
+
+{{{
+EntityManagerFactoryEntityManagerFactoryImpl.newInstanceWithClassNames(persistenceUnitName, null, setOfClassName);
+}}}
+
+= Way 2: Add Extra Webapp Class Paths =
+
+The advantage to this one is that you don't need to let SimpleJPA know about new entities or anything, it will just automagically find them.
 
 This method will get you all the paths you need.
 {{{
