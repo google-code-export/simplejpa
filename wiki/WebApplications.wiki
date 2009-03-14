@@ -10,7 +10,7 @@ There are two ways to get this to work:
 The advantage to this is that you don't need the ServletContext or anything, just the one method:
 
 {{{
-EntityManagerFactoryEntityManagerFactoryImpl.newInstanceWithClassNames(persistenceUnitName, null, setOfClassName);
+entityManagerFactory = EntityManagerFactoryEntityManagerFactoryImpl.newInstanceWithClassNames(persistenceUnitName, null, setOfClassName);
 }}}
 
 = Way 2: Add Extra Webapp Class Paths =
