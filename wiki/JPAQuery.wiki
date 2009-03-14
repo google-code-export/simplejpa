@@ -81,6 +81,18 @@ query.setParameter("age", 12);
 List<MyTestObject> obs = query.getResultList();
 }}}
 
+===Count:===
+
+Count returns a result list with a single entry that contains a Long.
+
+{{{
+query = entityManager.createQuery("select count(o) from MyTestObject o where o.income = :income and o.age = :age order by o.age");
+query.setParameter("income", 50507.0);
+query.setParameter("age", 12);
+List obs = query.getResultList();
+long count = obs.get(0);
+}}}
+
 = QueryBuilder =
 
 QueryBuilder helps with creating parameterized queries.
