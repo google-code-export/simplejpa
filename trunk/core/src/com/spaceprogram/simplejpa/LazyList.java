@@ -2,8 +2,8 @@ package com.spaceprogram.simplejpa;
 
 import com.spaceprogram.simplejpa.operations.GetAttributes;
 import com.xerox.amazonws.sdb.Domain;
-import com.xerox.amazonws.sdb.Item;
-import com.xerox.amazonws.sdb.QueryResult;
+import com.xerox.amazonws.sdb.ItemAttribute;
+import com.xerox.amazonws.sdb.QueryWithAttributesResult;
 import com.xerox.amazonws.sdb.SDBException;
 import org.apache.commons.collections.list.GrowthList;
 
@@ -34,7 +34,7 @@ public class LazyList extends AbstractList implements Serializable {
     private transient EntityManagerSimpleJPA em;
     private Class genericReturnType;
     private String query;
-    private List<Item> items = new ArrayList<Item>();
+    private List<SdbItem> items = new ArrayList<SdbItem>();
     /** Stores the actual objects for this list */
     private List backingList = new GrowthList();
     private int numRetrieved = 0;
@@ -107,7 +107,7 @@ public class LazyList extends AbstractList implements Serializable {
             }
         }
         // else we load the atts
-        Item item = items.get(i);
+        SdbItem item = items.get(i);
         // check future's loading map
         try {
             o = checkFuturesMap(item);
@@ -134,7 +134,7 @@ public class LazyList extends AbstractList implements Serializable {
         }
     }
 
-    private Object checkFuturesMap(Item item) throws ExecutionException, InterruptedException {
+    private Object checkFuturesMap(SdbItem item) throws ExecutionException, InterruptedException {
         Future<ItemAndAttributes> f = futuresMap.remove(item.getIdentifier());
         if (f != null) {
 //            System.out.println("getting object from futures map...");
@@ -145,7 +145,7 @@ public class LazyList extends AbstractList implements Serializable {
         return null;
     }
 
-    private Object checkCache(Item item) {
+    private Object checkCache(SdbItem item) {
         Object o = em.cacheGet(genericReturnType, item.getIdentifier());
         return o;
     }
@@ -180,14 +180,22 @@ public class LazyList extends AbstractList implements Serializable {
                 if (numPagesLoaded > 0 && nextToken == null) {
                     break;
                 }
-                QueryResult qr;
+                QueryWithAttributesResult qr;
                 try {
                     if (logger.isLoggable(Level.FINER)) logger.finer("query for lazylist=" + query);
-                    qr = domain.listItems(query, nextToken, maxToRetrievePerRequest);
-                    List<Item> itemList = qr.getItemList();
-                    if (logger.isLoggable(Level.FINER)) logger.finer("got items for lazylist=" + itemList.size());
-                    items.addAll(itemList);
-                    numRetrieved += itemList.size();
+                    if (em.getFactory().isPrintQueries()) System.out.println("query in lazylist=" + query);
+                    qr = domain.selectItems(query, nextToken); // todo: maxToRetrievePerRequest, need to use limit now
+                    Map<String, List<ItemAttribute>> itemMap = qr.getItems();
+//                    List<Item> itemList = qr.getResultList();
+                    if (logger.isLoggable(Level.FINER)) logger.finer("got items for lazylist=" + itemMap.size());
+                    // dang, this new select thing in typica sucks, why would the list of results be a map?
+                    for (String id : itemMap.keySet()) {
+                        List<ItemAttribute> list = itemMap.get(id);
+                        items.add(new SdbItemImpl(id, list));
+                    }
+
+//                    items.addAll(itemList);
+                    numRetrieved += itemMap.size();
                     nextToken = qr.getNextToken();
                     numPagesLoaded++;
                     if (materializeObjectsInPage) {
@@ -195,9 +203,9 @@ public class LazyList extends AbstractList implements Serializable {
                     }
                 } catch (SDBException e) {
                     if (ExceptionHelper.isDomainDoesNotExist(e)) {
-                        items = new ArrayList<Item>(); // no need to throw here
+                        items = new ArrayList<SdbItem>(); // no need to throw here
                     } else {
-                        throw new PersistenceException("Query failed: " + domain.getName() + query, e);
+                        throw new PersistenceException("Query failed: Domain=" + domain.getName() + " -> " + query, e);
                     }
                 }
                 logger.finer("got " + items.size() + " for lazy list");
@@ -215,13 +223,13 @@ public class LazyList extends AbstractList implements Serializable {
         int start = page * maxToRetrievePerRequest;
         int end = start + maxToRetrievePerRequest;
         if (end > items.size()) end = items.size();
-        List<Item> itemList = this.items.subList(start, end);
+        List<SdbItem> itemList = this.items.subList(start, end);
         if (itemList.size() != 0) {
             // todo: could send this off asyncronously and only block when asking for a particular item. This is done now.
             try {
                 // check cache first to make sure we haven't already got these
-                List<Item> itemsToGet = new ArrayList<Item>();
-                for (Item item : itemList) {
+                List<SdbItem> itemsToGet = new ArrayList<SdbItem>();
+                for (SdbItem item : itemList) {
                     Future<ItemAndAttributes> f = futuresMap.get(item.getIdentifier());
                     if (f == null) {
                         Object o = checkCache(item);
@@ -234,7 +242,7 @@ public class LazyList extends AbstractList implements Serializable {
                     }
                 }
 
-                for (Item item : itemsToGet) {
+                for (SdbItem item : itemsToGet) {
                     // todo: Make this async do the buildObject call so it gets in the cache as soon as possible
                     Callable<ItemAndAttributes> callable = new GetAttributes(item, em);
                     Future<ItemAndAttributes> itemAndAttributesFuture = em.getExecutor().submit(callable);

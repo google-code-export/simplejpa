@@ -312,7 +312,7 @@ public class PersistenceTests extends BaseTestClass {
         Thread.sleep(15000);
 
         System.out.println("querying for all objects and checking order...");
-        query = em.createQuery("select o from MyTestObject o where o.age >= 0 order by o.age");
+        query = em.createQuery("select o from MyTestObject o where o.age >= '0' order by o.age");
         obs = query.getResultList();
         System.out.println("obs.size=" + obs.size());
         Assert.assertEquals(numItems, obs.size());
@@ -324,7 +324,7 @@ public class PersistenceTests extends BaseTestClass {
         }
 
         System.out.println("querying for all objects and checking REVERSE order...");
-        query = em.createQuery("select o from MyTestObject o where o.age >= 0 order by o.age desc");
+        query = em.createQuery("select o from MyTestObject o where o.age >= '0' order by o.age desc");
         obs = query.getResultList();
         System.out.println("obs.size=" + obs.size());
         Assert.assertEquals(numItems, obs.size());
@@ -338,6 +338,40 @@ public class PersistenceTests extends BaseTestClass {
         }
         em.close();
     }
+
+    @Test
+    public void count() throws ExecutionException, InterruptedException {
+        EntityManagerSimpleJPA em = (EntityManagerSimpleJPA) factory.createEntityManager();
+
+        Query query;
+        List<MyTestObject> obs;
+
+        Future future = null;
+        int numItems = 120;
+        for (int i = 0; i < numItems; i++) {
+            MyTestObject object = new MyTestObject();
+            object.setName("Scooby doo");
+            object.setAge(i);
+            System.out.println("persisting " + i);
+            future = em.persistAsync(object);
+        }
+        future.get();
+
+        Thread.sleep(5000);
+
+        query = em.createQuery("select count(o) from MyTestObject o");
+        List results = query.getResultList();
+        System.out.println("obs.size=" + results.size());
+        Assert.assertEquals(1, results.size());
+
+        for (Object ob : results) {
+            System.out.println("ob=" + ob);
+        }
+        Assert.assertEquals(120L, results.get(0));
+
+        em.close();
+    }
+
 
     @Test
     public void deleteObject() {
@@ -540,7 +574,7 @@ public class PersistenceTests extends BaseTestClass {
 
         MyTestObject originalObject = makeTestObjects(em);
 
-        query = em.createQuery("select o from MyTestObject o where o.myTestObject2.id = :id2 and 1=1");
+        query = em.createQuery("select o from MyTestObject o where o.myTestObject2.id = :id2 ");
         query.setParameter("id2", originalObject.getMyTestObject2().getId());
         obs = query.getResultList();
         Assert.assertEquals(1, obs.size());
@@ -575,7 +609,7 @@ public class PersistenceTests extends BaseTestClass {
         }
         future.get();
 
-        Thread.sleep(5000);
+        Thread.sleep(10000);
 
         System.out.println("querying for all objects...");
         query = em.createQuery("select o from MyTestObject o ");
@@ -713,6 +747,8 @@ public class PersistenceTests extends BaseTestClass {
         em.close();
     }
 
+
+
     @Test(expected = PersistenceException.class)
     public void testEndsWithQuery() {
         EntityManager em = factory.createEntityManager();
@@ -749,7 +785,7 @@ public class PersistenceTests extends BaseTestClass {
 
         em = factory.createEntityManager();
         {
-            Query query = em.createQuery("select o from MyTestObject o where o.name like :x");
+            Query query = em.createQuery("select o from MyTestObject o where o.name like :x and o.name > ''");
             query.setParameter("x", "Scooby 'd%");
             List<MyTestObject> obs = query.getResultList();
             for (MyTestObject ob : obs) {

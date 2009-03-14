@@ -76,7 +76,7 @@ public class ObjectBuilder {
                     Class typeInList = (Class) types[0];
                     // todo: should this return null if there are no elements??
 //                    LazyList lazyList = new LazyList(this, newInstance, annotation.mappedBy(), id, typeInList, factory.getAnnotationManager().getAnnotationInfo(typeInList));
-                    LazyList lazyList = new LazyList(em, typeInList, oneToManyQuery(em, annotation.mappedBy(), id, typeInList));
+                    LazyList lazyList = new LazyList(em, typeInList, oneToManyQuery(em, attName, annotation.mappedBy(), id, typeInList));
                     Class retType = getter.getReturnType();
                     // todo: assuming List for now, handle other collection types
                     String setterName = em.getSetterNameFromGetter(getter);
@@ -156,11 +156,15 @@ public class ObjectBuilder {
     }
 
 
-    private static String oneToManyQuery(EntityManagerSimpleJPA em, String foreignKeyFieldName, Object id, Class typeInList) {
+    private static String oneToManyQuery(EntityManagerSimpleJPA em, String attName, String foreignKeyFieldName, Object id, Class typeInList) {
+        if(foreignKeyFieldName == null || foreignKeyFieldName.length() == 0){
+            // use the class containing the OneToMany
+            foreignKeyFieldName = attName;
+        }
         AnnotationInfo ai = em.getFactory().getAnnotationManager().getAnnotationInfo(typeInList);
-        String query = "['" + NamingHelper.foreignKey(foreignKeyFieldName) + "' = '" + id + "']";
+        String query = "select * from `" + em.getFactory().getDomainName(ai.getRootClass()) + "` where " + NamingHelper.foreignKey(foreignKeyFieldName) + " = '" + id + "'";
         if (ai.getDiscriminatorValue() != null) {
-            query += " intersection ['DTYPE' = '" + ai.getDiscriminatorValue() + "']";
+            query += " and DTYPE = '" + ai.getDiscriminatorValue() + "'";
         }
         logger.finer("OneToMany query=" + query);
         return query;

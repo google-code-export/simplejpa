@@ -3,6 +3,7 @@ package com.spaceprogram.simplejpa.operations;
 import com.xerox.amazonws.sdb.Item;
 import com.spaceprogram.simplejpa.ItemAndAttributes;
 import com.spaceprogram.simplejpa.EntityManagerSimpleJPA;
+import com.spaceprogram.simplejpa.SdbItem;
 
 import java.util.concurrent.Callable;
 
@@ -14,10 +15,10 @@ import java.util.concurrent.Callable;
  * Time: 7:55:30 PM
  */
 public class GetAttributes implements Callable<ItemAndAttributes> {
-    private Item item;
+    private SdbItem item;
     private EntityManagerSimpleJPA em;
 
-    public GetAttributes(Item item, EntityManagerSimpleJPA em) {
+    public GetAttributes(SdbItem item, EntityManagerSimpleJPA em) {
         this.item = item;
         this.em = em;
     }

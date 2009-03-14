@@ -46,88 +46,88 @@ public class OpStats implements Statistics {
         getsDuration.addAndGet(duration2);
     }
 
-    public AtomicInteger getPuts() {
-        return puts;
+    public int getPuts() {
+        return puts.get();
     }
 
     public void setPuts(AtomicInteger puts) {
         this.puts = puts;
     }
 
-    public AtomicInteger getPutsDuration() {
-        return putsDuration;
+    public int getPutsDuration() {
+        return putsDuration.get();
     }
 
     public void setPutsDuration(AtomicInteger putsDuration) {
         this.putsDuration = putsDuration;
     }
 
-    public AtomicInteger getS3Puts() {
-        return s3Puts;
+    public int getS3Puts() {
+        return s3Puts.get();
     }
 
     public void setS3Puts(AtomicInteger s3Puts) {
         this.s3Puts = s3Puts;
     }
 
-    public AtomicLong getS3PutsDuration() {
-        return s3PutsDuration;
+    public long getS3PutsDuration() {
+        return s3PutsDuration.get();
     }
 
     public void setS3PutsDuration(AtomicLong s3PutsDuration) {
         this.s3PutsDuration = s3PutsDuration;
     }
 
-    public AtomicInteger getAttsPut() {
-        return attsPut;
+    public int getAttsPut() {
+        return attsPut.get();
     }
 
     public void setAttsPut(AtomicInteger attsPut) {
         this.attsPut = attsPut;
     }
 
-    public AtomicLong getAttsPutDuration() {
-        return attsPutDuration;
+    public long getAttsPutDuration() {
+        return attsPutDuration.get();
     }
 
     public void setAttsPutDuration(AtomicLong attsPutDuration) {
         this.attsPutDuration = attsPutDuration;
     }
 
-    public AtomicLong getAttsDeletedDuration() {
-        return attsDeletedDuration;
+    public long getAttsDeletedDuration() {
+        return attsDeletedDuration.get();
     }
 
     public void setAttsDeletedDuration(AtomicLong attsDeletedDuration) {
         this.attsDeletedDuration = attsDeletedDuration;
     }
 
-    public AtomicInteger getAttsDeleted() {
-        return attsDeleted;
+    public int getAttsDeleted() {
+        return attsDeleted.get();
     }
 
     public void setAttsDeleted(AtomicInteger attsDeleted) {
         this.attsDeleted = attsDeleted;
     }
 
-    public AtomicInteger getGets() {
-        return gets;
+    public int getGets() {
+        return gets.get();
     }
 
     public void setGets(AtomicInteger gets) {
         this.gets = gets;
     }
 
-    public AtomicLong getGetsDuration() {
-        return getsDuration;
+    public long getGetsDuration() {
+        return getsDuration.get();
     }
 
     public void setGetsDuration(AtomicLong getsDuration) {
         this.getsDuration = getsDuration;
     }
 
-    public AtomicInteger getQueries() {
-        return queries;
+    public int getQueries() {
+        return queries.get();
     }
 
     public void setQueries(AtomicInteger queries) {
