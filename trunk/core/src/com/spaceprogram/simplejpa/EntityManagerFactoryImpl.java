@@ -125,6 +125,31 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     }
 
     /**
+     * Use this one in web applications, see: http://code.google.com/p/simplejpa/wiki/WebApplications
+     *
+     * @param persistenceUnitName
+     * @param props
+     * @param libsToScan          a set of
+     */
+    public EntityManagerFactoryImpl(String persistenceUnitName, Map props, Set<String> libsToScan) {
+        if (persistenceUnitName == null) {
+            throw new IllegalArgumentException("Must have a persistenceUnitName!");
+        }
+        config = new SimpleJPAConfig();
+        this.persistenceUnitName = persistenceUnitName;
+        annotationManager = new AnnotationManager(config);
+        this.props = props;
+        if (props == null) {
+            try {
+                loadProps2();
+            } catch (IOException e) {
+                throw new PersistenceException(e);
+            }
+        }
+        init(libsToScan);
+    }
+
+    /**
      *  * SimpleJPA entity manager, which gets classes names instead of "libs-to-scan".
      * @author Yair Ben-Meir
      * @param persistenceUnitName
@@ -157,31 +182,6 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
             }
         }
         return libs;
-    }
-
-    /**
-     * Use this one in web applications, see: http://code.google.com/p/simplejpa/wiki/WebApplications
-     *
-     * @param persistenceUnitName
-     * @param props
-     * @param libsToScan          a set of
-     */
-    public EntityManagerFactoryImpl(String persistenceUnitName, Map props, Set<String> libsToScan) {
-        if (persistenceUnitName == null) {
-            throw new IllegalArgumentException("Must have a persistenceUnitName!");
-        }
-        config = new SimpleJPAConfig(); 
-        this.persistenceUnitName = persistenceUnitName;
-        annotationManager = new AnnotationManager(config);
-        this.props = props;
-        if (props == null) {
-            try {
-                loadProps2();
-            } catch (IOException e) {
-                throw new PersistenceException(e);
-            }
-        }
-        init(libsToScan);
     }
 
     private void init(Set<String> libsToScan) {
@@ -505,11 +505,15 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     }
 
     public synchronized S3Bucket getBucket() throws S3ServiceException {
-        S3Bucket bucket = bucketMap.get(s3bucketName());
+        String bucketName = s3bucketName();
+        S3Bucket bucket = bucketMap.get(bucketName);
         if(bucket != null){
             return bucket;
         }
-        bucket = getS3Service().createBucket(s3bucketName());
+//        System.out.println("Creating bucket=" + bucketName);
+        bucket = getS3Service().createBucket(bucketName);
+        bucketMap.put(bucketName, bucket);
+//        System.out.println("Put in map");
         return bucket;
     }
 

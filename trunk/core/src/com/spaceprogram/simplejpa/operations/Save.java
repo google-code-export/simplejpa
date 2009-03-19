@@ -84,7 +84,13 @@ public class Save implements Callable {
 
 
     public Object call() throws Exception {
-        persistOnly(o, id);
+        try {
+            persistOnly(o, id);
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("CAUGHT AND RETHROWING");
+            throw e;
+        }
         return o;
     }
 

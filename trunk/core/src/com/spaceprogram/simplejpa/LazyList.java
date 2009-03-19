@@ -1,6 +1,5 @@
 package com.spaceprogram.simplejpa;
 
-import com.spaceprogram.simplejpa.operations.GetAttributes;
 import com.xerox.amazonws.sdb.Domain;
 import com.xerox.amazonws.sdb.ItemAttribute;
 import com.xerox.amazonws.sdb.QueryWithAttributesResult;
@@ -14,10 +13,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -41,7 +37,7 @@ public class LazyList extends AbstractList implements Serializable {
     private String nextToken;
     private int maxToRetrievePerRequest = 100; // same as amazon default
     private int numPagesLoaded;
-    private transient Map<String, Future<ItemAndAttributes>> futuresMap = new ConcurrentHashMap();
+//    private transient Map<String, Future<ItemAndAttributes>> futuresMap = new ConcurrentHashMap();
     /**
      * map to remember which pages have been loaded already.
      */
@@ -135,13 +131,6 @@ public class LazyList extends AbstractList implements Serializable {
     }
 
     private Object checkFuturesMap(SdbItem item) throws ExecutionException, InterruptedException {
-        Future<ItemAndAttributes> f = futuresMap.remove(item.getIdentifier());
-        if (f != null) {
-//            System.out.println("getting object from futures map...");
-            ItemAndAttributes ia = f.get();
-            Object o = em.buildObject(genericReturnType, ia.getItem().getIdentifier(), ia.getAtts());
-            return o;
-        }
         return null;
     }
 
@@ -225,44 +214,9 @@ public class LazyList extends AbstractList implements Serializable {
         if (end > items.size()) end = items.size();
         List<SdbItem> itemList = this.items.subList(start, end);
         if (itemList.size() != 0) {
-            // todo: could send this off asyncronously and only block when asking for a particular item. This is done now.
-            try {
-                // check cache first to make sure we haven't already got these
-                List<SdbItem> itemsToGet = new ArrayList<SdbItem>();
-                for (SdbItem item : itemList) {
-                    Future<ItemAndAttributes> f = futuresMap.get(item.getIdentifier());
-                    if (f == null) {
-                        Object o = checkCache(item);
-                        if (o == null) {
-                            // if it's already cached, no need to retrieve it again.
-                            itemsToGet.add(item);
-                        } else {
-                            //                        System.out.println("found item in cache while materializing. All good.");
-                        }
-                    }
-                }
+            // attributes are already included in query, so we don't need to use async get anymore - see history if we want to put this back
+            // in for performance reasons or something.
 
-                for (SdbItem item : itemsToGet) {
-                    // todo: Make this async do the buildObject call so it gets in the cache as soon as possible
-                    Callable<ItemAndAttributes> callable = new GetAttributes(item, em);
-                    Future<ItemAndAttributes> itemAndAttributesFuture = em.getExecutor().submit(callable);
-                    // todo:  em.statsGets(attributes.size(), duration2); - put this into the Callable
-                    futuresMap.put(item.getIdentifier(), itemAndAttributesFuture);
-                }
-
-                /* if(logger.isLoggable(Level.FINER)) logger.finer("Loading " + itemList.size() + " asynchronously.");
-                long start2 = System.currentTimeMillis();
-                List<ItemAndAttributes> attributes = ConcurrentRetriever.getAttributesFromSdb(itemsToGet, em.getExecutor());
-                long duration2 = System.currentTimeMillis() - start2;
-                if(logger.isLoggable(Level.FINE))logger.fine("getAtts time=" + (duration2));
-                em.statsGets(attributes.size(), duration2);
-                for (ItemAndAttributes ia : attributes) {
-                    Object o = em.buildObject(genericReturnType, ia.getItem().getIdentifier(), ia.getAtts());
-                    // now it will be in the cache too, so next call get get() on this list will first get it from the cache
-                }*/
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
         }
     }
 
