@@ -257,11 +257,7 @@ public class QueryImpl implements SimpleQuery {
         String fieldSplit[] = field.split("\\.");
         if (fieldSplit.length == 1) {
             field = fieldSplit[0];
-            /*try {
-                BigDecimal bd = new BigDecimal(field);
-            } catch (Exception e) {
-//                e.printStackTrace();
-            }*/
+//            System.out.println("split: " + field + " param=" + param);
             if (field.equals(param)) {
                 return false;
             }
