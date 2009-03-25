@@ -151,7 +151,9 @@ public class Save implements Callable {
                 ByteArrayOutputStream bos = new ByteArrayOutputStream();
                 ObjectOutputStream out = new ObjectOutputStream(bos);
                 out.writeObject(ob);
-                s3Object.setDataInputStream(new ByteArrayInputStream(bos.toByteArray()));
+                byte[] contentBytes = bos.toByteArray();
+                s3Object.setDataInputStream(new ByteArrayInputStream(contentBytes));
+                s3Object.setContentLength(contentBytes.length);
                 s3Object = s3.putObject(bucket, s3Object);
                 out.close();
                 em.statsS3Put(System.currentTimeMillis() - start3);
