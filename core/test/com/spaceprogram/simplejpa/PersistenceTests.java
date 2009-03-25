@@ -234,7 +234,7 @@ public class PersistenceTests extends BaseTestClass {
             }
         }
 
-        query = em.createQuery("select o from " + MyTestObject.class.getName() + " o where o.age = :age");
+        query = em.createQuery("select o from " + MyTestObject.class.getName() + " o where 1=1 and o.age = :age");
         query.setParameter("age", 12);
         obs = query.getResultList();
         Assert.assertEquals(1, obs.size());
