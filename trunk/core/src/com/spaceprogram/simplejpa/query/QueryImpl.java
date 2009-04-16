@@ -178,6 +178,8 @@ public class QueryImpl implements SimpleQuery {
         if (em.getFactory().isPrintQueries()) {
             System.out.println(logString);
         }
+
+		if ( maxResults  != null) fullQuery.append( " limit ").append( Math.min( 250, maxResults));
         return new AmazonQueryString(fullQuery.toString(), count);
     }
 
