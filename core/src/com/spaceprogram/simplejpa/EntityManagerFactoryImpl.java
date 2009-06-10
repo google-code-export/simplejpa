@@ -103,6 +103,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     private boolean sessionless;
     private boolean cacheless;
     public SimpleJPAConfig config;
+    private String lobBucketName;
 
     /**
      * This one is generally called via the PersistenceProvider.
@@ -187,6 +188,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     private void init(Set<String> libsToScan) {
         awsAccessKey = (String) props.get("accessKey");
         awsSecretKey = (String) props.get("secretKey");
+        lobBucketName = (String) props.get("lobBucketName");
         printQueries = Boolean.parseBoolean((String) props.get("printQueries"));
         cacheFactoryClassname = (String) props.get("cacheFactory");
         String s1 = (String) props.get("sessionless");
@@ -525,6 +527,9 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     }
 
     public String s3bucketName() {
+        if(lobBucketName != null){
+            return lobBucketName;
+        }
         return getPersistenceUnitName() + "-lobs";
     }
 }
