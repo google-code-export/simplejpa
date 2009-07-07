@@ -233,9 +233,11 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
 
     private <T> T findInDb(Class<T> tClass, Object id) throws SDBException {
         Domain domain = getDomain(tClass);
-        SdbItem item = new SdbItemImpl2(domain.getItem(id.toString()));
+        if(domain == null) return null;
+        Item iraw = domain.getItem(id.toString());
 //            logger.fine("got back item=" + item);
-        if (item == null) return null;
+        if(iraw == null) return null;
+        SdbItem item = new SdbItemImpl2(iraw);
         return getItemAttributesBuildAndCache(tClass, id, item);
 
     }
