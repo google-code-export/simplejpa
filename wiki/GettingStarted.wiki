@@ -13,7 +13,7 @@ Need the latest releases of (I'll try to package these up into the release if I 
   * commons-beanutils
   * commons-logging (jets3t)
   * commons-codec (jets3t)
-  * commons-httpclient (jets3t)
+  * Apache HttpClient (jets3t) - http://hc.apache.org/downloads.cgi 
   * typica - http://code.google.com/p/typica/
   * jets3t - http://jets3t.s3.amazonaws.com/downloads.html
   * cglib-nodep - http://sourceforge.net/project/showfiles.php?group_id=56933
