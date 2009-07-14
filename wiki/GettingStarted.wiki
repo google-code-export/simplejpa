@@ -11,6 +11,7 @@ Need the latest releases of (I'll try to package these up into the release if I 
 
   * commons-lang - get all commons libs at http://commons.apache.org/downloads/index.html
   * commons-beanutils
+  * [http://commons.apache.org/collections/ commons-collections] 
   * commons-logging (jets3t)
   * commons-codec (jets3t)
   * Apache HttpClient (jets3t) - http://hc.apache.org/downloads.cgi 
