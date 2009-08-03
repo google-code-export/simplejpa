@@ -21,8 +21,7 @@ Need the latest releases of (I'll try to package these up into the release if I 
   * ejb3-persistence-api - http://mirrors.ibiblio.org/pub/mirrors/maven2/org/hibernate/ejb3-persistence/1.0.2.GA/
   * scannotation - http://scannotation.sourceforge.net/
   * javassist (scannotation) - http://www.csg.is.titech.ac.jp/~chiba/javassist/
-  * ehcache - as of SimpleJPA alpha 0.6 - http://ehcache.sourceforge.net/
-  * Backport concurrent (ehcache) - http://dcl.mathcs.emory.edu/util/backport-util-concurrent
+  * kitty-cache - http://code.google.com/p/kitty-cache/
 
 = Download SimpleJPA =
 
