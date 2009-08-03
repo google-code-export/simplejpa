@@ -13,17 +13,23 @@ import java.util.concurrent.atomic.AtomicLong;
 public class OpStats implements Statistics {
     private AtomicInteger puts = new AtomicInteger();
     private AtomicInteger putsDuration = new AtomicInteger();
-    private AtomicInteger s3Puts = new AtomicInteger();
-    private AtomicLong s3PutsDuration = new AtomicLong();
-    private AtomicInteger s3Gets = new AtomicInteger();
-    private AtomicLong s3GetsDuration = new AtomicLong();
-    private AtomicInteger attsPut = new AtomicInteger();
-    private AtomicLong attsPutDuration = new AtomicLong();
-    private AtomicLong attsDeletedDuration = new AtomicLong();
-    private AtomicInteger attsDeleted = new AtomicInteger();
+
     private AtomicInteger deletes = new AtomicInteger();
+    private AtomicInteger attsDeleted = new AtomicInteger();
+    private AtomicLong attsDeletedDuration = new AtomicLong();
+
     private AtomicInteger gets = new AtomicInteger();
     private AtomicLong getsDuration = new AtomicLong();
+
+    private AtomicInteger s3Puts = new AtomicInteger();
+    private AtomicLong s3PutsDuration = new AtomicLong();
+
+    private AtomicInteger s3Gets = new AtomicInteger();
+    private AtomicLong s3GetsDuration = new AtomicLong();
+
+    private AtomicInteger attsPut = new AtomicInteger();
+    private AtomicLong attsPutDuration = new AtomicLong();
+
     public AtomicInteger queries = new AtomicInteger();
 
 
@@ -164,5 +170,25 @@ public class OpStats implements Statistics {
 
     public void incrementGets() {
         this.gets.incrementAndGet();
+    }
+
+    @Override
+    public String toString() {
+        return "OpStats{" +
+                "puts=" + puts +
+                ", putsDuration=" + putsDuration +
+                ", s3Puts=" + s3Puts +
+                ", s3PutsDuration=" + s3PutsDuration +
+                ", s3Gets=" + s3Gets +
+                ", s3GetsDuration=" + s3GetsDuration +
+                ", attsPut=" + attsPut +
+                ", attsPutDuration=" + attsPutDuration +
+                ", attsDeletedDuration=" + attsDeletedDuration +
+                ", attsDeleted=" + attsDeleted +
+                ", deletes=" + deletes +
+                ", gets=" + gets +
+                ", getsDuration=" + getsDuration +
+                ", queries=" + queries +
+                '}';
     }
 }

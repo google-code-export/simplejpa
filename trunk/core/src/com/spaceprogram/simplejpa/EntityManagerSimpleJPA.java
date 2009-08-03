@@ -588,6 +588,8 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
 
     public void incrementQueryCount() {
         totalOpStats.queries.incrementAndGet();
+        factory.getGlobalStats().queries.incrementAndGet();
+
     }
 
     /**
@@ -669,30 +671,39 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
     public void statsS3Get(long duration){
         getLastOpStats().s3Get(duration);
         totalOpStats.s3Get(duration);
+        factory.getGlobalStats().s3Get(duration);
     }
 
     public void statsS3Put(long duration) {
         getLastOpStats().s3Put(duration);
         totalOpStats.s3Put(duration);
+        factory.getGlobalStats().s3Put(duration);
     }
 
     public void statsAttsPut(int numAtts, long duration2) {
         getLastOpStats().attsPut(numAtts, duration2);
         totalOpStats.attsPut(numAtts, duration2);
+        factory.getGlobalStats().attsPut(numAtts, duration2);
     }
 
     public void statsAttsDeleted(int numAtts, long duration2) {
         getLastOpStats().attsDeleted(numAtts, duration2);
         totalOpStats.attsDeleted(numAtts, duration2);
+        factory.getGlobalStats().attsDeleted(numAtts, duration2);
     }
 
     public OpStats getTotalOpStats() {
         return totalOpStats;
     }
 
+    public OpStats getGlobalOpStats(){
+        return factory.getGlobalStats();
+    }
+
     public void statsGets(int numItems, long duration2) {
         getLastOpStats().got(numItems, duration2);
         totalOpStats.got(numItems, duration2);
+        factory.getGlobalStats().got(numItems, duration2);
     }
 
     public S3Bucket getS3Bucket() throws S3ServiceException {
