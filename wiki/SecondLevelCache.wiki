@@ -5,7 +5,7 @@
 
 Enabling the second level cache in SimpleJPA is extremely simple and provides huge performance benefits.  The second level cache is shared across all EntityManager sessions obtained by an EntityManagerFactory. 
 
-Only Ehcache is supported at this time.
+Any cache can be supported by implementing com.spaceprogram.simplejpa.cache.CacheFactory that can create com.spaceprogram.simplejpa.cache.Cache's.
 
 = Benefits =
 
