@@ -419,7 +419,7 @@ public class QueryImpl implements SimpleQuery {
         }
 //        sb.append("[");
 //        sb.append("'");
-        sb.append(field);
+        sb.append("`").append(field).append("`");
 //        sb.append("' ");
         sb.append(" ");
         sb.append(comparator);
