@@ -9,14 +9,14 @@ Here's how to get started using SimpleJPA.
 
 Need the latest releases of (I'll try to package these up into the release if I can figure out the licensing compatability):
 
-  * commons-lang - get all commons libs at http://commons.apache.org/downloads/index.html
-  * commons-beanutils
+  * [http://commons.apache.org/lang/ commons-lang] - You can grab all commons libs at http://commons.apache.org/downloads/index.html
+  * [http://commons.apache.org/beanutils/ commons-beanutils]
   * [http://commons.apache.org/collections/ commons-collections] 
-  * commons-logging (jets3t)
-  * commons-codec (jets3t)
-  * Apache HttpClient (jets3t) - http://hc.apache.org/downloads.cgi 
-  * typica - http://code.google.com/p/typica/
-  * jets3t - http://jets3t.s3.amazonaws.com/downloads.html
+  * [http://commons.apache.org/logging/ commons-logging] (required for jets3t)
+  * [http://commons.apache.org/codec/ commons-codec] (required for jets3t)
+  * [http://hc.apache.org/downloads.cgi Apache HttpClient] - (required for jets3t) 
+  * [http://code.google.com/p/typica/ typica]
+  * [http://jets3t.s3.amazonaws.com/downloads.html jets3t] 
   * cglib-nodep - http://sourceforge.net/project/showfiles.php?group_id=56933
   * ejb3-persistence-api - http://mirrors.ibiblio.org/pub/mirrors/maven2/org/hibernate/ejb3-persistence/1.0.2.GA/
   * scannotation - http://scannotation.sourceforge.net/
