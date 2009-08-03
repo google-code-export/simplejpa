@@ -4,6 +4,7 @@ import com.spaceprogram.simplejpa.cache.CacheFactory;
 import com.spaceprogram.simplejpa.cache.NoopCacheFactory;
 import com.spaceprogram.simplejpa.cache.Cache;
 import com.spaceprogram.simplejpa.cache.NoopCache;
+import com.spaceprogram.simplejpa.stats.OpStats;
 import com.xerox.amazonws.sdb.Domain;
 import com.xerox.amazonws.sdb.ListDomainsResult;
 import com.xerox.amazonws.sdb.SDBException;
@@ -91,6 +92,8 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     private int numExecutorThreads = DEFAULT_GET_THREADS;
     public static final String DTYPE = "DTYPE";
 
+    // Global stats across all EntityManager's
+    private OpStats stats = new OpStats();
 
     /**
      * Whether to display amazon queries or not.
@@ -529,5 +532,9 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
             return lobBucketName;
         }
         return getPersistenceUnitName() + "-lobs";
+    }
+
+    public OpStats getGlobalStats(){
+        return stats;
     }
 }
