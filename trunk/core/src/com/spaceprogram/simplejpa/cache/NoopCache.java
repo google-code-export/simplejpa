@@ -57,8 +57,8 @@ public class NoopCache implements Cache {
 
     }
 
-    public Object remove(Object o) {
-        return null;
+    public boolean remove(Object o) {
+        return true;
     }
 
     public void clear() {

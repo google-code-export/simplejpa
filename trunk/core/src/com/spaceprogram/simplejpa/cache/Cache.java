@@ -15,11 +15,9 @@ public interface Cache {
 
     Object get(Object o);
 
-    Map getAll(Collection collection) throws CacheException;
-
     void put(Object o, Object o1);
 
-    Object remove(Object o);
+    boolean remove(Object o);
 
     void clear();
 }

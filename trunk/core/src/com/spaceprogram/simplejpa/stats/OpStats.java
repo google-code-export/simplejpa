@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Holds stats about the last operation performed. Useful for testing.
- * 
+ * <p/>
  * User: treeder
  * Date: Apr 9, 2008
  * Time: 8:34:44 PM
@@ -15,6 +15,8 @@ public class OpStats implements Statistics {
     private AtomicInteger putsDuration = new AtomicInteger();
     private AtomicInteger s3Puts = new AtomicInteger();
     private AtomicLong s3PutsDuration = new AtomicLong();
+    private AtomicInteger s3Gets = new AtomicInteger();
+    private AtomicLong s3GetsDuration = new AtomicLong();
     private AtomicInteger attsPut = new AtomicInteger();
     private AtomicLong attsPutDuration = new AtomicLong();
     private AtomicLong attsDeletedDuration = new AtomicLong();
@@ -25,10 +27,14 @@ public class OpStats implements Statistics {
     public AtomicInteger queries = new AtomicInteger();
 
 
-
     public void s3Put(long duration) {
         s3Puts.incrementAndGet();
         s3PutsDuration.addAndGet(duration);
+    }
+
+    public void s3Get(long duration) {
+        s3Gets.incrementAndGet();
+        s3GetsDuration.addAndGet(duration);
     }
 
     public void attsPut(int numAtts, long duration) {
@@ -36,7 +42,7 @@ public class OpStats implements Statistics {
         attsPut.addAndGet(numAtts);
         attsPutDuration.addAndGet(duration);
     }
-    
+
     public void attsDeleted(int attsDeleted, long duration) {
         deletes.incrementAndGet();
         this.attsDeleted.addAndGet(attsDeleted);
@@ -76,8 +82,24 @@ public class OpStats implements Statistics {
         return s3PutsDuration.get();
     }
 
-    public void setS3PutsDuration(AtomicLong s3PutsDuration) {
+    public void setS3PutsDuration(AtomicLong s3GetsDuration) {
         this.s3PutsDuration = s3PutsDuration;
+    }
+
+    public int getS3Gets() {
+        return s3Gets.get();
+    }
+
+    public void setS3Gets(AtomicInteger s3Gets) {
+        this.s3Gets = s3Gets;
+    }
+
+    public long getS3GetsDuration() {
+        return s3GetsDuration.get();
+    }
+
+    public void setS3GetsDuration(AtomicLong s3GetsDuration) {
+        this.s3GetsDuration = s3GetsDuration;
     }
 
     public int getAttsPut() {
@@ -110,6 +132,10 @@ public class OpStats implements Statistics {
 
     public void setAttsDeleted(AtomicInteger attsDeleted) {
         this.attsDeleted = attsDeleted;
+    }
+
+    public int getDeletes(){
+        return deletes.get();
     }
 
     public int getGets() {

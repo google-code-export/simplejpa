@@ -570,17 +570,20 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
     }
 
     public Object getObjectFromS3(String idOnS3) throws S3ServiceException, IOException, ClassNotFoundException {
+        long start = System.currentTimeMillis();
         S3Service s3 = factory.getS3Service();
         S3Bucket bucket = s3.getBucket(factory.s3bucketName());
         S3Object s3o = s3.getObject(bucket, idOnS3);
         logger.fine("got s3object=" + s3o);
+        Object ret = null;
         if (s3o != null) {
             ObjectInputStream reader = new ObjectInputStream(new BufferedInputStream((s3o.getDataInputStream())));
-            Object o = reader.readObject();
+            ret = reader.readObject();
             s3o.closeDataInputStream();
-            return o;
+
         }
-        return null;
+        statsS3Get(System.currentTimeMillis() - start);
+        return ret;
     }
 
     public void incrementQueryCount() {
@@ -661,6 +664,11 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
             LazyInterceptor interceptor = (LazyInterceptor) factory.getCallback(0);
             interceptor.setEntityManager(em);
         }
+    }
+
+    public void statsS3Get(long duration){
+        getLastOpStats().s3Get(duration);
+        totalOpStats.s3Get(duration);
     }
 
     public void statsS3Put(long duration) {
