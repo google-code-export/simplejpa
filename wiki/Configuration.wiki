@@ -10,6 +10,7 @@ This page has all the available options in simplejpa.properties
 || *Property* || *required?* || *default* || *description* ||
 || accessKey = YOUR_AWS_ACCESS_KEY || required ||
 || secretKey = YOUR_AWS_SECRET_KEY || required ||
+|| lobBucketName || optional, but must be unique across ALL buckets in S3 || persistence-unit-name + "-lobs" || Name of the S3 bucket to store LOB's ||
 || printQueries = true/false || optional || false || If true, all amazon queries will be printed to System.out ||
 || cacheFactory = com.spaceprogram.simplejpa.cache.KittyCacheFactory || optional || no caching || Cache factory for SecondLevelCache. KittyCacheFactory creates a lightweight in-memory cache (see http://code.google.com/p/kitty-cache/)  ||
 || net.sf.ehcache.configurationResourceName = /ehcache-test.xml || required if cacheFactory=EhCacheFactory || ehcache.xml || configuration file for ehcache ||
