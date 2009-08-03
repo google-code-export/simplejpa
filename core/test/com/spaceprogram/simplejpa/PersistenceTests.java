@@ -46,6 +46,8 @@ public class PersistenceTests extends BaseTestClass {
         MyTestObject object = new MyTestObject();
         object.setName("Scooby doo");
         object.setAge(100);
+        Date now = new Date();
+        object.setBirthday(now);
         em.persist(object);
         String id = object.getId();
 
@@ -61,6 +63,8 @@ public class PersistenceTests extends BaseTestClass {
         Assert.assertEquals("Scooby doo", object.getName());
         Assert.assertEquals(id, object.getId());
         Assert.assertEquals(myObject2.getName(), object.getMyTestObject2().getName());
+         Assert.assertEquals(new Integer(100), object.getAge());
+        Assert.assertEquals(now, object.getBirthday());
 
         // now delete object
         em.remove(object);
