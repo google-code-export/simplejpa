@@ -13,4 +13,5 @@ public class KittyCacheWrapper extends KittyCache implements Cache {
     public KittyCacheWrapper(int i) {
         super(i);
     }
+    
 }

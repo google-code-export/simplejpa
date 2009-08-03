@@ -63,7 +63,7 @@ public class PersistenceTests extends BaseTestClass {
         Assert.assertEquals("Scooby doo", object.getName());
         Assert.assertEquals(id, object.getId());
         Assert.assertEquals(myObject2.getName(), object.getMyTestObject2().getName());
-         Assert.assertEquals(new Integer(100), object.getAge());
+        Assert.assertEquals(new Integer(100), object.getAge());
         Assert.assertEquals(now, object.getBirthday());
 
         // now delete object
@@ -750,7 +750,6 @@ public class PersistenceTests extends BaseTestClass {
         Assert.assertEquals(1, obs.size());
         em.close();
     }
-
 
 
     @Test(expected = PersistenceException.class)

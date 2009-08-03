@@ -20,8 +20,7 @@ import java.util.logging.Logger;
  * Time: 3:55:32 PM
  */
 // would extend EhCacheProvider, but it's final for some reason??
-public class EhCacheFactory {
-/*
+public class EhCacheFactory implements CacheFactory{
 
     private static Logger log = Logger.getLogger(EhCacheFactory.class.getName());
 
@@ -72,7 +71,7 @@ public class EhCacheFactory {
         throw new UnsupportedOperationException("Use createCache(String name) instead.");
     }
 
-    public synchronized Ehcache createCache(String name) throws CacheException {
+    public synchronized EhcacheWrapper createCache(String name) throws CacheException {
         if (manager == null) {
             throw new CacheException("CacheFactory was not initialized. Call init() before creating a cache.");
         }
@@ -94,7 +93,7 @@ public class EhCacheFactory {
                     }
                 }
             }
-            return cache;
+            return new EhcacheWrapper(cache);
         } catch (net.sf.ehcache.CacheException e) {
             throw new CacheException("Could not create cache: " + name, e);
         }
@@ -140,6 +139,5 @@ public class EhCacheFactory {
         }
         return url;
     }
-*/
 
 }
