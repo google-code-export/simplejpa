@@ -134,6 +134,8 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
         } else if (ob instanceof Date) {
             Date d = (Date) ob;
             return AmazonSimpleDBUtil.encodeDate(d);
+        } else if (ob instanceof byte[]) {
+            return AmazonSimpleDBUtil.encodeByteArray((byte[]) ob);
         }
         return ob.toString();
     }
@@ -424,15 +426,16 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
      * @param tClass
      * @param newInstance
      * @param getter
-     * @param val
+     * @param valAsString
      */
     public <T> void setFieldValue(Class tClass, T newInstance, Method getter, String val) {
         try {
             // need param type
             String attName = NamingHelper.attributeName(getter);
             Class retType = getter.getReturnType();
-//            logger.fine("getter in setFieldValue = " + attName + " - val=" + val + " rettype=" + retType);
+//            logger.fine("getter in setFieldValue = " + attName + " - valAsString=" + valAsString + " rettype=" + retType);
             Method setMethod = tClass.getMethod("set" + StringUtils.capitalize(attName), retType);
+            Object newField = null;
             if (Integer.class.isAssignableFrom(retType)) {
 //                logger.fine("setting int val " + val + " on field " + attName);
                 val = AmazonSimpleDBUtil.decodeRealNumberRange(val, EntityManagerSimpleJPA.OFFSET_VALUE).toString();
@@ -442,23 +445,22 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
                 val = AmazonSimpleDBUtil.decodeRealNumberRange(val, AmazonSimpleDBUtil.LONG_DIGITS, EntityManagerSimpleJPA.OFFSET_VALUE).toString();
             } else if (BigDecimal.class.isAssignableFrom(retType)) {
                 val = AmazonSimpleDBUtil.decodeRealNumberRange(val, AmazonSimpleDBUtil.LONG_DIGITS, EntityManagerSimpleJPA.OFFSET_VALUE).toString();
+            } else if (byte[].class.isAssignableFrom(retType)) {
+                newField = AmazonSimpleDBUtil.decodeByteArray(val);
             } else if (Date.class.isAssignableFrom(retType)) {
-                try {
-                    setMethod.invoke(newInstance, AmazonSimpleDBUtil.decodeDate(val));
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                val = null;
+                newField = AmazonSimpleDBUtil.decodeDate(val);
             }
-            if (val != null) {
+            //If newField has not been created yet then we create it from val.
+            if (newField == null) {
+                // We build a new field object here because we may get an argument mismatch otherwise, eg: BigDecimal for an Integer field.
                 // todo: getConstructor throws a NoSuchMethodException here, should ensure that these are second class object fields
                 Constructor forNewField = retType.getConstructor(val.getClass());
                 if (forNewField == null) {
                     throw new PersistenceException("No constructor for field type: " + retType + " that can take a " + val.getClass());
                 }
-                Object newField = forNewField.newInstance(val);
-                setMethod.invoke(newInstance, newField);
+                newField = forNewField.newInstance(val);
             }
+            setMethod.invoke(newInstance, newField);
         } catch (Exception e) {
             throw new PersistenceException(e);
         }

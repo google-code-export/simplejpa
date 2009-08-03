@@ -20,6 +20,8 @@ package com.spaceprogram.simplejpa.util;
  *
  */
 
+import org.apache.commons.codec.binary.Base64;
+
 import java.math.BigDecimal;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -246,5 +248,26 @@ public class AmazonSimpleDBUtil {
         String javaValue = value.substring(0, value.length() - 3) + value.substring(value.length() - 2);
         SimpleDateFormat dateFormatter = new SimpleDateFormat(dateFormat);
         return dateFormatter.parse(javaValue);
+    }
+
+
+    /**
+     * Encodes date value into a base64-encoded string.
+     *
+     * @return string representation of the date value
+     */
+    public static String encodeByteArray(byte[] byteArray) {
+        return new String(Base64.encodeBase64(byteArray));
+    }
+
+    /**
+     * Decodes byte[] value from the string representation created using encodeDate(..) function.
+     *
+     * @param    value    string representation of the date value
+     * @return original byte[] value
+     */
+    public static byte[] decodeByteArray(String value) throws ParseException {
+        return Base64.decodeBase64(value.getBytes());
+
     }
 }
