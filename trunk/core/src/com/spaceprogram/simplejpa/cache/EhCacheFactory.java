@@ -2,12 +2,10 @@ package com.spaceprogram.simplejpa.cache;
 
 import net.sf.ehcache.CacheManager;
 import net.sf.ehcache.Ehcache;
+import net.sf.ehcache.CacheException;
+import net.sf.ehcache.Cache;
 import net.sf.ehcache.event.CacheEventListener;
-import net.sf.ehcache.jcache.JCache;
 import net.sf.ehcache.util.ClassLoaderUtil;
-import net.sf.jsr107cache.Cache;
-import net.sf.jsr107cache.CacheException;
-import net.sf.jsr107cache.CacheFactory;
 
 import java.net.URL;
 import java.util.ArrayList;
@@ -22,7 +20,8 @@ import java.util.logging.Logger;
  * Time: 3:55:32 PM
  */
 // would extend EhCacheProvider, but it's final for some reason??
-public class EhCacheFactory implements CacheFactory, CacheFactory2 {
+public class EhCacheFactory {
+/*
 
     private static Logger log = Logger.getLogger(EhCacheFactory.class.getName());
 
@@ -73,18 +72,18 @@ public class EhCacheFactory implements CacheFactory, CacheFactory2 {
         throw new UnsupportedOperationException("Use createCache(String name) instead.");
     }
 
-    public synchronized Cache createCache(String name) throws CacheException {
+    public synchronized Ehcache createCache(String name) throws CacheException {
         if (manager == null) {
             throw new CacheException("CacheFactory was not initialized. Call init() before creating a cache.");
         }
         try {
-            JCache cache = manager.getJCache(name);
+            Cache cache = manager.getCache(name);
             if (cache == null) {
                 log.warning("Could not find a specific ehcache configuration for cache named [" + name + "]; using defaults.");
                 manager.addCache(name);
-                cache = manager.getJCache(name);
+                cache = manager.getCache(name);
             }
-            Ehcache backingCache = cache.getBackingCache();
+            Ehcache backingCache = cache;
             if (!backingCache.getCacheEventNotificationService().hasCacheEventListeners()) {
                 if (listeners.size() > 0) {
                     for (CacheEventListener listener : listeners) {
@@ -141,5 +140,6 @@ public class EhCacheFactory implements CacheFactory, CacheFactory2 {
         }
         return url;
     }
+*/
 
 }

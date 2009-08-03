@@ -1,10 +1,6 @@
 package com.spaceprogram.simplejpa.cache;
 
-import net.sf.ehcache.CacheManager;
-import net.sf.ehcache.event.CacheEventListener;
-import net.sf.jsr107cache.Cache;
-import net.sf.jsr107cache.CacheException;
-import net.sf.jsr107cache.CacheFactory;
+import net.sf.ehcache.CacheException;
 
 import java.util.Map;
 
@@ -15,27 +11,28 @@ import java.util.Map;
  * Date: Jun 7, 2008
  * Time: 4:56:15 PM
  */
-public interface CacheFactory2 extends CacheFactory {
+public interface CacheFactory {
 
     /**
      * Called once to load up the CacheManager.
      *
      * @param properties
-     * @throws net.sf.jsr107cache.CacheException
+     * @throws net.sf.ehcache.CacheException
      */
     void init(Map properties) throws CacheException;
 
     Cache createCache(String name) throws CacheException;
 
     void shutdown();
+//
+//    void clearAll();
 
-    void clearAll();
-
-    CacheManager getCacheManager();
+//    CacheManager getCacheManager();
 
     /**
      * This allows you to add a cache listener that will be applied to every Cache that is created from this point on.
      * @param cacheEventListener
      */
-    void addDefaultListener(CacheEventListener cacheEventListener);
+//    void addDefaultListener(CacheEventListener cacheEventListener);
+
 }

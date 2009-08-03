@@ -19,6 +19,7 @@ public class OpStats implements Statistics {
     private AtomicLong attsPutDuration = new AtomicLong();
     private AtomicLong attsDeletedDuration = new AtomicLong();
     private AtomicInteger attsDeleted = new AtomicInteger();
+    private AtomicInteger deletes = new AtomicInteger();
     private AtomicInteger gets = new AtomicInteger();
     private AtomicLong getsDuration = new AtomicLong();
     public AtomicInteger queries = new AtomicInteger();
@@ -35,8 +36,9 @@ public class OpStats implements Statistics {
         attsPut.addAndGet(numAtts);
         attsPutDuration.addAndGet(duration);
     }
-
+    
     public void attsDeleted(int attsDeleted, long duration) {
+        deletes.incrementAndGet();
         this.attsDeleted.addAndGet(attsDeleted);
         attsDeletedDuration.addAndGet(duration);
     }

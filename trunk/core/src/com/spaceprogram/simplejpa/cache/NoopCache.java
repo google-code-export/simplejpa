@@ -1,10 +1,7 @@
 package com.spaceprogram.simplejpa.cache;
 
-import net.sf.jsr107cache.Cache;
-import net.sf.jsr107cache.CacheListener;
-import net.sf.jsr107cache.CacheException;
-import net.sf.jsr107cache.CacheEntry;
-import net.sf.jsr107cache.CacheStatistics;
+
+import net.sf.ehcache.CacheException;
 
 import java.util.Set;
 import java.util.Map;
@@ -56,28 +53,8 @@ public class NoopCache implements Cache {
         return null;
     }
 
-    public void load(Object o) throws CacheException {
+    public void put(Object o, Object o1) {
 
-    }
-
-    public void loadAll(Collection collection) throws CacheException {
-
-    }
-
-    public Object peek(Object o) {
-        return null;
-    }
-
-    public Object put(Object o, Object o1) {
-        return null;
-    }
-
-    public CacheEntry getCacheEntry(Object o) {
-        return null;
-    }
-
-    public CacheStatistics getCacheStatistics() {
-        return null;
     }
 
     public Object remove(Object o) {
@@ -88,15 +65,4 @@ public class NoopCache implements Cache {
 
     }
 
-    public void evict() {
-
-    }
-
-    public void addListener(CacheListener cacheListener) {
-
-    }
-
-    public void removeListener(CacheListener cacheListener) {
-
-    }
 }

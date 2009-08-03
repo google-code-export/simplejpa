@@ -1,14 +1,14 @@
 package com.spaceprogram.simplejpa;
 
-import com.spaceprogram.simplejpa.cache.CacheFactory2;
+import com.spaceprogram.simplejpa.cache.CacheFactory;
 import com.spaceprogram.simplejpa.cache.NoopCacheFactory;
+import com.spaceprogram.simplejpa.cache.Cache;
+import com.spaceprogram.simplejpa.cache.NoopCache;
 import com.xerox.amazonws.sdb.Domain;
 import com.xerox.amazonws.sdb.ListDomainsResult;
 import com.xerox.amazonws.sdb.SDBException;
 import com.xerox.amazonws.sdb.SimpleDB;
-import net.sf.ehcache.CacheManager;
-import net.sf.jsr107cache.Cache;
-import net.sf.jsr107cache.CacheException;
+import net.sf.ehcache.CacheException;
 import org.jets3t.service.model.S3Bucket;
 import org.jets3t.service.S3Service;
 import org.jets3t.service.S3ServiceException;
@@ -99,11 +99,13 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     private String awsAccessKey;
     private String awsSecretKey;
     private String cacheFactoryClassname;
-    private CacheFactory2 cacheFactory;
+    private CacheFactory cacheFactory;
     private boolean sessionless;
     private boolean cacheless;
     public SimpleJPAConfig config;
     private String lobBucketName;
+    private Cache cache;
+    private String cacheClassname;
 
     /**
      * This one is generally called via the PersistenceProvider.
@@ -191,6 +193,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         lobBucketName = (String) props.get("lobBucketName");
         printQueries = Boolean.parseBoolean((String) props.get("printQueries"));
         cacheFactoryClassname = (String) props.get("cacheFactory");
+        cacheClassname = (String) props.get("cacheClass");
         String s1 = (String) props.get("sessionless");
         if (s1 == null) {
             sessionless = true;
@@ -271,7 +274,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         System.out.println("Initing second level cache: " + cacheFactoryClassname);
         if (cacheFactoryClassname != null) {
             try {
-                Class<CacheFactory2> cacheFactoryClass = (Class<CacheFactory2>) Class.forName(cacheFactoryClassname);
+                Class<CacheFactory> cacheFactoryClass = (Class<CacheFactory>) Class.forName(cacheFactoryClassname);
                 cacheFactory = cacheFactoryClass.newInstance();
                 cacheFactory.init(props);
             } catch (Exception e) {
@@ -478,12 +481,9 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     }
 
     public void clearSecondLevelCache() {
-        cacheFactory.clearAll();
+        cache.clear();
     }
 
-    public CacheManager getCacheManager() {
-        return cacheFactory.getCacheManager();
-    }
 
     /**
      * Turns off caches. Useful for testing.
@@ -494,17 +494,15 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     public void setCacheless(boolean cacheless) {
         this.cacheless = cacheless;
         if (cacheless) {
-            cacheFactory.shutdown();
-            cacheFactory = new NoopCacheFactory();
+            cache = new NoopCache();
+//            cacheFactory.shutdown();
+//            cacheFactory = new NoopCacheFactory();
         } else {
-            cacheFactory.shutdown();
+//            cacheFactory.shutdown();
             initSecondLevelCache();
         }
     }
 
-    public CacheFactory2 getCacheFactory() {
-        return cacheFactory;
-    }
 
     public synchronized S3Bucket getBucket() throws S3ServiceException {
         String bucketName = s3bucketName();
