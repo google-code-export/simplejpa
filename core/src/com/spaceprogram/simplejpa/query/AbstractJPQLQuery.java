@@ -5,7 +5,7 @@ package com.spaceprogram.simplejpa.query;
  * Date: Feb 8, 2008
  * Time: 7:26:42 PM
  */
-public class AbstractJPQLQuery {
+public class AbstractJPQLQuery implements Cloneable {
     public static final String[] SINGLE_STRING_KEYWORDS = {
             "SELECT", "UPDATE", "DELETE", "UNIQUE", "FROM", "WHERE", "GROUP BY", "HAVING", "ORDER BY"
 
@@ -49,5 +49,15 @@ public class AbstractJPQLQuery {
 
     public String getResult() {
         return result;
+    }
+
+    @Override
+    public Object clone() throws CloneNotSupportedException {
+        return super.clone();
+    }
+
+    @Override
+    public String toString() {
+        return "SELECT " + getResult() + " FROM " + getFrom() + " WHERE " + getFilter() + " ORDER BY " + getOrdering();
     }
 }

@@ -56,26 +56,56 @@ public class QueryImpl implements SimpleQuery {
 
     public static String conditionRegex = "(<>)|(>=)|(<=)|=|>|<|\\band\\b|\\bor\\b|\\bis\\b|\\blike\\b";
     private Integer maxResults;
+    private String qString;
+    private Class tClass;
+    private AmazonQueryString amazonQuery;
+
+    public QueryImpl(EntityManagerSimpleJPA em, String qString) {
+        this.em = em;
+        this.qString = qString;
+        logger.info("query=" + qString);
+        this.q = new JPAQuery();
+        JPAQueryParser parser = new JPAQueryParser(q, qString);
+        parser.parse();
+        init(em);
+    }
 
     public QueryImpl(EntityManagerSimpleJPA em, JPAQuery q) {
         this.em = em;
         this.q = q;
+        this.qString = q.toString();
+        init(em);
+    }
+
+    private void init(EntityManagerSimpleJPA em) {
+
+        String from = q.getFrom();
+        logger.finer("from=" + from);
+        logger.finer("where=" + q.getFilter());
+        if (q.getOrdering() != null && q.getFilter() == null) {
+            throw new PersistenceException("Attribute in ORDER BY [" + q.getOrdering() + "] must be included in a WHERE filter.");
+        }
+
+        String split[] = q.getFrom().split(" ");
+        String obClass = split[0];
+        tClass = em.ensureClassIsEntity(obClass);
+
+        // convert to amazon query
+        try {
+            amazonQuery = createAmazonQuery(tClass);
+        }  catch (Exception e){
+            throw new RuntimeException(e);
+        }
     }
 
     public List getResultList() {
 
-        String split[] = q.getFrom().split(" ");
-        String obClass = split[0];
-        Class tClass = em.ensureClassIsEntity(obClass);
-        try {
-            // convert to amazon query
+        if(amazonQuery == null){
+            return new ArrayList();
+        }
 
-            AmazonQueryString amazonQuery;
-            try {
-                amazonQuery = createAmazonQuery(tClass);
-            } catch (NoResultsException e) {
-                return new ArrayList();
-            }
+        try {
+
 //            String qToSend = amazonQuery != null ? amazonQuery.toString() : null;
             em.incrementQueryCount();
             if (amazonQuery.isCount()) {
@@ -88,15 +118,16 @@ public class QueryImpl implements SimpleQuery {
                     for (String id : itemMap.keySet()) {
                         List<ItemAttribute> list = itemMap.get(id);
                         for (ItemAttribute itemAttribute : list) {
-                            if(itemAttribute.getName().equals("Count")) count += Long.parseLong(itemAttribute.getValue());
+                            if (itemAttribute.getName().equals("Count"))
+                                count += Long.parseLong(itemAttribute.getValue());
                         }
                     }
                     nextToken = qr.getNextToken();
-                    if(nextToken == null) break;
+                    if (nextToken == null) break;
                 }
                 return Arrays.asList(count);
             } else {
-                LazyList ret = new LazyList(em, tClass, amazonQuery.getValue());
+                LazyList ret = new LazyList(em, tClass, this);
                 ret.setMaxResults(maxResults);
                 return ret;
             }
@@ -119,13 +150,15 @@ public class QueryImpl implements SimpleQuery {
         }
         Domain d = em.getDomain(tClass);
         if (d == null) {
-            throw new NoResultsException();
+            return null;
+//            throw new NoResultsException();
         }
         StringBuilder amazonQuery;
         if (q.getFilter() != null) {
             amazonQuery = toAmazonQuery(tClass, q);
             if (amazonQuery == null) {
-                throw new NoResultsException();
+//                throw new NoResultsException();
+                return null;
             }
         } else {
             amazonQuery = new StringBuilder();
@@ -179,7 +212,7 @@ public class QueryImpl implements SimpleQuery {
             System.out.println(logString);
         }
 
-		if ( maxResults  != null) fullQuery.append( " limit ").append( Math.min( 250, maxResults));
+        if (maxResults != null) fullQuery.append(" limit ").append(Math.min(250, maxResults));
         return new AmazonQueryString(fullQuery.toString(), count);
     }
 
@@ -494,5 +527,40 @@ public class QueryImpl implements SimpleQuery {
 
     public Query setFlushMode(FlushModeType flushModeType) {
         throw new NotImplementedException("TODO");
+    }
+
+    public String getQString() {
+        return qString;
+    }
+
+    public void setQString(String qString) {
+        this.qString = qString;
+    }
+
+    public JPAQuery getQ() {
+        return q;
+    }
+
+    public void setQ(JPAQuery q) {
+        this.q = q;
+    }
+
+    public AmazonQueryString getAmazonQuery() {
+        return amazonQuery;
+    }
+
+    public void setAmazonQuery(AmazonQueryString amazonQuery) {
+        this.amazonQuery = amazonQuery;
+    }
+
+    @Override
+    public String toString() {
+        return "QueryImpl{" +
+                "em=" + em +
+                ", q=" + q +
+                ", paramMap=" + paramMap +
+                ", maxResults=" + maxResults +
+                ", qString='" + qString + '\'' +
+                '}';
     }
 }
