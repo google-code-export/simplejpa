@@ -163,7 +163,8 @@ public class ObjectBuilder {
             foreignKeyFieldName = attName;
         }
         AnnotationInfo ai = em.getFactory().getAnnotationManager().getAnnotationInfo(typeInList);
-        String query = "select * from `" + em.getFactory().getDomainName(ai.getRootClass()) + "` where " + NamingHelper.foreignKey(foreignKeyFieldName) + " = '" + id + "'";
+      //  System.out.println("root class= " + ai.getRootClass());
+        String query = "select * from " + ai.getRootClass().getSimpleName() + " o where o." + foreignKeyFieldName + ".id = '" + id + "'";
         if (ai.getDiscriminatorValue() != null) {
             query += " and DTYPE = '" + ai.getDiscriminatorValue() + "'";
         }

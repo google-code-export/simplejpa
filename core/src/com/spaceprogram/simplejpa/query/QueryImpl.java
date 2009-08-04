@@ -52,18 +52,19 @@ public class QueryImpl implements SimpleQuery {
     private static Logger logger = Logger.getLogger(QueryImpl.class.getName());
     private EntityManagerSimpleJPA em;
     private JPAQuery q;
-    private Map<String, Object> paramMap = new HashMap<String, Object>();
+    private Map<String, Object> parameters = new HashMap<String, Object>();
 
     public static String conditionRegex = "(<>)|(>=)|(<=)|=|>|<|\\band\\b|\\bor\\b|\\bis\\b|\\blike\\b";
     private Integer maxResults;
     private String qString;
     private Class tClass;
-    private AmazonQueryString amazonQuery;
+    //    private AmazonQueryString amazonQuery;
+    private Map<String, List<String>> foreignIds = new HashMap();
 
     public QueryImpl(EntityManagerSimpleJPA em, String qString) {
         this.em = em;
         this.qString = qString;
-        logger.info("query=" + qString);
+        logger.fine("query=" + qString);
         this.q = new JPAQuery();
         JPAQueryParser parser = new JPAQueryParser(q, qString);
         parser.parse();
@@ -90,17 +91,22 @@ public class QueryImpl implements SimpleQuery {
         String obClass = split[0];
         tClass = em.ensureClassIsEntity(obClass);
 
-        // convert to amazon query
-        try {
-            amazonQuery = createAmazonQuery(tClass);
-        }  catch (Exception e){
-            throw new RuntimeException(e);
-        }
+
     }
 
     public List getResultList() {
 
-        if(amazonQuery == null){
+        // convert to amazon query
+        AmazonQueryString amazonQuery;
+        try {
+            amazonQuery = createAmazonQuery();
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        if (amazonQuery == null) {
             return new ArrayList();
         }
 
@@ -141,7 +147,7 @@ public class QueryImpl implements SimpleQuery {
         }
     }
 
-    public AmazonQueryString createAmazonQuery(Class tClass) throws NoResultsException, SDBException {
+    public AmazonQueryString createAmazonQuery() throws NoResultsException, SDBException {
         String select = q.getResult();
         boolean count = false;
         if (select != null && select.contains("count")) {
@@ -319,16 +325,20 @@ public class QueryImpl implements SimpleQuery {
             } else {
                 // no id method, so query for other object(s) first, then apply the returned value to the original query.
                 // todo: this needs some work (multiple ref objects? multiple params on same ref object?)
-                Query sub = em.createQuery("select o from " + refType.getName() + " o where o." + field + " " + comparator + " :paramValue");
-                sub.setParameter("paramValue", paramMap.get(paramName(param)));
-                List subResults = sub.getResultList();
-                List<String> ids = new ArrayList<String>();
-                for (Object subResult : subResults) {
-                    ids.add(em.getId(subResult));
+                List<String> ids = foreignIds.get(field);
+//                System.out.println("got foreign ids=" + ids);
+                if (ids == null) {
+                    Query sub = em.createQuery("select o from " + refType.getName() + " o where o." + field + " " + comparator + " :paramValue");
+                    sub.setParameter("paramValue", parameters.get(paramName(param)));
+                    List subResults = sub.getResultList();
+                    ids = new ArrayList<String>();
+                    for (Object subResult : subResults) {
+                        ids.add(em.getId(subResult));
+                    }
+                    foreignIds.put(field, ids); // Store the ids for next use, really reduces queries when using this repetitively
                 }
                 if (ids.size() > 0) {
-//                    sb.append(" intersection ");
-                    appendFilterMultiple(sb, NamingHelper.foreignKey(refObjectField), "=", ids);
+                    appendIn(sb, NamingHelper.foreignKey(refObjectField), ids);
                 } else {
                     // no matches so should return nothing right? only if an AND query I guess
                     return null;
@@ -339,6 +349,7 @@ public class QueryImpl implements SimpleQuery {
             throw new PersistenceException("Invalid field used in query: " + field);
         }
         logger.finest("field=" + field);
+//        System.out.println("field=" + field + " paramValue=" + param);
         Method getterForField = ai.getGetter(field);
         if (getterForField == null) {
             throw new PersistenceException("No getter for field: " + field);
@@ -362,9 +373,6 @@ public class QueryImpl implements SimpleQuery {
 //            paramValue = paramValue.endsWith("%") ? paramValue.substring(0, paramValue.length() - 1) : paramValue;
 //            System.out.println("param=" + paramValue + "___");
 //            param = param.startsWith("%") ? param.substring(1) : param;
-            if (paramValue.startsWith("%")) {
-                throw new PersistenceException("SimpleDB only supports a wildcard query on the right side of the value (ie: starts-with).");
-            }
             appendFilter(sb, columnName, comparator, paramValue);
         } else {
             String paramValue = getParamValueAsStringForAmazonQuery(param, getterForField);
@@ -382,7 +390,7 @@ public class QueryImpl implements SimpleQuery {
             // no colon, so just a value
             return param;
         }
-        Object paramOb = paramMap.get(paramName);
+        Object paramOb = parameters.get(paramName);
         if (paramOb == null) {
             throw new PersistenceException("parameter is null for: " + paramName);
         }
@@ -409,8 +417,11 @@ public class QueryImpl implements SimpleQuery {
             } else if (Date.class.isAssignableFrom(retType)) {
                 Date x = (Date) paramOb;
                 param = AmazonSimpleDBUtil.encodeDate(x);
-            } else {
+            } else { // string
                 param = EscapeUtils.escapeQueryParam(paramOb.toString());
+                if (param.startsWith("%")) {
+                    throw new PersistenceException("SimpleDB only supports a wildcard query on the right side of the value (ie: starts-with).");
+                }
             }
         }
         return "'" + param + "'";
@@ -424,22 +435,15 @@ public class QueryImpl implements SimpleQuery {
     }
 
     private void appendFilterMultiple(StringBuilder sb, String field, String comparator, List params) {
-//        sb.append("[");
         int count = 0;
         for (Object param : params) {
             if (count > 0) {
-//                sb.append("]");
                 sb.append(" and ");
-//                sb.append("[");
-//                sb.append(" OR ");
             }
-//            sb.append("'");
             sb.append(field);
-//            sb.append("' ");
             sb.append(comparator).append(" '").append(param).append("'");
             count++;
         }
-//        sb.append("]");
     }
 
     private void appendFilter(StringBuilder sb, String field, String comparator, String param) {
@@ -450,18 +454,32 @@ public class QueryImpl implements SimpleQuery {
         if (not) {
             sb.append("not ");
         }
-//        sb.append("[");
-//        sb.append("'");
         sb.append("`").append(field).append("`");
-//        sb.append("' ");
         sb.append(" ");
         sb.append(comparator);
         sb.append(" ");
         if (quoteParam) sb.append("'");
         sb.append(param);
         if (quoteParam) sb.append("'");
-//        sb.append("]");
     }
+
+
+    private void appendIn(StringBuilder sb, String field, List<String> params) {
+        sb.append("`").append(field).append("`");
+        sb.append(" ");
+        sb.append("IN");
+        sb.append(" (");
+        boolean quoteParam = true;
+        int i = 0;
+        for (String param : params) {
+            if(i > 0) sb.append(",");
+            if (quoteParam) sb.append("'");
+            sb.append(param);
+            if (quoteParam) sb.append("'");
+        }
+        sb.append(")");
+    }
+
 
     public Object getSingleResult() {
         List resultList = getResultList();
@@ -501,7 +519,7 @@ public class QueryImpl implements SimpleQuery {
     }
 
     public Query setParameter(String s, Object o) {
-        paramMap.put(s, o);
+        parameters.put(s, o);
         return this;
     }
 
@@ -544,23 +562,39 @@ public class QueryImpl implements SimpleQuery {
     public void setQ(JPAQuery q) {
         this.q = q;
     }
-
+/*
     public AmazonQueryString getAmazonQuery() {
         return amazonQuery;
     }
 
     public void setAmazonQuery(AmazonQueryString amazonQuery) {
         this.amazonQuery = amazonQuery;
-    }
+    }*/
 
     @Override
     public String toString() {
         return "QueryImpl{" +
                 "em=" + em +
                 ", q=" + q +
-                ", paramMap=" + paramMap +
+                ", parameters=" + parameters +
                 ", maxResults=" + maxResults +
                 ", qString='" + qString + '\'' +
                 '}';
+    }
+
+    public Map<String, Object> getParameters() {
+        return parameters;
+    }
+
+    public void setParameters(Map<String, Object> parameters) {
+        this.parameters = parameters;
+    }
+
+    public Map<String, List<String>> getForeignIds() {
+        return foreignIds;
+    }
+
+    public void setForeignIds(Map<String, List<String>> foreignIds) {
+        this.foreignIds = foreignIds;
     }
 }
