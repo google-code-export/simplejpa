@@ -261,6 +261,7 @@ public class PersistenceTests extends BaseTestClass {
         Assert.assertEquals(originalObject.getSomeBigDecimal(), obs.get(0).getSomeBigDecimal());
         Assert.assertEquals(originalObject.getBigString(), obs.get(0).getBigString());
         Assert.assertEquals(originalObject.getAge(), obs.get(0).getAge());
+        System.out.println("Getting my list.size....");
         Assert.assertEquals(1, obs.get(0).getMyList().size());
         Assert.assertEquals(originalObject.getMyList().get(0).getName(), obs.get(0).getMyList().get(0).getName());
 
@@ -401,7 +402,7 @@ public class PersistenceTests extends BaseTestClass {
     }
 
     @Test
-    public void nullingAttributes() {
+    public void nullingAttributes() throws InterruptedException {
         EntityManager em = factory.createEntityManager();
         Query query;
         List<MyTestObject> obs;
@@ -412,6 +413,8 @@ public class PersistenceTests extends BaseTestClass {
         em.merge(originalObject);
 
         clearCaches();
+
+        Thread.sleep(3000);
 
         // now query for it
         MyTestObject fresh = em.find(MyTestObject.class, originalObject.getId());
@@ -456,10 +459,15 @@ public class PersistenceTests extends BaseTestClass {
 
         // This should query for the sub object, then apply it to the first query for a total of 2 queries
         queryCountBefore = em.getQueryCount();
+        System.out.println("STARTING querycount=" + queryCountBefore);
         query = em.createQuery("select o from MyTestObject o where o.myTestObject2.name = :id2");
+        System.out.println("p2=" + em.getQueryCount());
         query.setParameter("id2", originalObject.getMyTestObject2().getName());
-        obs = query.getResultList();
-        Assert.assertEquals(1, obs.size());
+        System.out.println("p3=" + em.getQueryCount());
+        obs = query.getResultList(); // +2 for querying down graph
+        System.out.println("p4=" + em.getQueryCount());
+        Assert.assertEquals(1, obs.size()); // shouldn't hit database.
+        System.out.println("p5=" + em.getQueryCount());
         Assert.assertEquals(queryCountBefore + 2, em.getQueryCount());
         Assert.assertEquals(originalObject.getMyTestObject2().getName(), obs.get(0).getMyTestObject2().getName());
         for (MyTestObject ob : obs) {
@@ -764,6 +772,7 @@ public class PersistenceTests extends BaseTestClass {
         em = factory.createEntityManager();
         Query query = em.createQuery("select o from MyTestObject3 o where o.someField3 like :x");
         query.setParameter("x", "%fred and"); // bad
+        System.out.println("query=" + query);
         List<MyTestObject3> obs = query.getResultList();
         System.out.println("shouldn't make it here");
         for (MyTestObject3 ob : obs) {

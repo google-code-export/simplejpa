@@ -71,16 +71,25 @@ public class LazyList extends AbstractList implements Serializable {
     }
 
     public int size() {
+//        System.out.println("SIZE called");
+        if(numPagesLoaded == 0) get(0); // make sure it's loaded first page
+        if(nextToken == null){
+//            System.out.println("no next token, so size == backinglist.size" + backingList.size());
+            return backingList.size();
+        }
         // todo: do a quick precheck if no next token or something, then no need to call this count
         if (count != null) return count.intValue();
         try {
             JPAQuery queryClone = (JPAQuery) query.getQ().clone();
             queryClone.setResult("count(*)");
-            Query query = new QueryImpl(em, queryClone);
-            List results = query.getResultList();
-            System.out.println("obs.size=" + results.size());
+            QueryImpl query2 = new QueryImpl(em, queryClone);
+            query2.setParameters(query.getParameters());
+            query2.setForeignIds(query.getForeignIds());
+//            System.out.println("query for size=" + query2.toString());
+            List results = query2.getResultList();
+//            System.out.println("obs.size=" + results.size());
             count = (Long) results.get(0);
-            System.out.println("count set to " + count);
+//            System.out.println("count set to " + count);
 
         } catch (CloneNotSupportedException e) {
             throw new RuntimeException(e);
@@ -130,7 +139,6 @@ public class LazyList extends AbstractList implements Serializable {
     }
 
     private synchronized void loadItems(int page, boolean materializeObjectsInPage) {
-        System.out.println("loadItems page=" + page);
         if (numPagesLoaded > page) {
             if (materializeObjectsInPage) materializeObjectsInPage(page);
             return;
@@ -140,6 +148,7 @@ public class LazyList extends AbstractList implements Serializable {
             if (materializeObjectsInPage) materializeObjectsInPage(page);
             return;
         }
+//        System.out.println("loadItems page=" + page);
 
         Domain domain;
         try {
@@ -160,7 +169,7 @@ public class LazyList extends AbstractList implements Serializable {
                 try {
                     if (logger.isLoggable(Level.FINER)) logger.finer("query for lazylist=" + query);
                     if (em.getFactory().isPrintQueries()) System.out.println("query in lazylist=" + query);
-                    qr = domain.selectItems(query.getAmazonQuery().getValue(), nextToken); // todo: maxToRetrievePerRequest, need to use limit now
+                    qr = domain.selectItems(query.createAmazonQuery().getValue(), nextToken); // todo: maxToRetrievePerRequest, need to use limit now
                     Map<String, List<ItemAttribute>> itemMap = qr.getItems();
 //                    List<Item> itemList = qr.getResultList();
                     if (logger.isLoggable(Level.FINER)) logger.finer("got items for lazylist=" + itemMap.size());

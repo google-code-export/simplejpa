@@ -7,5 +7,5 @@ package com.spaceprogram.simplejpa.query;
  * Date: Nov 4, 2008
  * Time: 4:49:10 PM
  */
-public class NoResultsException extends Exception {
+public class NoResultsException extends RuntimeException {
 }
