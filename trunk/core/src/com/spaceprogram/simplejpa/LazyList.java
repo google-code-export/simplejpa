@@ -4,9 +4,13 @@ import com.xerox.amazonws.sdb.Domain;
 import com.xerox.amazonws.sdb.ItemAttribute;
 import com.xerox.amazonws.sdb.QueryWithAttributesResult;
 import com.xerox.amazonws.sdb.SDBException;
+import com.spaceprogram.simplejpa.query.QueryImpl;
+import com.spaceprogram.simplejpa.query.JPAQuery;
 import org.apache.commons.collections.list.GrowthList;
+import org.junit.Assert;
 
 import javax.persistence.PersistenceException;
+import javax.persistence.Query;
 import java.io.Serializable;
 import java.util.AbstractList;
 import java.util.ArrayList;
@@ -20,7 +24,7 @@ import java.util.logging.Logger;
 /**
  * Loads objects in the list on demand from SimpleDB.
  * <p/>
- *
+ * <p/>
  * User: treeder
  * Date: Feb 10, 2008
  * Time: 9:06:16 PM
@@ -29,15 +33,18 @@ public class LazyList extends AbstractList implements Serializable {
     private static Logger logger = Logger.getLogger(LazyList.class.getName());
     private transient EntityManagerSimpleJPA em;
     private Class genericReturnType;
-    private String query;
-    private List<SdbItem> items = new ArrayList<SdbItem>();
-    /** Stores the actual objects for this list */
+    private QueryImpl query;
+    //    private List<Object> items = new ArrayList();
+    /**
+     * Stores the actual objects for this list
+     */
     private List backingList = new GrowthList();
-    private int numRetrieved = 0;
+    //    private int numRetrieved = 0;
     private String nextToken;
     private int maxToRetrievePerRequest = 100; // same as amazon default
     private int numPagesLoaded;
-//    private transient Map<String, Future<ItemAndAttributes>> futuresMap = new ConcurrentHashMap();
+    private Long count;
+    //    private transient Map<String, Future<ItemAndAttributes>> futuresMap = new ConcurrentHashMap();
     /**
      * map to remember which pages have been loaded already.
      */
@@ -52,12 +59,11 @@ public class LazyList extends AbstractList implements Serializable {
         super();
     }
 
-    public LazyList(EntityManagerSimpleJPA em, Class tClass, String query) {
+    public LazyList(EntityManagerSimpleJPA em, Class tClass, QueryImpl query) {
         this();
         this.em = em;
         this.genericReturnType = tClass;
         this.query = query;
-
     }
 
     public boolean isEmpty() {
@@ -65,9 +71,22 @@ public class LazyList extends AbstractList implements Serializable {
     }
 
     public int size() {
-//        System.out.println("size called");
-        loadAllItems();
-        return numRetrieved;
+        // todo: do a quick precheck if no next token or something, then no need to call this count
+        if (count != null) return count.intValue();
+        try {
+            JPAQuery queryClone = (JPAQuery) query.getQ().clone();
+            queryClone.setResult("count(*)");
+            Query query = new QueryImpl(em, queryClone);
+            List results = query.getResultList();
+            System.out.println("obs.size=" + results.size());
+            count = (Long) results.get(0);
+            System.out.println("count set to " + count);
+
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeException(e);
+        }
+//        loadAllItems();
+        return count.intValue();
     }
 
     public void add(int index, Object element) {
@@ -90,48 +109,15 @@ public class LazyList extends AbstractList implements Serializable {
     public Object get(int i) {
         if (logger.isLoggable(Level.FINER)) logger.finer("getting from lazy list at index=" + i);
         loadItems(i / maxToRetrievePerRequest, true);
-        Object o;
+        Object o = null;
         if (backingList.size() > i) {
             o = backingList.get(i);
             if (o != null) {
-                /*if (o instanceof Future) {
-                    Future future = (Future) o;
-
-                }*/
                 logger.finest("object already loaded in backing list: " + o);
                 return o;
             }
         }
-        // else we load the atts
-        SdbItem item = items.get(i);
-        // check future's loading map
-        try {
-            o = checkFuturesMap(item);
-            if (o == null) {
-                o = checkCache(item); // todo: should this be swapped with checkFuturesMap and can cancel the future if for some reason it got cached between the future being added and here
-                if (o == null) {
-                    // get from DB
-                    o = em.getItemAttributesBuildAndCache(genericReturnType, item.getIdentifier(), item);
-
-                } else {
-                    if (logger.isLoggable(Level.FINEST)) logger.finest("cache hit in lazy list: " + o);
-                }
-                if(o == null){
-                    // can this ever happen??  perhaps if the item gets deleted somewhere along the way?
-                    throw new PersistenceException("SHOULD NEVER GET THIS EXCEPTION. getting item at position " + i + ", list.size=" + size());
-                }
-            }
-            putInBackingList(i, o);
-            return o;
-        } catch (PersistenceException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new PersistenceException(e);
-        }
-    }
-
-    private Object checkFuturesMap(SdbItem item) throws ExecutionException, InterruptedException {
-        return null;
+        return o;
     }
 
     private Object checkCache(SdbItem item) {
@@ -144,6 +130,7 @@ public class LazyList extends AbstractList implements Serializable {
     }
 
     private synchronized void loadItems(int page, boolean materializeObjectsInPage) {
+        System.out.println("loadItems page=" + page);
         if (numPagesLoaded > page) {
             if (materializeObjectsInPage) materializeObjectsInPage(page);
             return;
@@ -173,18 +160,18 @@ public class LazyList extends AbstractList implements Serializable {
                 try {
                     if (logger.isLoggable(Level.FINER)) logger.finer("query for lazylist=" + query);
                     if (em.getFactory().isPrintQueries()) System.out.println("query in lazylist=" + query);
-                    qr = domain.selectItems(query, nextToken); // todo: maxToRetrievePerRequest, need to use limit now
+                    qr = domain.selectItems(query.getAmazonQuery().getValue(), nextToken); // todo: maxToRetrievePerRequest, need to use limit now
                     Map<String, List<ItemAttribute>> itemMap = qr.getItems();
 //                    List<Item> itemList = qr.getResultList();
                     if (logger.isLoggable(Level.FINER)) logger.finer("got items for lazylist=" + itemMap.size());
                     // dang, this new select thing in typica sucks, why would the list of results be a map?
                     for (String id : itemMap.keySet()) {
                         List<ItemAttribute> list = itemMap.get(id);
-                        items.add(new SdbItemImpl(id, list));
+                        backingList.add(em.buildObject(genericReturnType, id, list));
                     }
 
 //                    items.addAll(itemList);
-                    numRetrieved += itemMap.size();
+//                    numRetrieved += itemMap.size();
                     nextToken = qr.getNextToken();
                     numPagesLoaded++;
                     if (materializeObjectsInPage) {
@@ -192,12 +179,12 @@ public class LazyList extends AbstractList implements Serializable {
                     }
                 } catch (SDBException e) {
                     if (ExceptionHelper.isDomainDoesNotExist(e)) {
-                        items = new ArrayList<SdbItem>(); // no need to throw here
+//                        items = new ArrayList(); // no need to throw here
                     } else {
                         throw new PersistenceException("Query failed: Domain=" + domain.getName() + " -> " + query, e);
                     }
                 }
-                logger.finer("got " + items.size() + " for lazy list");
+//                logger.finer("got " + items.size() + " for lazy list");
             }
         } catch (SDBException e) {
             throw new PersistenceException(e);
@@ -208,16 +195,8 @@ public class LazyList extends AbstractList implements Serializable {
         if (materializedPages.get(page) != null) {
             return;
         }
-        materializedPages.put(page, page); 
-        int start = page * maxToRetrievePerRequest;
-        int end = start + maxToRetrievePerRequest;
-        if (end > items.size()) end = items.size();
-        List<SdbItem> itemList = this.items.subList(start, end);
-        if (itemList.size() != 0) {
-            // attributes are already included in query, so we don't need to use async get anymore - see history if we want to put this back
-            // in for performance reasons or something.
+        materializedPages.put(page, page);
 
-        }
     }
 
 

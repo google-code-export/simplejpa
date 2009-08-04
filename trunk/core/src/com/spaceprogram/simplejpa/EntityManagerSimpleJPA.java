@@ -426,7 +426,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
      * @param tClass
      * @param newInstance
      * @param getter
-     * @param valAsString
+     * @param val
      */
     public <T> void setFieldValue(Class tClass, T newInstance, Method getter, String val) {
         try {
@@ -512,17 +512,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
     }
 
     public Query createQuery(String s) {
-        logger.finer("query=" + s);
-        JPAQuery q = new JPAQuery();
-        JPAQueryParser parser = new JPAQueryParser(q, s);
-        parser.parse();
-        String from = q.getFrom();
-        logger.finer("from=" + from);
-        logger.finer("where=" + q.getFilter());
-        if (q.getOrdering() != null && q.getFilter() == null) {
-            throw new PersistenceException("Attribute in ORDER BY [" + q.getOrdering() + "] must be included in a WHERE filter.");
-        }
-        return new QueryImpl(this, q);
+        return new QueryImpl(this, s);
     }
 
     public Query createNamedQuery(String s) {

@@ -313,7 +313,7 @@ public class PersistenceTests extends BaseTestClass {
         }
         future.get();
 
-        Thread.sleep(15000);
+        Thread.sleep(7000);
 
         System.out.println("querying for all objects and checking order...");
         query = em.createQuery("select o from MyTestObject o where o.age >= '0' order by o.age");

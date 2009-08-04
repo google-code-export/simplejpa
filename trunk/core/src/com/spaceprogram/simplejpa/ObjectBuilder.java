@@ -1,6 +1,7 @@
 package com.spaceprogram.simplejpa;
 
 import com.xerox.amazonws.sdb.ItemAttribute;
+import com.spaceprogram.simplejpa.query.QueryImpl;
 import net.sf.cglib.proxy.Enhancer;
 
 import javax.persistence.EnumType;
@@ -156,7 +157,7 @@ public class ObjectBuilder {
     }
 
 
-    private static String oneToManyQuery(EntityManagerSimpleJPA em, String attName, String foreignKeyFieldName, Object id, Class typeInList) {
+    private static QueryImpl oneToManyQuery(EntityManagerSimpleJPA em, String attName, String foreignKeyFieldName, Object id, Class typeInList) {
         if(foreignKeyFieldName == null || foreignKeyFieldName.length() == 0){
             // use the class containing the OneToMany
             foreignKeyFieldName = attName;
@@ -167,7 +168,7 @@ public class ObjectBuilder {
             query += " and DTYPE = '" + ai.getDiscriminatorValue() + "'";
         }
         logger.finer("OneToMany query=" + query);
-        return query;
+        return new QueryImpl(em,  query);
     }
 
 
