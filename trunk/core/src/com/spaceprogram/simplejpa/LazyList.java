@@ -1,23 +1,19 @@
 package com.spaceprogram.simplejpa;
 
+import com.spaceprogram.simplejpa.query.JPAQuery;
+import com.spaceprogram.simplejpa.query.QueryImpl;
 import com.xerox.amazonws.sdb.Domain;
 import com.xerox.amazonws.sdb.ItemAttribute;
 import com.xerox.amazonws.sdb.QueryWithAttributesResult;
 import com.xerox.amazonws.sdb.SDBException;
-import com.spaceprogram.simplejpa.query.QueryImpl;
-import com.spaceprogram.simplejpa.query.JPAQuery;
 import org.apache.commons.collections.list.GrowthList;
-import org.junit.Assert;
 
 import javax.persistence.PersistenceException;
-import javax.persistence.Query;
 import java.io.Serializable;
 import java.util.AbstractList;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
