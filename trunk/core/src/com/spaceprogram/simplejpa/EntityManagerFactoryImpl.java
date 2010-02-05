@@ -87,7 +87,11 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
      * For s3 buckets.
      */
     private Map<String, S3Bucket> bucketMap = new HashMap();
-
+    /**
+     * Threadsafe service implementation for lob access
+     */
+    private S3Service s3service;
+    
     private static final int DEFAULT_GET_THREADS = 100;
     private int numExecutorThreads = DEFAULT_GET_THREADS;
     public static final String DTYPE = "DTYPE";
@@ -153,6 +157,13 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
             }
         }
         init(libsToScan);
+        AWSCredentials awsCredentials = new AWSCredentials(getAwsAccessKey(), getAwsSecretKey());
+
+        try {
+          s3service = new RestS3Service(awsCredentials);
+        } catch (S3ServiceException e) {
+          throw new PersistenceException(e);
+        }
     }
 
     /**
@@ -520,11 +531,8 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         return bucket;
     }
 
-    public S3Service getS3Service() throws S3ServiceException {
-        S3Service s3;
-        AWSCredentials awsCredentials = new AWSCredentials(getAwsAccessKey(), getAwsSecretKey());
-        s3 = new RestS3Service(awsCredentials);
-        return s3;
+    public S3Service getS3Service() {
+        return s3service;
     }
 
     public String s3bucketName() {

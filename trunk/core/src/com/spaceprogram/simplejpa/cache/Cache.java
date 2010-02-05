@@ -13,7 +13,7 @@ import java.util.Collection;
 public interface Cache {
     int size();
 
-    Object get(Object o);
+    Object getObj(Object o);
 
     void put(Object o, Object o1);
 

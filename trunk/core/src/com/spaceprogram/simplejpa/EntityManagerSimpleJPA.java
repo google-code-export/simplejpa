@@ -371,7 +371,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
         if (o == null) {
             Cache c = getFactory().getCache(aClass);
             if (c != null) {
-                o = (T) c.get(id);
+                o = (T) c.getObj(id);
                 if (o != null) {
                     logger.finest("Got item from second level cache!");
                     replaceEntityManager(o, this);

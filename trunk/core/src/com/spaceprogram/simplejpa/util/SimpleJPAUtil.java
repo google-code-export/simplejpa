@@ -5,6 +5,8 @@ import com.spaceprogram.simplejpa.EntityManagerFactoryImpl;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.PersistenceException;
+
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -24,6 +26,8 @@ public class SimpleJPAUtil {
 
     private static String persistenceUnitName;
     private static Set<String> libsToScan;
+    
+    private static Map props;
 
     /**
      * Must call this before using SimpleJPAUtil.
@@ -43,6 +47,14 @@ public class SimpleJPAUtil {
     public static void setLibsToScan(Set<String> libsToScan){
         SimpleJPAUtil.libsToScan = libsToScan;
     }
+    
+    public static Map getProps() {
+        return props;
+    }
+    
+    public static void setProps(Map props) {
+        SimpleJPAUtil.props = props;
+    }
 
     private synchronized static void init() {
         if(entityManagerFactory != null) return;
@@ -50,7 +62,7 @@ public class SimpleJPAUtil {
             if(persistenceUnitName == null){
                 throw new PersistenceException("SimpleJPAUtil requires a call to setPersistenceUnitName before using.");
             }
-            entityManagerFactory = new EntityManagerFactoryImpl(persistenceUnitName, null, libsToScan);
+            entityManagerFactory = new EntityManagerFactoryImpl(persistenceUnitName, getProps(), libsToScan);
             //           todo: use Persistence class: entityManagerFactory = Persistence.createEntityManagerFactory(persistenceUnitName != null ? persistenceUnitName : DEFAULT_PERSISTENCE_UNIT);
         } catch (Throwable ex) {
             // Log exception!
