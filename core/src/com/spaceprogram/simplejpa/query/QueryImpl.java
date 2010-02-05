@@ -151,25 +151,27 @@ public class QueryImpl implements SimpleQuery {
         String select = q.getResult();
         boolean count = false;
         if (select != null && select.contains("count")) {
-//            System.out.println("HAS COUNT: " + select);
+// System.out.println("HAS COUNT: " + select);
             count = true;
         }
-        Domain d = em.getDomain(tClass);
+        AnnotationInfo ai = em.getAnnotationManager().getAnnotationInfo(tClass);
+
+        // Make sure querying the root Entity class
+        Domain d = em.getDomain(ai.getRootClass());
         if (d == null) {
             return null;
-//            throw new NoResultsException();
+// throw new NoResultsException();
         }
         StringBuilder amazonQuery;
         if (q.getFilter() != null) {
             amazonQuery = toAmazonQuery(tClass, q);
             if (amazonQuery == null) {
-//                throw new NoResultsException();
+// throw new NoResultsException();
                 return null;
             }
         } else {
             amazonQuery = new StringBuilder();
         }
-        AnnotationInfo ai = em.getAnnotationManager().getAnnotationInfo(tClass);
         if (ai.getDiscriminatorValue() != null) {
             if (amazonQuery.length() == 0) {
                 amazonQuery = new StringBuilder();
@@ -182,7 +184,7 @@ public class QueryImpl implements SimpleQuery {
         // now for sorting
         String orderBy = q.getOrdering();
         if (orderBy != null && orderBy.length() > 0) {
-//            amazonQuery.append(" sort ");
+// amazonQuery.append(" sort ");
             amazonQuery.append(" order by ");
             String orderByOrder = "asc";
             String orderBySplit[] = orderBy.split(" ");
@@ -199,9 +201,9 @@ public class QueryImpl implements SimpleQuery {
             } else if (fieldSplit.length == 2) {
                 orderByAttribute = fieldSplit[1];
             }
-//            amazonQuery.append("'");
+// amazonQuery.append("'");
             amazonQuery.append(orderByAttribute);
-//            amazonQuery.append("'");
+// amazonQuery.append("'");
             amazonQuery.append(" ").append(orderByOrder);
         }
         StringBuilder fullQuery = new StringBuilder();
@@ -218,7 +220,9 @@ public class QueryImpl implements SimpleQuery {
             System.out.println(logString);
         }
 
-        if (maxResults != null) fullQuery.append(" limit ").append(Math.min(250, maxResults));
+        if (maxResults != null) {
+            fullQuery.append(" limit ").append(Math.min(250, maxResults));
+        }
         return new AmazonQueryString(fullQuery.toString(), count);
     }
 

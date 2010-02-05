@@ -45,7 +45,7 @@ public class NoopCache implements Cache {
         return null;
     }
 
-    public Object get(Object o) {
+    public Object getObj(Object o) {
         return null;
     }
 

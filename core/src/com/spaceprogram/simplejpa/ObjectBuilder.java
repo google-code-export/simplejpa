@@ -158,18 +158,20 @@ public class ObjectBuilder {
 
 
     private static QueryImpl oneToManyQuery(EntityManagerSimpleJPA em, String attName, String foreignKeyFieldName, Object id, Class typeInList) {
-        if(foreignKeyFieldName == null || foreignKeyFieldName.length() == 0){
+        if (foreignKeyFieldName == null || foreignKeyFieldName.length() == 0) {
             // use the class containing the OneToMany
             foreignKeyFieldName = attName;
         }
         AnnotationInfo ai = em.getFactory().getAnnotationManager().getAnnotationInfo(typeInList);
-      //  System.out.println("root class= " + ai.getRootClass());
-        String query = "select * from " + ai.getRootClass().getSimpleName() + " o where o." + foreignKeyFieldName + ".id = '" + id + "'";
-        if (ai.getDiscriminatorValue() != null) {
-            query += " and DTYPE = '" + ai.getDiscriminatorValue() + "'";
-        }
+        // System.out.println("root class= " + ai.getRootClass());
+        Method getterForReference = ai.getGetter(foreignKeyFieldName);
+        Class refType = getterForReference.getReturnType();
+        AnnotationInfo refAi = em.getAnnotationManager().getAnnotationInfo(refType);
+        String foreignIdAttr = NamingHelper.attributeName(refAi.getIdMethod());
+        String query = "select * from " + ai.getMainClass().getSimpleName() + " o where o." + foreignKeyFieldName + "." + foreignIdAttr + " = '" + id + "'";
+
         logger.finer("OneToMany query=" + query);
-        return new QueryImpl(em,  query);
+        return new QueryImpl(em, query);
     }
 
 
