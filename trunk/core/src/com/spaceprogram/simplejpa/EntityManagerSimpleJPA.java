@@ -52,6 +52,10 @@ import java.util.logging.Logger;
  * User: treeder
  * Date: Feb 8, 2008
  * Time: 12:59:38 PM
+ * 
+ * Additional Contributions
+ *   - Eric Molitor eric@molitor.org
+ *   - Eric Wei 
  */
 public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseManager {
 
@@ -564,7 +568,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
     public Object getObjectFromS3(String idOnS3) throws S3ServiceException, IOException, ClassNotFoundException {
         long start = System.currentTimeMillis();
         S3Service s3 = factory.getS3Service();
-        S3Bucket bucket = s3.getBucket(factory.s3bucketName());
+        S3Bucket bucket = s3.getOrCreateBucket(factory.s3bucketName());
         S3Object s3o = s3.getObject(bucket, idOnS3);
         logger.fine("got s3object=" + s3o);
         Object ret = null;

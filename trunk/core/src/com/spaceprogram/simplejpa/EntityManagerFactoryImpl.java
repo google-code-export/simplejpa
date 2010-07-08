@@ -10,7 +10,9 @@ import com.xerox.amazonws.sdb.ListDomainsResult;
 import com.xerox.amazonws.sdb.SDBException;
 import com.xerox.amazonws.sdb.SimpleDB;
 import net.sf.ehcache.CacheException;
+import org.apache.commons.collections.MapUtils;
 import org.jets3t.service.model.S3Bucket;
+import org.jets3t.service.Jets3tProperties;
 import org.jets3t.service.S3Service;
 import org.jets3t.service.S3ServiceException;
 import org.jets3t.service.impl.rest.httpclient.RestS3Service;
@@ -43,9 +45,18 @@ import java.util.logging.Logger;
  * User: treeder
  * Date: Feb 10, 2008
  * Time: 6:20:23 PM
+ * 
+ * Additional Contributions
+ *   - Eric Molitor eric@molitor.org
+ *   - Eric Wei 
  */
 public class EntityManagerFactoryImpl implements EntityManagerFactory {
     private static Logger logger = Logger.getLogger(EntityManagerFactoryImpl.class.getName());
+    
+    /** 
+     * Default S3 endpoint 
+     */
+    private static final String DEFAULT_SDB_ENDPOINT = "sdb.amazonaws.com";
     /**
      * Whether or not the factory has been closed
      */
@@ -105,6 +116,9 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     private boolean printQueries = false;
     private String awsAccessKey;
     private String awsSecretKey;
+    private String sdbEndpoint;
+    private boolean sdbSecure;
+    private String jets3tPropertiesFile;
     private String cacheFactoryClassname;
     private CacheFactory cacheFactory;
     private boolean sessionless;
@@ -158,9 +172,16 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         }
         init(libsToScan);
         AWSCredentials awsCredentials = new AWSCredentials(getAwsAccessKey(), getAwsSecretKey());
-
+         
         try {
-          s3service = new RestS3Service(awsCredentials);
+          String jets3tPropertiesFile = getJets3tPropertiesFile();
+            
+          if (jets3tPropertiesFile != null) {
+            Jets3tProperties jets3tProperties = Jets3tProperties.getInstance(jets3tPropertiesFile);
+            s3service = new RestS3Service(awsCredentials, null, null, jets3tProperties);
+          } else {
+        	  s3service = new RestS3Service(awsCredentials);
+          }
         } catch (S3ServiceException e) {
           throw new PersistenceException(e);
         }
@@ -224,8 +245,13 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
             throw new PersistenceException("AWS Secret Key not found. It is a required property.");
         }
 
+        sdbEndpoint = MapUtils.getString(props, "sdbEndpoint", DEFAULT_SDB_ENDPOINT);
+        sdbSecure = MapUtils.getBoolean(props, "sdbSecure", false);
+
+        jets3tPropertiesFile = MapUtils.getString(props, "jets3tPropertiesFile");
+        
         try {
-            System.out.println("Scanning for entity classes...");
+        	logger.info("Scanning for entity classes...");
             URL[] urls;
             try {
                 urls = ClasspathUrlFinder.findClassPaths();
@@ -246,7 +272,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
                 }
                 urls = urls2;
             }
-            System.out.println("classpath=" + System.getProperty("java.class.path"));
+            logger.info("classpath=" + System.getProperty("java.class.path"));
             for (URL url : urls) {
                 logger.info("Scanning: " + url.toString());
             }
@@ -264,7 +290,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
                     initEntity(entity);
                 }
             }
-            System.out.println("Finished scanning for entity classes.");
+            logger.info("Finished scanning for entity classes.");
 
             initSecondLevelCache();
 
@@ -275,7 +301,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     }
 
     private void initEntity(String entity) {
-        System.out.println("entity=" + entity);
+        logger.info("entity=" + entity);
         entityMap.put(entity, entity);
         // also add simple name to it
         String simpleName = entity.substring(entity.lastIndexOf(".") + 1);
@@ -368,7 +394,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         try {
             Domain domain = getDomain(domainName);
             if (domain == null) {
-                System.out.println("creating domain: " + domainName);
+                logger.info("creating domain: " + domainName);
                 SimpleDB db = getSimpleDb();
                 domain = db.createDomain(domainName);
                 domainsList.add(domain);
@@ -408,7 +434,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
             return domainsList;
         }
         try {
-            System.out.println("getting all domains");
+            logger.info("getting all domains");
             SimpleDB db = getSimpleDb();
             ListDomainsResult listDomainsResult = db.listDomains();
             domainsList = listDomainsResult.getDomainList();
@@ -431,7 +457,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     }
 
     public SimpleDB getSimpleDb() {
-        SimpleDB db = new SimpleDB(awsAccessKey, awsSecretKey);
+        SimpleDB db = new SimpleDB(awsAccessKey, awsSecretKey, sdbSecure, sdbEndpoint);
         db.setSignatureVersion(1); // todo: TEMPORARY UNTIL TYPICA GETS FIXED, SELECT QUERIES DON'T WORK
         return db;
     }
@@ -469,6 +495,14 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 
     public String getAwsSecretKey() {
         return awsSecretKey;
+    }
+    
+    public String getSdbEndpoint() {
+        return sdbEndpoint;
+    }
+     
+    public String getJets3tPropertiesFile() {
+        return jets3tPropertiesFile;
     }
 
     public Cache getCache(Class aClass) {
