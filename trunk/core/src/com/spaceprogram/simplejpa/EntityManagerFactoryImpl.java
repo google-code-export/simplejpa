@@ -48,7 +48,7 @@ import java.util.logging.Logger;
  * 
  * Additional Contributions
  *   - Eric Molitor eric@molitor.org
- *   - Eric Wei 
+ *   - Eric Wei e.pwei84@gmail.com
  */
 public class EntityManagerFactoryImpl implements EntityManagerFactory {
     private static Logger logger = Logger.getLogger(EntityManagerFactoryImpl.class.getName());
@@ -180,7 +180,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
             Jets3tProperties jets3tProperties = Jets3tProperties.getInstance(jets3tPropertiesFile);
             s3service = new RestS3Service(awsCredentials, null, null, jets3tProperties);
           } else {
-        	  s3service = new RestS3Service(awsCredentials);
+            s3service = new RestS3Service(awsCredentials);
           }
         } catch (S3ServiceException e) {
           throw new PersistenceException(e);
