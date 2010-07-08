@@ -55,7 +55,7 @@ import java.util.logging.Logger;
  * 
  * Additional Contributions
  *   - Eric Molitor eric@molitor.org
- *   - Eric Wei 
+ *   - Eric Wei e.pwei84@gmail.com
  */
 public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseManager {
 
