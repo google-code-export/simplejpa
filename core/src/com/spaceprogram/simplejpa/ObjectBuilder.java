@@ -9,6 +9,7 @@ import javax.persistence.Enumerated;
 import javax.persistence.Lob;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
+import javax.persistence.OrderBy;
 import javax.persistence.PersistenceException;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
@@ -21,6 +22,9 @@ import java.util.logging.Logger;
  * User: treeder
  * Date: May 11, 2008
  * Time: 4:01:28 PM
+ * 
+ * Additional Contributions
+ *  - Yair Ben-Meir reformy@gmail.com
  */
 public class ObjectBuilder {
 
@@ -77,7 +81,14 @@ public class ObjectBuilder {
                     Class typeInList = (Class) types[0];
                     // todo: should this return null if there are no elements??
 //                    LazyList lazyList = new LazyList(this, newInstance, annotation.mappedBy(), id, typeInList, factory.getAnnotationManager().getAnnotationInfo(typeInList));
-                    LazyList lazyList = new LazyList(em, typeInList, oneToManyQuery(em, attName, annotation.mappedBy(), id, typeInList));
+                    
+                    OrderBy orderBy = null;
+                    if (type.getRawType() == List.class)
+                    {
+                        orderBy = getter.getAnnotation(OrderBy.class);
+                    }
+                    
+                    LazyList lazyList = new LazyList(em, typeInList, oneToManyQuery(em, attName, annotation.mappedBy(), id, typeInList, orderBy));
                     Class retType = getter.getReturnType();
                     // todo: assuming List for now, handle other collection types
                     String setterName = em.getSetterNameFromGetter(getter);
@@ -157,7 +168,7 @@ public class ObjectBuilder {
     }
 
 
-    private static QueryImpl oneToManyQuery(EntityManagerSimpleJPA em, String attName, String foreignKeyFieldName, Object id, Class typeInList) {
+    private static QueryImpl oneToManyQuery(EntityManagerSimpleJPA em, String attName, String foreignKeyFieldName, Object id, Class typeInList, OrderBy orderBy) {
         if (foreignKeyFieldName == null || foreignKeyFieldName.length() == 0) {
             // use the class containing the OneToMany
             foreignKeyFieldName = attName;
@@ -169,7 +180,13 @@ public class ObjectBuilder {
         AnnotationInfo refAi = em.getAnnotationManager().getAnnotationInfo(refType);
         String foreignIdAttr = NamingHelper.attributeName(refAi.getIdMethod());
         String query = "select * from " + ai.getMainClass().getSimpleName() + " o where o." + foreignKeyFieldName + "." + foreignIdAttr + " = '" + id + "'";
-
+        
+        if (orderBy != null)
+        {
+        	query += " and o." + orderBy.value().split("\\s")[0] + " is not null";
+        	query += " order by o." + orderBy.value();
+        }
+        
         logger.finer("OneToMany query=" + query);
         return new QueryImpl(em, query);
     }
