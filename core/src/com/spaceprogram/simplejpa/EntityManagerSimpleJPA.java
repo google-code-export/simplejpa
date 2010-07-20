@@ -442,13 +442,19 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
 //            logger.fine("getter in setFieldValue = " + attName + " - valAsString=" + valAsString + " rettype=" + retType);
             Method setMethod = tClass.getMethod("set" + StringUtils.capitalize(attName), retType);
             Object newField = null;
-            if (Integer.class.isAssignableFrom(retType)) {
+            if (Integer.class.isAssignableFrom(retType) || retType == int.class) {
 //                logger.fine("setting int val " + val + " on field " + attName);
                 val = AmazonSimpleDBUtil.decodeRealNumberRange(val, EntityManagerSimpleJPA.OFFSET_VALUE).toString();
-            } else if (Long.class.isAssignableFrom(retType)) {
+                if (retType == int.class)
+                	retType = Integer.class;
+            } else if (Long.class.isAssignableFrom(retType) || retType == long.class) {
                 val = AmazonSimpleDBUtil.decodeRealNumberRange(val, EntityManagerSimpleJPA.OFFSET_VALUE).toString();
-            } else if (Double.class.isAssignableFrom(retType)) {
+                if (retType == long.class)
+                	retType = Long.class;
+            } else if (Double.class.isAssignableFrom(retType) || retType == double.class) {
                 val = AmazonSimpleDBUtil.decodeRealNumberRange(val, AmazonSimpleDBUtil.LONG_DIGITS, EntityManagerSimpleJPA.OFFSET_VALUE).toString();
+                if (retType == double.class)
+                	retType = Double.class;
             } else if (BigDecimal.class.isAssignableFrom(retType)) {
                 val = AmazonSimpleDBUtil.decodeRealNumberRange(val, AmazonSimpleDBUtil.LONG_DIGITS, EntityManagerSimpleJPA.OFFSET_VALUE).toString();
             } else if (byte[].class.isAssignableFrom(retType)) {
@@ -468,7 +474,8 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
             }
             setMethod.invoke(newInstance, newField);
         } catch (Exception e) {
-            throw new PersistenceException(e);
+	          throw new PersistenceException("Failed setting field of getter: " + getter.getName() +
+	          		", using value: " + val, e);
         }
     }
 
