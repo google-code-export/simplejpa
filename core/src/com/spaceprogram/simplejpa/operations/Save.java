@@ -126,7 +126,16 @@ public class Save implements Callable {
 
         Collection<Method> getters = ai.getGetters();
         for (Method getter : getters) {
-            Object ob = getter.invoke(o);
+        	Object ob;
+        	try
+        	{
+        		ob = getter.invoke(o);
+        	}
+        	catch (Exception e)
+        	{
+        		throw new PersistenceException("Failed invoking getter: " + getter, e);
+        	}
+        	
             String columnName = NamingHelper.getColumnName(getter);
             if (ob == null) {
                 attsToDelete.add(new ItemAttribute(columnName, null, true));
