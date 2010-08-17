@@ -22,6 +22,7 @@ Need the latest releases of (I'll try to package these up into the release if I 
   * scannotation - http://scannotation.sourceforge.net/
   * javassist (scannotation) - http://www.csg.is.titech.ac.jp/~chiba/javassist/
   * kitty-cache - http://code.google.com/p/kitty-cache/
+  * ehcache - http://ehcache.org/
 
 = Download SimpleJPA =
 
