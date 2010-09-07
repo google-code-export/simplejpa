@@ -1,6 +1,5 @@
 package com.spaceprogram.simplejpa.operations;
 
-import com.xerox.amazonws.sdb.Item;
 import com.spaceprogram.simplejpa.ItemAndAttributes;
 import com.spaceprogram.simplejpa.EntityManagerSimpleJPA;
 import com.spaceprogram.simplejpa.SdbItem;

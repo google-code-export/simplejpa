@@ -4,7 +4,8 @@ import net.sf.cglib.asm.Type;
 import net.sf.cglib.core.Signature;
 import net.sf.cglib.proxy.MethodInterceptor;
 import net.sf.cglib.proxy.MethodProxy;
-import org.jets3t.service.S3ServiceException;
+
+import com.amazonaws.AmazonClientException;
 
 import javax.persistence.Lob;
 import javax.persistence.ManyToOne;
@@ -73,7 +74,7 @@ public class LazyInterceptor implements MethodInterceptor, Serializable {
         }
     }
 
-    private boolean handleGetMethod(Object obj, Method method) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, S3ServiceException, IOException, ClassNotFoundException {
+    private boolean handleGetMethod(Object obj, Method method) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, AmazonClientException, IOException, ClassNotFoundException {
         if (method.getAnnotation(ManyToOne.class) != null) {
             logger.fine("intercepting many to one");
             if (foreignKeys != null) {

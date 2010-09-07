@@ -1,6 +1,13 @@
 package com.spaceprogram.simplejpa;
 
-import com.xerox.amazonws.sdb.*;
+import com.amazonaws.AmazonClientException;
+import com.amazonaws.services.simpledb.AmazonSimpleDB;
+import com.amazonaws.services.simpledb.model.CreateDomainRequest;
+import com.amazonaws.services.simpledb.model.DeleteDomainRequest;
+import com.amazonaws.services.simpledb.model.Item;
+import com.amazonaws.services.simpledb.model.PutAttributesRequest;
+import com.amazonaws.services.simpledb.model.ReplaceableAttribute;
+
 import org.junit.*;
 
 import java.io.IOException;
@@ -30,29 +37,39 @@ public class UtilTests {
         factory.close();
     }
     @After
-    public void deleteAll() throws SDBException {
+    public void deleteAll() throws AmazonClientException {
         EntityManagerSimpleJPA em = (EntityManagerSimpleJPA) factory.createEntityManager();
-        SimpleDB db = em.getSimpleDb();
-        Domain d = db.getDomain(em.getDomainName(MyTestObject.class));
-        db.deleteDomain(d);
-        d = db.getDomain(em.getDomainName(MyTestObject2.class));
-        db.deleteDomain(d);
-        d = db.getDomain(em.getDomainName(MyInheritanceObject1.class));
-        db.deleteDomain(d);
+        AmazonSimpleDB db = em.getSimpleDb();
+        
+        String domainName = em.getDomainName(MyTestObject.class);
+        db.deleteDomain(new DeleteDomainRequest().withDomainName(domainName));
+
+        domainName = em.getDomainName(MyTestObject2.class);
+        db.deleteDomain(new DeleteDomainRequest().withDomainName(domainName));
+
+        domainName = em.getDomainName(MyInheritanceObject1.class);
+        db.deleteDomain(new DeleteDomainRequest().withDomainName(domainName));
+        
         em.close();
     }
 
     @Test
-    public void rename() throws IOException, ExecutionException, InterruptedException, SDBException {
+    public void rename() throws IOException, ExecutionException, InterruptedException, AmazonClientException {
         EntityManagerSimpleJPA em = (EntityManagerSimpleJPA) factory.createEntityManager();
+        AmazonSimpleDB db = em.getSimpleDb();
 
-        Domain d = em.getFactory().getOrCreateDomain(MyTestObject.class);
+        String domainName = em.getFactory().getDomainName(MyTestObject.class);
+        em.getFactory().createIfNotExistDomain(domainName);
+        
         String id = "abc123";
-        Item item = d.getItem(id);
-        List<ItemAttribute> atts = new ArrayList<ItemAttribute>();
-        atts.add(new ItemAttribute("id", id, true));
-        atts.add(new ItemAttribute("nameOld", "Bullwinkle", true));
-        item.putAttributes(atts);
+        List<ReplaceableAttribute> atts = new ArrayList<ReplaceableAttribute>();
+        atts.add(new ReplaceableAttribute("id", id, true));
+        atts.add(new ReplaceableAttribute("nameOld", "Bullwinkle", true));
+        db.putAttributes(new PutAttributesRequest()
+        	.withDomainName(domainName)
+        	.withItemName(id)
+        	.withAttributes(atts));
+
         MyTestObject object;
         object = em.find(MyTestObject.class, id);
         Assert.assertNull(object.getName());
@@ -79,17 +96,24 @@ public class UtilTests {
     }
 
     @Test
-    public void renameSubclass() throws IOException, ExecutionException, InterruptedException, SDBException {
+    public void renameSubclass() throws IOException, ExecutionException, InterruptedException, AmazonClientException {
         EntityManagerSimpleJPA em = (EntityManagerSimpleJPA) factory.createEntityManager();
+        AmazonSimpleDB db = em.getSimpleDb();
 
-        Domain d = em.getFactory().getOrCreateDomain(MyInheritanceObject1.class);
+        String domainName = em.getFactory().getDomainName(MyInheritanceObject1.class);
+        em.getFactory().createIfNotExistDomain(domainName);
+        
         String id = "abc123";
-        Item item = d.getItem(id);
-        List<ItemAttribute> atts = new ArrayList<ItemAttribute>();
-        atts.add(new ItemAttribute("id", id, true));
-        atts.add(new ItemAttribute(EntityManagerFactoryImpl.DTYPE, "MyInheritanceObjectOld", true));
-        atts.add(new ItemAttribute("fieldInSubClass2", "Bullwinkle", true));
-        item.putAttributes(atts);
+        List<ReplaceableAttribute> atts = new ArrayList<ReplaceableAttribute>();
+        atts.add(new ReplaceableAttribute("id", id, true));
+        atts.add(new ReplaceableAttribute(EntityManagerFactoryImpl.DTYPE, "MyInheritanceObjectOld", true));
+        atts.add(new ReplaceableAttribute("fieldInSubClass2", "Bullwinkle", true));
+        
+        db.putAttributes(new PutAttributesRequest()
+	    	.withDomainName(domainName)
+	    	.withItemName(id)
+	    	.withAttributes(atts));
+
         MyInheritanceObject1 object;
         /*object = em.find(MyInheritanceObject2.class, id);
         Assert.assertNull(object);

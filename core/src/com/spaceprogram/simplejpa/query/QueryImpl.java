@@ -1,16 +1,18 @@
 package com.spaceprogram.simplejpa.query;
 
+import com.amazonaws.AmazonClientException;
+import com.amazonaws.services.simpledb.model.Attribute;
+import com.amazonaws.services.simpledb.model.Item;
+import com.amazonaws.services.simpledb.model.NoSuchDomainException;
+import com.amazonaws.services.simpledb.model.SelectResult;
 import com.spaceprogram.simplejpa.AnnotationInfo;
+import com.spaceprogram.simplejpa.DomainHelper;
 import com.spaceprogram.simplejpa.EntityManagerFactoryImpl;
 import com.spaceprogram.simplejpa.EntityManagerSimpleJPA;
 import com.spaceprogram.simplejpa.LazyList;
 import com.spaceprogram.simplejpa.NamingHelper;
 import com.spaceprogram.simplejpa.util.AmazonSimpleDBUtil;
 import com.spaceprogram.simplejpa.util.EscapeUtils;
-import com.xerox.amazonws.sdb.Domain;
-import com.xerox.amazonws.sdb.ItemAttribute;
-import com.xerox.amazonws.sdb.QueryWithAttributesResult;
-import com.xerox.amazonws.sdb.SDBException;
 import org.apache.commons.lang.NotImplementedException;
 
 import javax.persistence.FlushModeType;
@@ -115,15 +117,20 @@ public class QueryImpl implements SimpleQuery {
 //            String qToSend = amazonQuery != null ? amazonQuery.toString() : null;
             em.incrementQueryCount();
             if (amazonQuery.isCount()) {
-                Domain domain = em.getDomain(tClass);
+                String domainName = em.getDomainName(tClass);
                 String nextToken = null;
-                QueryWithAttributesResult qr;
+                SelectResult qr;
                 long count = 0;
-                while ((qr = domain.selectItems(amazonQuery.getValue(), nextToken)) != null) {
-                    Map<String, List<ItemAttribute>> itemMap = qr.getItems();
+                
+                while ((qr = DomainHelper.selectItems(this.em.getSimpleDb(), amazonQuery.getValue(), nextToken)) != null) {
+                    Map<String, List<Attribute>> itemMap = new HashMap<String, List<Attribute>>();
+                    for(Item item : qr.getItems()) {
+                    	itemMap.put(item.getName(), item.getAttributes());
+                    }
+                    
                     for (String id : itemMap.keySet()) {
-                        List<ItemAttribute> list = itemMap.get(id);
-                        for (ItemAttribute itemAttribute : list) {
+                        List<Attribute> list = itemMap.get(id);
+                        for (Attribute itemAttribute : list) {
                             if (itemAttribute.getName().equals("Count"))
                                 count += Long.parseLong(itemAttribute.getValue());
                         }
@@ -137,17 +144,16 @@ public class QueryImpl implements SimpleQuery {
                 ret.setMaxResults(maxResults);
                 return ret;
             }
-        } catch (SDBException e) {
-            if (e.getMessage() != null && e.getMessage().contains("The specified domain does not exist")) {
-                return new ArrayList(); // no need to throw here
-            }
-            throw new PersistenceException(e);
-        } catch (Exception e) {
+        } 
+        catch(NoSuchDomainException e) {
+        	return new ArrayList(); // no need to throw here
+        }
+        catch (Exception e) {
             throw new PersistenceException(e);
         }
     }
 
-    public AmazonQueryString createAmazonQuery() throws NoResultsException, SDBException {
+    public AmazonQueryString createAmazonQuery() throws NoResultsException, AmazonClientException {
         String select = q.getResult();
         boolean count = false;
         if (select != null && select.contains("count")) {
@@ -157,8 +163,8 @@ public class QueryImpl implements SimpleQuery {
         AnnotationInfo ai = em.getAnnotationManager().getAnnotationInfo(tClass);
 
         // Make sure querying the root Entity class
-        Domain d = em.getDomain(ai.getRootClass());
-        if (d == null) {
+        String domainName = em.getDomainName(ai.getRootClass());
+        if (domainName == null) {
             return null;
 // throw new NoResultsException();
         }
@@ -209,12 +215,12 @@ public class QueryImpl implements SimpleQuery {
         StringBuilder fullQuery = new StringBuilder();
         fullQuery.append("select ");
         fullQuery.append(count ? "count(*)" : "*");
-        fullQuery.append(" from `").append(d.getName()).append("` ");
+        fullQuery.append(" from `").append(domainName).append("` ");
         if (amazonQuery.length() > 0) {
             fullQuery.append("where ");
             fullQuery.append(amazonQuery);
         }
-        String logString = "amazonQuery: Domain=" + d.getName() + ", query=" + fullQuery;
+        String logString = "amazonQuery: Domain=" + domainName + ", query=" + fullQuery;
         logger.fine(logString);
         if (em.getFactory().isPrintQueries()) {
             System.out.println(logString);

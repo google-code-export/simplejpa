@@ -1,6 +1,6 @@
 package com.spaceprogram.simplejpa;
 
-import com.xerox.amazonws.sdb.ItemAttribute;
+import com.amazonaws.services.simpledb.model.Attribute;
 import com.spaceprogram.simplejpa.query.QueryImpl;
 import net.sf.cglib.proxy.Enhancer;
 
@@ -30,7 +30,7 @@ public class ObjectBuilder {
 
     private static Logger logger = Logger.getLogger(ObjectBuilder.class.getName());
 
-    public static <T> T buildObject(EntityManagerSimpleJPA em, Class<T> tClass, Object id, List<ItemAttribute> atts) {
+    public static <T> T buildObject(EntityManagerSimpleJPA em, Class<T> tClass, Object id, List<Attribute> atts) {
         T newInstance;
         /*
         Why was this here?  Should we merge if it exists though?
@@ -42,7 +42,7 @@ public class ObjectBuilder {
         try {
 //            newInstance = tClass.newInstance();
             // check for DTYPE to see if it's a subclass, must be a faster way to do this you'd think?
-            for (ItemAttribute att : atts) {
+            for (Attribute att : atts) {
                 if (att.getName().equals(EntityManagerFactoryImpl.DTYPE)) {
                     logger.finest("dtype=" + att.getValue());
                     ai = em.getFactory().getAnnotationManager().getAnnotationInfoByDiscriminator(att.getValue());
@@ -145,9 +145,9 @@ public class ObjectBuilder {
         return cwi;
     }
 
-    private static String getIdForManyToOne(EntityManagerSimpleJPA em, Method getter, String columnName, List<ItemAttribute> atts) {
+    private static String getIdForManyToOne(EntityManagerSimpleJPA em, Method getter, String columnName, List<Attribute> atts) {
         String fkAttName = columnName != null ? columnName : NamingHelper.foreignKey(getter);
-        for (ItemAttribute att : atts) {
+        for (Attribute att : atts) {
             if (att.getName().equals(fkAttName)) {
                 return att.getValue();
             }
@@ -155,9 +155,9 @@ public class ObjectBuilder {
         return null;
     }
 
-    private static String getValueToSet(List<ItemAttribute> atts, String propertyName, String columnName) {
+    private static String getValueToSet(List<Attribute> atts, String propertyName, String columnName) {
         if(columnName != null) propertyName = columnName;
-        for (ItemAttribute att : atts) {
+        for (Attribute att : atts) {
             String attName = att.getName();
             if (attName.equals(propertyName)) {
                 String val = att.getValue();

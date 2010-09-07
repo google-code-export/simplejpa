@@ -1,11 +1,11 @@
 package com.spaceprogram.simplejpa;
 
-import com.xerox.amazonws.sdb.ItemAttribute;
+import com.amazonaws.services.simpledb.model.Attribute;
 
 import java.util.List;
 
 /**
- * Holds a typica item with its Attributes.
+ * Holds a item with its Attributes.
  *
  * User: treeder
  * Date: Feb 8, 2008
@@ -13,9 +13,9 @@ import java.util.List;
  */
 public class ItemAndAttributes {
     private SdbItem item;
-    private List<ItemAttribute> atts;
+    private List<Attribute> atts;
 
-    public ItemAndAttributes(SdbItem item, List<ItemAttribute> atts) {
+    public ItemAndAttributes(SdbItem item, List<Attribute> atts) {
         this.item = item;
         this.atts = atts;
     }
@@ -28,11 +28,11 @@ public class ItemAndAttributes {
         this.item = item;
     }
 
-    public List<ItemAttribute> getAtts() {
+    public List<Attribute> getAtts() {
         return atts;
     }
 
-    public void setAtts(List<ItemAttribute> atts) {
+    public void setAtts(List<Attribute> atts) {
         this.atts = atts;
     }
 }

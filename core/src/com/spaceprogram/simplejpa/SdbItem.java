@@ -1,12 +1,10 @@
 package com.spaceprogram.simplejpa;
 
-import com.xerox.amazonws.sdb.ItemAttribute;
+import com.amazonaws.services.simpledb.model.Attribute;
 
 import java.util.List;
 
 /**
- *
- * This is hopefully temporary until Typica sorts things out.
  *
  * User: treeder
  * Date: Mar 8, 2009
@@ -15,5 +13,5 @@ import java.util.List;
 public interface SdbItem {
     String getIdentifier();
 
-    List<ItemAttribute> getAttributes();
+    List<Attribute> getAttributes();
 }

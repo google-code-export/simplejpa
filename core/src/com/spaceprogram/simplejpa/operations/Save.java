@@ -1,19 +1,19 @@
 package com.spaceprogram.simplejpa.operations;
 
+import com.amazonaws.AmazonClientException;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.simpledb.model.Attribute;
+import com.amazonaws.services.simpledb.model.DeleteAttributesRequest;
+import com.amazonaws.services.simpledb.model.Item;
+import com.amazonaws.services.simpledb.model.PutAttributesRequest;
+import com.amazonaws.services.simpledb.model.ReplaceableAttribute;
 import com.spaceprogram.simplejpa.AnnotationInfo;
+import com.spaceprogram.simplejpa.DomainHelper;
 import com.spaceprogram.simplejpa.EntityManagerFactoryImpl;
 import com.spaceprogram.simplejpa.EntityManagerSimpleJPA;
 import com.spaceprogram.simplejpa.LazyInterceptor;
 import com.spaceprogram.simplejpa.NamingHelper;
-import com.xerox.amazonws.sdb.Domain;
-import com.xerox.amazonws.sdb.Item;
-import com.xerox.amazonws.sdb.ItemAttribute;
-import com.xerox.amazonws.sdb.SDBException;
 import net.sf.cglib.proxy.Factory;
-import org.jets3t.service.S3Service;
-import org.jets3t.service.S3ServiceException;
-import org.jets3t.service.model.S3Bucket;
-import org.jets3t.service.model.S3Object;
 
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
@@ -28,6 +28,7 @@ import javax.persistence.PreUpdate;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectOutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -94,22 +95,22 @@ public class Save implements Callable {
         return o;
     }
 
-    protected void persistOnly(Object o, String id) throws SDBException, IllegalAccessException, InvocationTargetException, S3ServiceException, IOException {
+    protected void persistOnly(Object o, String id) throws AmazonClientException, IllegalAccessException, InvocationTargetException, IOException {
         long start = System.currentTimeMillis();
         em.invokeEntityListener(o, newObject ? PrePersist.class : PreUpdate.class);
         AnnotationInfo ai = em.getFactory().getAnnotationManager().getAnnotationInfo(o);
-        Domain domain;
+        String domainName;
         if (ai.getRootClass() != null) {
-            domain = em.getDomain(ai.getRootClass());
+        	domainName = em.getOrCreateDomain(ai.getRootClass());
         } else {
-            domain = em.getDomain(o.getClass());
-        }
-        Item item = domain.getItem(id);
+        	domainName = em.getOrCreateDomain(o.getClass());
+        }        
+//        Item item = DomainHelper.findItemById(this.em.getSimpleDb(), domainName, id);
         // now set attributes
-        List<ItemAttribute> attsToPut = new ArrayList<ItemAttribute>();
-        List<ItemAttribute> attsToDelete = new ArrayList<ItemAttribute>();
+        List<ReplaceableAttribute> attsToPut = new ArrayList<ReplaceableAttribute>();
+        List<Attribute> attsToDelete = new ArrayList<Attribute>();
         if (ai.getDiscriminatorValue() != null) {
-            attsToPut.add(new ItemAttribute(EntityManagerFactoryImpl.DTYPE, ai.getDiscriminatorValue(), true));
+            attsToPut.add(new ReplaceableAttribute(EntityManagerFactoryImpl.DTYPE, ai.getDiscriminatorValue(), true));
         }
 
         LazyInterceptor interceptor = null;
@@ -138,36 +139,37 @@ public class Save implements Callable {
         	
             String columnName = NamingHelper.getColumnName(getter);
             if (ob == null) {
-                attsToDelete.add(new ItemAttribute(columnName, null, true));
+                attsToDelete.add(new Attribute(columnName, null));
                 continue;
             }
             if (getter.getAnnotation(ManyToOne.class) != null) {
                 // store the id of this object
                 String id2 = em.getId(ob);
-                attsToPut.add(new ItemAttribute(columnName, id2, true));
+                attsToPut.add(new ReplaceableAttribute(columnName, id2, true));
             } else if (getter.getAnnotation(OneToMany.class) != null) {
                 // FORCING BI-DIRECTIONAL RIGHT NOW SO JUST IGNORE
             } else if (getter.getAnnotation(Lob.class) != null) {
                 // store in s3
-                S3Service s3 = null;
+                AmazonS3 s3 = null;
                 // todo: need to make sure we only store to S3 if it's changed, too slow.
                 logger.fine("putting lob to s3");
                 long start3 = System.currentTimeMillis();
                 s3 = em.getS3Service();
-                S3Bucket bucket = em.getS3Bucket(); 
+                String bucketName = em.getS3BucketName(); 
                 String s3ObjectId = em.s3ObjectId(id, getter);
-                S3Object s3Object = new S3Object(bucket, s3ObjectId);
+
                 ByteArrayOutputStream bos = new ByteArrayOutputStream();
                 ObjectOutputStream out = new ObjectOutputStream(bos);
                 out.writeObject(ob);
                 byte[] contentBytes = bos.toByteArray();
-                s3Object.setDataInputStream(new ByteArrayInputStream(contentBytes));
-                s3Object.setContentLength(contentBytes.length);
-                s3Object = s3.putObject(bucket, s3Object);
                 out.close();
+                InputStream input = new ByteArrayInputStream(contentBytes);
+                
+                s3.putObject(bucketName, s3ObjectId, input, null);
+                
                 em.statsS3Put(System.currentTimeMillis() - start3);
                 logger.finer("setting lobkeyattribute=" + columnName + " - " + s3ObjectId);
-                attsToPut.add(new ItemAttribute(columnName, s3ObjectId, true));
+                attsToPut.add(new ReplaceableAttribute(columnName, s3ObjectId, true));
             } else if (getter.getAnnotation(Enumerated.class) != null) {
                 Enumerated enumerated = getter.getAnnotation(Enumerated.class);
                 Class retType = getter.getReturnType();
@@ -189,17 +191,20 @@ public class Save implements Callable {
                     // should never happen
                     throw new PersistenceException("Enum value is null, couldn't find ordinal match: " + ob);
                 }
-                attsToPut.add(new ItemAttribute(columnName, toSet, true));
+                attsToPut.add(new ReplaceableAttribute(columnName, toSet, true));
             } else {
                 String toSet = ob != null ? em.padOrConvertIfRequired(ob) : "";
                 // todo: throw an exception if this is going to exceed maximum size, suggest using @Lob
-                attsToPut.add(new ItemAttribute(columnName, toSet, true));
+                attsToPut.add(new ReplaceableAttribute(columnName, toSet, true));
             }
         }
 
         // and now finally send it for storage
         long start2 = System.currentTimeMillis();
-        item.putAttributes(attsToPut);
+        this.em.getSimpleDb().putAttributes(new PutAttributesRequest()
+        	.withDomainName(domainName)
+        	.withItemName(id)
+        	.withAttributes(attsToPut));
         long duration2 = System.currentTimeMillis() - start2;
         if(logger.isLoggable(Level.FINE))logger.fine("putAttributes time=" + (duration2));
         em.statsAttsPut(attsToPut.size(), duration2);
@@ -212,14 +217,18 @@ public class Save implements Callable {
         */
         if (interceptor != null) {
             if (interceptor.getNulledFields() != null && interceptor.getNulledFields().size() > 0) {
-                List<ItemAttribute> attsToDelete2 = new ArrayList<ItemAttribute>();
+                List<Attribute> attsToDelete2 = new ArrayList<Attribute>();
                 for (String s : interceptor.getNulledFields().keySet()) {
                     Method getter = ai.getGetter(s);
                     String columnName = NamingHelper.getColumnName(getter);
-                    attsToDelete2.add(new ItemAttribute(columnName, null, true));
+                    attsToDelete2.add(new Attribute(columnName, null));
                 }
                 start2 = System.currentTimeMillis();
-                item.deleteAttributes(attsToDelete2);
+                this.em.getSimpleDb().deleteAttributes(new DeleteAttributesRequest()
+                	.withDomainName(domainName)
+                	.withItemName(id)
+                	.withAttributes(attsToDelete2));
+                
                 // todo: what about lobs?  need to delete from s3
                 duration2 = System.currentTimeMillis() - start2;
                 logger.fine("deleteAttributes time=" + (duration2));
@@ -234,7 +243,10 @@ public class Save implements Callable {
 //                for (ItemAttribute itemAttribute : attsToDelete) {
 //                    System.out.println("itemAttr=" + itemAttribute.getName() + ": " + itemAttribute.getValue());
 //                }
-                item.deleteAttributes(attsToDelete);
+                this.em.getSimpleDb().deleteAttributes(new DeleteAttributesRequest()
+	            	.withDomainName(domainName)
+	            	.withItemName(id)
+	            	.withAttributes(attsToDelete));
                 // todo: what about lobs?  need to delete from s3
                 duration2 = System.currentTimeMillis() - start2;
                 logger.fine("deleteAttributes time=" + (duration2));

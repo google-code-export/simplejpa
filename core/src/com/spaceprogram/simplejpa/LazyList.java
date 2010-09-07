@@ -1,11 +1,11 @@
 package com.spaceprogram.simplejpa;
 
+import com.amazonaws.AmazonClientException;
+import com.amazonaws.services.simpledb.model.Attribute;
+import com.amazonaws.services.simpledb.model.Item;
+import com.amazonaws.services.simpledb.model.SelectResult;
 import com.spaceprogram.simplejpa.query.JPAQuery;
 import com.spaceprogram.simplejpa.query.QueryImpl;
-import com.xerox.amazonws.sdb.Domain;
-import com.xerox.amazonws.sdb.ItemAttribute;
-import com.xerox.amazonws.sdb.QueryWithAttributesResult;
-import com.xerox.amazonws.sdb.SDBException;
 import org.apache.commons.collections.list.GrowthList;
 
 import javax.persistence.PersistenceException;
@@ -37,7 +37,7 @@ public class LazyList<E> extends AbstractList<E> implements Serializable {
     private String nextToken;
     private int count = -1;
     private String realQuery;
-    private Domain domain;
+    private String domainName;
     private int maxResults = -1;
 
     public LazyList(EntityManagerSimpleJPA em, Class tClass, QueryImpl query) {
@@ -50,8 +50,8 @@ public class LazyList<E> extends AbstractList<E> implements Serializable {
         this.origQuery = query;
         AnnotationInfo ai = em.getAnnotationManager().getAnnotationInfo(genericReturnType);
         try {
-            domain = em.getDomain(ai.getRootClass());
-            if (domain == null) {
+        	domainName = em.getDomainName(ai.getRootClass());
+            if (domainName == null) {
                 logger.warning("Domain does not exist for " + ai.getRootClass());
                 backingList = new GrowthList(0);
             } else {
@@ -133,7 +133,7 @@ public class LazyList<E> extends AbstractList<E> implements Serializable {
         }
 
         while (backingList.size() <= index) {
-            QueryWithAttributesResult qr;
+            SelectResult qr;
             try {
                 if (logger.isLoggable(Level.FINER))
                     logger.finer("query for lazylist=" + origQuery);
@@ -146,16 +146,15 @@ public class LazyList<E> extends AbstractList<E> implements Serializable {
                                 : limit));
                 if (em.getFactory().isPrintQueries())
                     System.out.println("query in lazylist=" + limitQuery);
-                qr = domain.selectItems(limitQuery, nextToken);
+                qr = DomainHelper.selectItems(this.em.getSimpleDb(), limitQuery, nextToken);
 
-                Map<String, List<ItemAttribute>> itemMap = qr.getItems();
                 if (logger.isLoggable(Level.FINER))
-                    logger.finer("got items for lazylist=" + itemMap.size());
-                for (String id : itemMap.keySet()) {
-                    List<ItemAttribute> list = itemMap.get(id);
-                    backingList.add((E) em.buildObject(genericReturnType, id, list));
+                    logger.finer("got items for lazylist=" + qr.getItems().size());
+                
+                for (Item item : qr.getItems()) {
+                    backingList.add((E) em.buildObject(genericReturnType, item.getName(), item.getAttributes()));
                 }
-
+                
                 if (qr.getNextToken() == null || (!noLimit() && qr.getItems().size() == limit)) {
                     nextToken = null;
                     break;
@@ -167,9 +166,9 @@ public class LazyList<E> extends AbstractList<E> implements Serializable {
 
                 nextToken = qr.getNextToken();
             }
-            catch (SDBException e) {
+            catch (AmazonClientException e) {
                 throw new PersistenceException("Query failed: Domain="
-                        + domain.getName() + " -> " + origQuery, e);
+                        + domainName + " -> " + origQuery, e);
             }
         }
 
