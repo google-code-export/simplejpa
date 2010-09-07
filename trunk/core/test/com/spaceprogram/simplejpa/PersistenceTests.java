@@ -1,9 +1,10 @@
 package com.spaceprogram.simplejpa;
 
-import com.xerox.amazonws.sdb.SDBException;
 import org.apache.commons.lang.time.DateUtils;
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.amazonaws.AmazonClientException;
 
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceException;
@@ -26,13 +27,13 @@ import java.util.concurrent.Future;
 public class PersistenceTests extends BaseTestClass {
 
     @Test
-    public void listAllObjects() throws IOException, SDBException, ExecutionException, InterruptedException {
+    public void listAllObjects() throws IOException, AmazonClientException, ExecutionException, InterruptedException {
         Class c = MyTestObject.class;
         listAllObjects(c);
         listAllObjects(MyTestObject2.class);
     }
 
-    private void listAllObjects(Class c) throws SDBException, InterruptedException, ExecutionException {
+    private void listAllObjects(Class c) throws AmazonClientException, InterruptedException, ExecutionException {
         System.out.println("listing all objects of type " + c);
         EntityManagerSimpleJPA em = (EntityManagerSimpleJPA) factory.createEntityManager();
         em.listAllObjectsRaw(c);
@@ -303,6 +304,11 @@ public class PersistenceTests extends BaseTestClass {
         Query query;
         List<MyTestObject> obs;
 
+        System.out.println("make sure domain is empty");        
+        query = em.createQuery("select o from MyTestObject o where o.age >= '0' order by o.age");
+        obs = query.getResultList();
+        Assert.assertEquals(0, obs.size());
+        
         Future future = null;
         int numItems = 120;
         for (int i = 0; i < numItems; i++) {

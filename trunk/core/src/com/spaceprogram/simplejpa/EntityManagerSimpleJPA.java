@@ -1,35 +1,5 @@
 package com.spaceprogram.simplejpa;
 
-import com.spaceprogram.simplejpa.AnnotationManager.ClassMethodEntry;
-import com.spaceprogram.simplejpa.operations.Delete;
-import com.spaceprogram.simplejpa.operations.Find;
-import com.spaceprogram.simplejpa.operations.Save;
-import com.spaceprogram.simplejpa.query.JPAQuery;
-import com.spaceprogram.simplejpa.query.JPAQueryParser;
-import com.spaceprogram.simplejpa.query.QueryImpl;
-import com.spaceprogram.simplejpa.stats.OpStats;
-import com.spaceprogram.simplejpa.util.AmazonSimpleDBUtil;
-import com.spaceprogram.simplejpa.util.ConcurrentRetriever;
-import com.spaceprogram.simplejpa.cache.Cache;
-import com.xerox.amazonws.sdb.Domain;
-import com.xerox.amazonws.sdb.Item;
-import com.xerox.amazonws.sdb.ItemAttribute;
-import com.xerox.amazonws.sdb.QueryResult;
-import com.xerox.amazonws.sdb.SDBException;
-import com.xerox.amazonws.sdb.SimpleDB;
-import net.sf.cglib.proxy.Factory;
-import org.apache.commons.lang.NotImplementedException;
-import org.apache.commons.lang.StringUtils;
-import org.jets3t.service.S3Service;
-import org.jets3t.service.S3ServiceException;
-import org.jets3t.service.model.S3Bucket;
-import org.jets3t.service.model.S3Object;
-
-import javax.persistence.EntityTransaction;
-import javax.persistence.FlushModeType;
-import javax.persistence.LockModeType;
-import javax.persistence.PersistenceException;
-import javax.persistence.Query;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -47,6 +17,39 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import javax.persistence.EntityTransaction;
+import javax.persistence.FlushModeType;
+import javax.persistence.LockModeType;
+import javax.persistence.PersistenceException;
+import javax.persistence.Query;
+
+import net.sf.cglib.proxy.Factory;
+
+import org.apache.commons.lang.NotImplementedException;
+import org.apache.commons.lang.StringUtils;
+
+import com.amazonaws.AmazonClientException;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.S3Object;
+import com.amazonaws.services.simpledb.AmazonSimpleDB;
+import com.amazonaws.services.simpledb.model.Attribute;
+import com.amazonaws.services.simpledb.model.DeleteAttributesRequest;
+import com.amazonaws.services.simpledb.model.GetAttributesRequest;
+import com.amazonaws.services.simpledb.model.GetAttributesResult;
+import com.amazonaws.services.simpledb.model.Item;
+import com.amazonaws.services.simpledb.model.PutAttributesRequest;
+import com.amazonaws.services.simpledb.model.ReplaceableAttribute;
+import com.amazonaws.services.simpledb.model.SelectResult;
+import com.spaceprogram.simplejpa.AnnotationManager.ClassMethodEntry;
+import com.spaceprogram.simplejpa.cache.Cache;
+import com.spaceprogram.simplejpa.operations.Delete;
+import com.spaceprogram.simplejpa.operations.Find;
+import com.spaceprogram.simplejpa.operations.Save;
+import com.spaceprogram.simplejpa.query.QueryImpl;
+import com.spaceprogram.simplejpa.stats.OpStats;
+import com.spaceprogram.simplejpa.util.AmazonSimpleDBUtil;
+import com.spaceprogram.simplejpa.util.ConcurrentRetriever;
 
 /**
  * User: treeder
@@ -86,7 +89,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
         resetLastOpStats();
         try {
             new Save(this, o).call();
-        } catch (SDBException e) {
+        } catch (AmazonClientException e) {
             throw new PersistenceException("Could not get SimpleDb Domain", e);
         } catch (Exception e) {
             throw new PersistenceException(e);
@@ -170,6 +173,10 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
     public String getDomainName(Class<? extends Object> aClass) {
         return factory.getDomainName(aClass);
     }
+    
+    public String getOrCreateDomain(Class c) {
+    	return factory.getOrCreateDomain(c);
+    }
 
 
     public void checkEntity(Object o) {
@@ -196,7 +203,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
     }
 
 
-    public SimpleDB getSimpleDb() {
+    public AmazonSimpleDB getSimpleDb() {
         return factory.getSimpleDb();
     }
 
@@ -234,15 +241,15 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
                 return ob;
             }
             return findInDb(tClass, id);
-        } catch (SDBException e) {
+        } catch (AmazonClientException e) {
             throw new PersistenceException(e);
         }
     }
 
-    private <T> T findInDb(Class<T> tClass, Object id) throws SDBException {
-        Domain domain = getDomain(tClass);
-        if(domain == null) return null;
-        Item iraw = domain.getItem(id.toString());
+    private <T> T findInDb(Class<T> tClass, Object id) throws AmazonClientException {
+        String domainName = getDomainName(tClass);
+        if(domainName == null) return null;
+        Item iraw = DomainHelper.findItemById(factory.getSimpleDb(), domainName, id.toString());
 //            logger.fine("got back item=" + item);
         if(iraw == null) return null;
         SdbItem item = new SdbItemImpl2(iraw);
@@ -256,11 +263,11 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
      * @param id
      * @param item
      * @return
-     * @throws SDBException
+     * @throws AmazonClientException
      */
-    public <T> T getItemAttributesBuildAndCache(Class<T> tClass, Object id, SdbItem item) throws SDBException {
+    public <T> T getItemAttributesBuildAndCache(Class<T> tClass, Object id, SdbItem item) throws AmazonClientException {
         // todo: update stats for this get
-        List<ItemAttribute> atts = item.getAttributes();
+        List<Attribute> atts = item.getAttributes();
         if (atts == null || atts.size() == 0) return null;
         return buildObject(tClass, id, atts);
     }
@@ -268,22 +275,22 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
     public void renameField(Class tClass, String oldAttributeName, String newAttributeName) {
         // get list of all items in the domain
         try {
-            Domain domain = getDomain(tClass);
-            QueryResult result;
+            String domainName = getDomainName(tClass);
+            SelectResult result;
             List<Item> items;
             int i = 0;
             String nextToken = null;
             while (i == 0 || nextToken != null) {
-                result = executeQueryForRename(oldAttributeName, newAttributeName, domain, nextToken);
-                items = result.getItemList();
-                putAndDelete(oldAttributeName, newAttributeName, items);
+                result = executeQueryForRename(oldAttributeName, newAttributeName, domainName, nextToken);
+                items = result.getItems();
+                putAndDelete(domainName, oldAttributeName, newAttributeName, items);
                 nextToken = result.getNextToken();
                 i++;
                 if (i % 100 == 0) {
                     System.out.println("Renamed " + i + " fields so far...");
                 }
             }
-        } catch (SDBException e) {
+        } catch (AmazonClientException e) {
             e.printStackTrace();
         }
     }
@@ -292,68 +299,74 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
         logger.info("Renaming DTYPE for " + oldClassName + " to " + newClass.getSimpleName());
         try {
             String newClassName = newClass.getSimpleName();
-            Domain domain = factory.getDomain(factory.getDomainName(newClass));
-            QueryResult result;
+            String domainName = factory.getDomainName(newClass);
+            SelectResult result;
             List<Item> items;
             int i = 0;
             String nextToken = null;
             while (i == 0 || nextToken != null) {
-                result = executeQueryForRenameSubclass(oldClassName, newClass, domain, nextToken);
-                items = result.getItemList();
-                putNewValue(items, EntityManagerFactoryImpl.DTYPE, newClassName);
+                result = executeQueryForRenameSubclass(oldClassName, newClass, domainName, nextToken);
+                items = result.getItems();
+                putNewValue(domainName, items, EntityManagerFactoryImpl.DTYPE, newClassName);
                 nextToken = result.getNextToken();
                 i++;
                 if (i % 100 == 0) {
                     System.out.println("Renamed " + i + " subclassed objects so far...");
                 }
             }
-        } catch (SDBException e) {
+        } catch (AmazonClientException e) {
             e.printStackTrace();
         }
     }
 
-    private void putNewValue(List<Item> items, String dtype, String newClassName) throws SDBException {
+    private void putNewValue(String domainName, List<Item> items, String dtype, String newClassName) throws AmazonClientException {
+    	AmazonSimpleDB db = factory.getSimpleDb();
         for (Item item : items) {
-            List<ItemAttribute> atts = new ArrayList<ItemAttribute>();
-            atts.add(new ItemAttribute(dtype, newClassName, true));
-            item.putAttributes(atts);
+            List<ReplaceableAttribute> atts = new ArrayList<ReplaceableAttribute>();
+            
+            atts.add(new ReplaceableAttribute(dtype, newClassName, true));
+            db.putAttributes(new PutAttributesRequest(domainName, item.getName(), atts));
         }
     }
 
-    private QueryResult executeQueryForRenameSubclass(String oldClassName, Class newClass, Domain domain, String nextToken) throws SDBException {
-        QueryResult result = domain.listItems("['DTYPE' = '" + oldClassName + "']", nextToken, 100);
+    private SelectResult executeQueryForRenameSubclass(String oldClassName, Class newClass, String domainName, String nextToken) throws AmazonClientException {    	
+    	SelectResult result = DomainHelper.selectItems(factory.getSimpleDb(), domainName, "'DTYPE' = '" + oldClassName + "'", nextToken);
+    	return result;
+    }
+
+    private SelectResult executeQueryForRename(String oldAttributeName, String newAttributeName, String domainName, String nextToken) throws AmazonClientException {    	
+    	SelectResult result = DomainHelper.selectItems(factory.getSimpleDb(), domainName, "['" + oldAttributeName + "' starts-with ''] intersection not ['" + newAttributeName + "' starts-with ''] ", nextToken);
         return result;
     }
 
-    private QueryResult executeQueryForRename(String oldAttributeName, String newAttributeName, Domain domain, String nextToken) throws SDBException {
-        QueryResult result = domain.listItems("['" + oldAttributeName + "' starts-with ''] intersection not ['" + newAttributeName + "' starts-with ''] ", nextToken, 100);
-        return result;
-    }
-
-    private void putAndDelete(String oldAttributeName, String newAttributeName, List<Item> items) throws SDBException {
+    private void putAndDelete(String domainName, String oldAttributeName, String newAttributeName, List<Item> items) throws AmazonClientException {
+    	AmazonSimpleDB db = factory.getSimpleDb();
         for (Item item : items) {
-            List<ItemAttribute> oldAtts = item.getAttributes(oldAttributeName);
+        	GetAttributesResult getOldResults = db.getAttributes(new GetAttributesRequest()
+        	.withDomainName(domainName)
+        	.withConsistentRead(true)
+        	.withItemName(item.getName())
+        	.withAttributeNames(oldAttributeName));
+        	
+            List<Attribute> oldAtts = getOldResults.getAttributes();
             if (oldAtts.size() > 0) {
-                ItemAttribute oldAtt = oldAtts.get(0);
-                List<ItemAttribute> atts = new ArrayList<ItemAttribute>();
-                atts.add(new ItemAttribute(newAttributeName, oldAtt.getValue(), true));
-                item.putAttributes(atts);
-                item.deleteAttributes(oldAtts);
+            	Attribute oldAtt = oldAtts.get(0);
+                List<ReplaceableAttribute> atts = new ArrayList<ReplaceableAttribute>();
+                atts.add(new ReplaceableAttribute(newAttributeName, oldAtt.getValue(), true));
+                
+                db.putAttributes(new PutAttributesRequest()
+                	.withDomainName(domainName)
+                	.withItemName(item.getName())
+                	.withAttributes(atts));
+                	
+                db.deleteAttributes(new DeleteAttributesRequest()
+            	.withDomainName(domainName)
+            	.withItemName(item.getName())
+            	.withAttributes(oldAtts));                
             }
         }
     }
 
-    /**
-     * Gets the Typica Domain for a class.
-     *
-     * @param c
-     * @return
-     * @throws SDBException
-     */
-    public <T> Domain getDomain(Class<T> c) throws SDBException {
-        c = factory.getAnnotationManager().stripEnhancerClass(c);
-        return factory.getDomain(c);
-    }
 
     /**
      * This method puts together an object from the SimpleDB data.
@@ -363,7 +376,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
      * @param atts
      * @return
      */
-    public <T> T buildObject(Class<T> tClass, Object id, List<ItemAttribute> atts) {
+    public <T> T buildObject(Class<T> tClass, Object id, List<Attribute> atts) {
         return ObjectBuilder.buildObject(this, tClass, id, atts);
     }
 
@@ -572,19 +585,20 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
         return factory.getExecutor();
     }
 
-    public Object getObjectFromS3(String idOnS3) throws S3ServiceException, IOException, ClassNotFoundException {
+    public Object getObjectFromS3(String idOnS3) throws AmazonClientException, IOException, ClassNotFoundException {
         long start = System.currentTimeMillis();
-        S3Service s3 = factory.getS3Service();
-        S3Bucket bucket = s3.getOrCreateBucket(factory.s3bucketName());
-        S3Object s3o = s3.getObject(bucket, idOnS3);
+        AmazonS3 s3 = factory.getS3Service();
+        S3Object s3o = s3.getObject(factory.getS3BucketName(), idOnS3);
         logger.fine("got s3object=" + s3o);
         Object ret = null;
-        if (s3o != null) {
-            ObjectInputStream reader = new ObjectInputStream(new BufferedInputStream((s3o.getDataInputStream())));
+    	try {        	  
+            ObjectInputStream reader = new ObjectInputStream(new BufferedInputStream((s3o.getObjectContent())));
             ret = reader.readObject();
-            s3o.closeDataInputStream();
+    	}
+    	finally {
+    		s3o.getObjectContent().close();
+    	}
 
-        }
         statsS3Get(System.currentTimeMillis() - start);
         return ret;
     }
@@ -607,26 +621,27 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
      * by the class parameter.
      *
      * @param c
-     * @throws SDBException
+     * @throws AmazonClientException
      * @throws ExecutionException
      * @throws InterruptedException
      */
-    public void listAllObjectsRaw(Class c) throws SDBException, ExecutionException, InterruptedException {
-        Domain d = getDomain(c);
-        QueryResult qr = d.listItems();
-        List<ItemAndAttributes> ia = ConcurrentRetriever.getAttributesFromSdb(toSdbItem(qr), getExecutor(), this);
+    public void listAllObjectsRaw(Class c) throws AmazonClientException, ExecutionException, InterruptedException {
+    	
+    	String domainName = factory.getDomainName(c);    	    	
+    	List<Item> items = DomainHelper.listAllItems(factory.getSimpleDb(), domainName);
+    	        
+        List<ItemAndAttributes> ia = ConcurrentRetriever.getAttributesFromSdb(toSdbItem(items), getExecutor(), this);
         for (ItemAndAttributes itemAndAttributes : ia) {
             System.out.println("item=" + itemAndAttributes.getItem().getIdentifier());
-            List<ItemAttribute> atts = itemAndAttributes.getAtts();
-            for (ItemAttribute att : atts) {
+            List<Attribute> atts = itemAndAttributes.getAtts();
+            for (Attribute att : atts) {
                 System.out.println("\t=" + att.getName() + "=" + att.getValue());
             }
         }
     }
 
-    private List<SdbItem> toSdbItem(QueryResult qr) {
+    private List<SdbItem> toSdbItem(List<Item> items) {
         List<SdbItem> ret = new ArrayList<SdbItem>();
-        List<Item> items = qr.getItemList();
         for (Item item : items) {
             ret.add(new SdbItemImpl2(item));
         }
@@ -709,11 +724,13 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
         factory.getGlobalStats().got(numItems, duration2);
     }
 
-    public S3Bucket getS3Bucket() throws S3ServiceException {
-        return factory.getBucket();
+
+    public String getS3BucketName() {
+        return factory.getS3BucketName();
     }
 
-    public S3Service getS3Service() throws S3ServiceException {
+
+    public AmazonS3 getS3Service() {
         return factory.getS3Service();
     }
 }

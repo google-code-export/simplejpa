@@ -1,14 +1,16 @@
 package com.spaceprogram.simplejpa;
 
-import com.xerox.amazonws.sdb.Domain;
-import com.xerox.amazonws.sdb.SDBException;
-import com.xerox.amazonws.sdb.SimpleDB;
-import com.xerox.amazonws.sdb.QueryResult;
-import com.xerox.amazonws.sdb.Item;
+
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+
+import com.amazonaws.AmazonClientException;
+import com.amazonaws.services.simpledb.AmazonSimpleDB;
+import com.amazonaws.services.simpledb.model.DeleteAttributesRequest;
+import com.amazonaws.services.simpledb.model.Item;
+import com.amazonaws.services.simpledb.model.NoSuchDomainException;
 
 import java.io.IOException;
 import java.util.List;
@@ -43,13 +45,13 @@ public class BaseTestClass {
     }
 
     @After
-    public void deleteAll() throws SDBException {
+    public void deleteAll() throws AmazonClientException {
         printLog();
 
         // todo: should just delete all items in the domain, would probably be faster
         System.out.println("Deleting all objects created during test...");
         EntityManagerSimpleJPA em = (EntityManagerSimpleJPA) factory.createEntityManager();
-        SimpleDB db = em.getSimpleDb();
+        AmazonSimpleDB db = em.getSimpleDb();
         deleteAll(em, db, MyTestObject.class);
 //        db.deleteDomain(d);
 //        d = db.getDomain(em.getDomainName(MyTestObject2.class));
@@ -67,30 +69,29 @@ public class BaseTestClass {
         em.close();
     }
 
-    private void deleteAll(EntityManagerSimpleJPA em, SimpleDB db, Class aClass) throws SDBException {
-        Domain d = db.getDomain(em.getDomainName(aClass));
-        System.out.println("deleting from domain: " + d.getName());
-        QueryResult items = null;
+    private void deleteAll(EntityManagerSimpleJPA em, AmazonSimpleDB db, Class aClass) throws AmazonClientException {
+        String domainName = em.getDomainName(aClass);
+        System.out.println("deleting from domain: " + domainName);
         try {
-            String nextToken = null;
-            while(items == null || nextToken != null){
-                items = d.listItems(null, nextToken);
-                deleteAll(d, items.getItemList());
-                nextToken = items.getNextToken();
-            }
+            List<Item> items = DomainHelper.listAllItems(db, domainName);
+            deleteAll(db, domainName, items);
 
-         } catch (SDBException e) {
-            if (!ExceptionHelper.isDomainDoesNotExist(e)) {
-                e.printStackTrace();
-            }
+
+        }
+        catch(NoSuchDomainException e) {
+        }        
+        catch (AmazonClientException e) {
+            e.printStackTrace();
         }
     }
 
-    private void deleteAll(Domain d, List<Item> itemList) throws SDBException {
-        System.out.println("Deleting " + itemList.size() + " items from domain " + d.getName());
+    private void deleteAll(AmazonSimpleDB db, String domainName, List<Item> itemList) throws AmazonClientException {
+        System.out.println("Deleting " + itemList.size() + " items from domain " + domainName);
         for (Item item : itemList) {
-//            item.deleteAttributes(null);
-            d.deleteItem(item.getIdentifier());
+
+            db.deleteAttributes(new DeleteAttributesRequest()
+            	.withDomainName(domainName)
+            	.withItemName(item.getName()));
         }
     }
 

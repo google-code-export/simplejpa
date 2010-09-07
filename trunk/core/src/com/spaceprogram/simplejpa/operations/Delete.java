@@ -1,7 +1,7 @@
 package com.spaceprogram.simplejpa.operations;
 
+import com.amazonaws.services.simpledb.model.DeleteAttributesRequest;
 import com.spaceprogram.simplejpa.EntityManagerSimpleJPA;
-import com.xerox.amazonws.sdb.Domain;
 
 import javax.persistence.PostRemove;
 import javax.persistence.PreRemove;
@@ -29,10 +29,12 @@ public class Delete implements Callable {
     }
 
     public Object call() throws Exception {
-        Domain domain = em.getDomain(toDelete.getClass());
+        String domainName = em.getOrCreateDomain(toDelete.getClass());
         if(logger.isLoggable(Level.FINE)) logger.fine("deleting item with id: " + id);
         em.invokeEntityListener(toDelete, PreRemove.class);
-        domain.deleteItem(id);
+        this.em.getSimpleDb().deleteAttributes(new DeleteAttributesRequest()
+        	.withDomainName(domainName)
+        	.withItemName(id));
         em.invokeEntityListener(toDelete, PostRemove.class);
         return toDelete;
     }

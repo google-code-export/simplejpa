@@ -1,10 +1,14 @@
 package com.spaceprogram.simplejpa;
 
-import com.xerox.amazonws.sdb.Item;
-import com.xerox.amazonws.sdb.ItemAttribute;
-import com.xerox.amazonws.sdb.SDBException;
+
+
 
 import javax.persistence.PersistenceException;
+
+import com.amazonaws.AmazonClientException;
+import com.amazonaws.services.simpledb.model.Attribute;
+import com.amazonaws.services.simpledb.model.Item;
+
 import java.util.List;
 
 /**
@@ -20,14 +24,10 @@ public class SdbItemImpl2 implements SdbItem {
     }
 
     public String getIdentifier() {
-        return item.getIdentifier();
+        return item.getName();
     }
 
-    public List<ItemAttribute> getAttributes() {
-        try {
-            return item.getAttributes();
-        } catch (SDBException e) {
-            throw new PersistenceException(e);
-        }
+    public List<Attribute> getAttributes() {
+        return item.getAttributes();
     }
 }
