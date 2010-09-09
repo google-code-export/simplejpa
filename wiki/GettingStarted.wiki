@@ -7,7 +7,25 @@ Here's how to get started using SimpleJPA.
 
 = Dependencies =
 
-Need the latest releases of (I'll try to package these up into the release if I can figure out the licensing compatability):
+Starting with version 1.5 SimpleJPA switched to use Amazon's Java SDK.  Use the latest releases of (I'll try to package these up into the release if I can figure out the licensing compatability): 
+
+  * [http://commons.apache.org/lang/ commons-lang] - You can grab all commons libs at http://commons.apache.org/downloads/index.html
+  * [http://commons.apache.org/collections/ commons-collections] 
+  * [http://commons.apache.org/logging/ commons-logging]
+  * [http://commons.apache.org/codec/ commons-codec]
+  * [http://sourceforge.net/project/showfiles.php?group_id=56933 cglib-nodep]
+  * [http://code.google.com/p/kitty-cache/ kitty-cache]
+  * [http://ehcache.org/ ehcache]
+  * [http://scannotation.sourceforge.net/ scannotation]
+  * [http://www.csg.is.titech.ac.jp/~chiba/javassist/ javassist] (required for scannotation)
+  * [http://mirrors.ibiblio.org/pub/mirrors/maven2/org/hibernate/ejb3-persistence/1.0.2.GA/ ejb3-persistence-api]
+  * [http://aws.amazon.com/sdkforjava/ AWS Java SDK]
+  * [http://hc.apache.org/downloads.cgi Apache HttpClient] - (required for AWS Java SDK) 
+
+When building from source and using the Maven pow.xml file Kitty-cache will need to be added explicitly as a reference.
+
+= Dependencies for versions  pre 1.5 =
+
 
   * [http://commons.apache.org/lang/ commons-lang] - You can grab all commons libs at http://commons.apache.org/downloads/index.html
   * [http://commons.apache.org/beanutils/ commons-beanutils]
