@@ -19,10 +19,10 @@ Starting with version 1.5 SimpleJPA switched to use Amazon's Java SDK.  Use the 
   * [http://scannotation.sourceforge.net/ scannotation]
   * [http://www.csg.is.titech.ac.jp/~chiba/javassist/ javassist] (required for scannotation)
   * [http://mirrors.ibiblio.org/pub/mirrors/maven2/org/hibernate/ejb3-persistence/1.0.2.GA/ ejb3-persistence-api]
-  * [http://aws.amazon.com/sdkforjava/ AWS Java SDK]
-  * [http://hc.apache.org/downloads.cgi Apache HttpClient] - (required for AWS Java SDK) 
+  * [http://aws.amazon.com/sdkforjava/ AWS SDK for Java]
+  * [http://hc.apache.org/downloads.cgi Apache HttpClient]
 
-When building from source and using the Maven pow.xml file Kitty-cache will need to be added explicitly as a reference.
+When building from source and using the Maven pom.xml file Kitty-cache will need to be added explicitly as a reference.
 
 = Dependencies for versions  pre 1.5 =
 
