@@ -7,7 +7,6 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -51,24 +50,24 @@ import com.spaceprogram.simplejpa.stats.OpStats;
  * User: treeder
  * Date: Feb 10, 2008
  * Time: 6:20:23 PM
- * 
+ *
  * Additional Contributions
  *   - Eric Molitor eric@molitor.org
  *   - Eric Wei e.pwei84@gmail.com
  */
 public class EntityManagerFactoryImpl implements EntityManagerFactory {
     private static Logger logger = Logger.getLogger(EntityManagerFactoryImpl.class.getName());
-    
+
     /**
      * User Agent Postfix
      */
     private static final String USER_AGENT = "SimpleJPA";
-    /** 
-     * Default SDB endpoint 
+    /**
+     * Default SDB endpoint
      */
     private static final String DEFAULT_SDB_ENDPOINT = "sdb.amazonaws.com";
-    /** 
-     * Default S3 endpoint 
+    /**
+     * Default S3 endpoint
      */
     private static final String DEFAULT_S3_ENDPOINT = "s3.amazonaws.com";
     /**
@@ -101,17 +100,13 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
      */
     private String persistenceUnitName;
     /**
-     * cache all the domains in sdb
+     * Cached set of existing Amazon SimpleDB domains.
      */
-    private List<String> domainsList;
+    private Set<String> domainSet;
     /**
      * same as domainsList, but map access
      */
-    private Set<String> domainSet = new HashSet<String>();    /**
-    /**
-     * same as domainsList, but map access
-     */
-    private HashSet<String> bucketSet = new HashSet<String>();    /**
+    private HashSet<String> bucketSet = new HashSet<String>();
     /**
      * SimpleDB client
      */
@@ -120,11 +115,11 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
      * S3 client for lob access
      */
     private AmazonS3 s3Client;
-    
+
     private static final int DEFAULT_GET_THREADS = 100;
     private int numExecutorThreads = DEFAULT_GET_THREADS;
     public static final String DTYPE = "DTYPE";
-    
+
     private static final String AWSACCESS_KEY_PROP_NAME = "accessKey";
     private static final String AWSSECRET_KEY_PROP_NAME = "secretKey";
 
@@ -191,10 +186,10 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
             }
         }
         init(libsToScan);
-        
+
         createClients();
     }
-    
+
     private void createClients() {
         AWSCredentials awsCredentials = null;
         InputStream credentialsFile = getClass().getClassLoader().getResourceAsStream("AwsCredentials.properties");
@@ -206,7 +201,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
             catch(IOException e) {
             	throw new PersistenceException("Failed loading credentials from AwsCredentials.properties.", e);
             }
-        }         
+        }
         else {
         	logger.info("Loading credentials from simplejpa.properties");
         	String awsAccessKey = (String)this.props.get(AWSACCESS_KEY_PROP_NAME);
@@ -217,17 +212,17 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
             if (awsSecretKey == null || awsSecretKey.length() == 0) {
                 throw new PersistenceException("AWS Secret Key not found. It is a required property.");
             }
-        	
+
             awsCredentials = new BasicAWSCredentials(awsAccessKey, awsSecretKey);
         }
-    	
+
     	this.simpleDbClient = new AmazonSimpleDBClient(awsCredentials, createConfiguration(sdbSecure));
     	this.simpleDbClient.setEndpoint(sdbEndpoint);
-    	
+
     	this.s3Client = new AmazonS3Client(awsCredentials, createConfiguration(s3Secure));
     	this.s3Client.setEndpoint(s3Endpoint);
     }
-    
+
     private ClientConfiguration createConfiguration(boolean isSecure) {
     	ClientConfiguration config = new ClientConfiguration();
     	config.setUserAgent(USER_AGENT);
@@ -288,10 +283,10 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 
         sdbEndpoint = MapUtils.getString(props, "sdbEndpoint", DEFAULT_SDB_ENDPOINT);
         sdbSecure = MapUtils.getBoolean(props, "sdbSecure", false);
-        
+
         s3Endpoint = MapUtils.getString(props, "s3Endpoint", DEFAULT_S3_ENDPOINT);
         s3Secure = MapUtils.getBoolean(props, "s3Secure", false);
-        
+
         try {
         	logger.info("Scanning for entity classes...");
             URL[] urls;
@@ -436,9 +431,9 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         try {
             if (!doesDomainExist(domainName)) {
                 logger.info("creating domain: " + domainName);
-                AmazonSimpleDB db = getSimpleDb();                
+                AmazonSimpleDB db = getSimpleDb();
                 db.createDomain(new CreateDomainRequest().withDomainName(domainName));
-                domainsList.add(domainName);
+                domainSet.add(domainName);
             }
         } catch (AmazonClientException e) {
             throw new PersistenceException("Could not create SimpleDB domain.", e);
@@ -446,9 +441,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     }
 
     public boolean doesDomainExist(String domainName) {
-        if (domainsList == null) {
-            getAllDomains();
-        }
+        if (domainSet == null) loadDomains();
         return domainSet.contains(domainName);
     }
 
@@ -468,36 +461,26 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         return domainName;
     }
 
-    private synchronized List<String> getAllDomains() {
-        if (domainsList != null) {
-            return domainsList;
-        }
+    private synchronized void loadDomains() {
+        if (domainSet != null) return;
+
         try {
+        	domainSet = new HashSet<String>();
             logger.info("getting all domains");
             AmazonSimpleDB db = getSimpleDb();
             ListDomainsResult listDomainsResult = db.listDomains();
-            domainsList = listDomainsResult.getDomainNames();
-            putDomainsInSet(domainsList);            
-            while (listDomainsResult.getNextToken() != null) {            
+        	domainSet.addAll(listDomainsResult.getDomainNames());
+            while (listDomainsResult.getNextToken() != null) {
             	ListDomainsRequest request = new ListDomainsRequest()
             		.withNextToken(listDomainsResult.getNextToken());
                 listDomainsResult = db.listDomains(request);
-                domainsList.addAll(listDomainsResult.getDomainNames());
-                putDomainsInSet(domainsList);
+            	domainSet.addAll(listDomainsResult.getDomainNames());
             }
         } catch (AmazonClientException e) {
             throw new PersistenceException(e);
         }
-        return domainsList;
     }
 
-    private void putDomainsInSet(List<String> domainsList) {
-        for (String domain : domainsList) {
-            domainSet.add(domain);
-        }
-    }
-
-    
     public AmazonSimpleDB getSimpleDb() {
     	return this.simpleDbClient;
     }
@@ -530,7 +513,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     public void setPrintQueries(boolean printQueries) {
         this.printQueries = printQueries;
     }
-    
+
     public String getSdbEndpoint() {
         return sdbEndpoint;
     }
@@ -586,7 +569,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     public AmazonS3 getS3Service() {
         return this.s3Client;
     }
-    
+
     public synchronized String getS3BucketName() {
     	String bucketName;
         if(lobBucketName != null){
@@ -595,18 +578,18 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         else {
         	bucketName = getPersistenceUnitName() + "-lobs"; 
         }
-        
+
         // See if we have checked if the bucket already exists.
         if(!this.bucketSet.contains(bucketName)) {
-        	
+
         	// If the bucket doesn't already exist then we need to add it.
         	if(!this.s3Client.doesBucketExist(bucketName)) {
         		this.s3Client.createBucket(bucketName);
         	}
         	this.bucketSet.add(bucketName);
         }
-        
-        return bucketName; 
+
+        return bucketName;
     }
 
     public OpStats getGlobalStats(){
