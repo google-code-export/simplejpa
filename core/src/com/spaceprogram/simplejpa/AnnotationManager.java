@@ -164,6 +164,7 @@ public class AnnotationManager {
         } else {
             ai.setRootClass(c);
         }
+        putTableDeclaration(ai, c);
         putMethods(ai, c);
         putProperties(ai, c);
         if (ai.getIdMethod() == null) {
@@ -217,6 +218,19 @@ public class AnnotationManager {
             }
         }
     }
+
+    private void putTableDeclaration(AnnotationInfo ai, Class<?> c)
+	{
+    	Table table = c.getAnnotation(Table.class);
+    	if(table != null)
+    	{
+    		if(table.name() == null)
+    			throw new PersistenceException("You must specify a name= for @Table on " + c.getName());
+    		
+    		ai.setDomainName(table.name());
+    	}
+	}
+
 
     private void putEntityListeners(AnnotationInfo ai, Class c) {
         EntityListeners listeners = (EntityListeners) c.getAnnotation(EntityListeners.class);

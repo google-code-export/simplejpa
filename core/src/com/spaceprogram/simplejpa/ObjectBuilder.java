@@ -6,6 +6,7 @@ import net.sf.cglib.proxy.Enhancer;
 
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
+import javax.persistence.Id;
 import javax.persistence.Lob;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
@@ -120,7 +121,14 @@ public class ObjectBuilder {
                         Method setMethod = em.getSetterFromGetter(tClass, getter, retType);
                         setMethod.invoke(newInstance, enumVal);
                     }
-                } else {
+                }
+                else if(getter.getAnnotation(Id.class) != null) {
+                	Class retType = getter.getReturnType();
+                	String setterName = em.getSetterNameFromGetter(getter);
+                    Method setter = tClass.getMethod(setterName, retType);
+                    setter.invoke(newInstance, id);
+                }
+                else {
                     String val = getValueToSet(atts, attName, columnName);
                     if (val != null) {
                         em.setFieldValue(tClass, newInstance, getter, val);

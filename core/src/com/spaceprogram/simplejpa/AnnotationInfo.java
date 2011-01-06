@@ -20,6 +20,7 @@ public class AnnotationInfo {
     private Method idMethod;
     private Map<String, Method> getterMap = new HashMap();
     private String discriminatorValue;
+    private String domainName;
     private Class rootClass;
     private Class mainClass;
     private Map<Class, List<ClassMethodEntry>> entityListeners = new HashMap<Class, List<ClassMethodEntry>>();
@@ -32,6 +33,10 @@ public class AnnotationInfo {
         this.idMethod = idMethod;
     }
 
+    public void setDomainName(String domainName) {
+        this.domainName = domainName;
+    }
+
     public Annotation[] getClassAnnotations() {
         return classAnnotations;
     }
@@ -39,6 +44,11 @@ public class AnnotationInfo {
     public Method getIdMethod() {
         return idMethod;
     }
+
+	public String getDomainName()
+	{
+		return domainName;
+	}
 
     public void addGetter(Method method) {
         getterMap.put(method.getName(), method);

@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.annotation.Annotation;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -19,6 +20,7 @@ import javax.persistence.Entity;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.PersistenceException;
+import javax.persistence.Table;
 import javax.persistence.spi.PersistenceUnitInfo;
 
 import net.sf.ehcache.CacheException;
@@ -178,13 +180,14 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         this.persistenceUnitName = persistenceUnitName;
         annotationManager = new AnnotationManager(config);
         this.props = props;
-        if (props == null) {
+        if (props == null || props.isEmpty()) {
             try {
                 loadProps2();
             } catch (IOException e) {
                 throw new PersistenceException(e);
             }
         }
+
         init(libsToScan);
 
         createClients();
@@ -383,6 +386,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         }
         props2.load(stream);
         props = props2;
+        logger.info("Properties loaded from [" + propsFileName + "]."); 
         stream.close();
     }
 
@@ -490,13 +494,17 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     }
 
     public String getDomainName(Class<? extends Object> aClass) {
-        String className = getRootClassName(aClass);
-        return getDomainName(className);
+		String className = getRootClassName(aClass);
+        AnnotationInfo ai = getAnnotationManager().getAnnotationInfo(aClass);
+        String domainName = ai.getDomainName();
+        if(domainName == null || domainName.length() <= 0)
+			domainName = getDomainName(className);
+    	createIfNotExistDomain(domainName);
+    	return domainName;
     }
 
     public String getDomainName(String className) {
-    	String domainName = getPersistenceUnitName() + "-" + className;
-    	createIfNotExistDomain(domainName);
+		String domainName = getPersistenceUnitName() + "-" + className;
         return domainName;
     }
 

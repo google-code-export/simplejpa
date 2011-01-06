@@ -17,6 +17,7 @@ import net.sf.cglib.proxy.Factory;
 
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
+import javax.persistence.Id;
 import javax.persistence.Lob;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
@@ -192,7 +193,12 @@ public class Save implements Callable {
                     throw new PersistenceException("Enum value is null, couldn't find ordinal match: " + ob);
                 }
                 attsToPut.add(new ReplaceableAttribute(columnName, toSet, true));
-            } else {
+            } 
+            else if(getter.getAnnotation(Id.class) != null)
+            {
+            	continue;
+            }
+            else {
                 String toSet = ob != null ? em.padOrConvertIfRequired(ob) : "";
                 // todo: throw an exception if this is going to exceed maximum size, suggest using @Lob
                 attsToPut.add(new ReplaceableAttribute(columnName, toSet, true));
