@@ -23,8 +23,6 @@ import javax.persistence.PersistenceException;
 import javax.persistence.Table;
 import javax.persistence.spi.PersistenceUnitInfo;
 
-import net.sf.ehcache.CacheException;
-
 import org.apache.commons.collections.MapUtils;
 import org.scannotation.AnnotationDB;
 import org.scannotation.ClasspathUrlFinder;
@@ -528,12 +526,8 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 
 
     public Cache getCache(Class aClass) {
-        try {
-            AnnotationInfo ai = getAnnotationManager().getAnnotationInfo(aClass);
-            return cacheFactory.createCache(ai.getRootClass().getName());
-        } catch (CacheException e) {
-            throw new RuntimeException(e);
-        }
+        AnnotationInfo ai = getAnnotationManager().getAnnotationInfo(aClass);
+        return cacheFactory.createCache(ai.getRootClass().getName());
     }
 
     /**

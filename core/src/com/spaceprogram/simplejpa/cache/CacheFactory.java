@@ -1,7 +1,5 @@
 package com.spaceprogram.simplejpa.cache;
 
-import net.sf.ehcache.CacheException;
-
 import java.util.Map;
 
 /**
@@ -17,11 +15,10 @@ public interface CacheFactory {
      * Called once to load up the CacheManager.
      *
      * @param properties
-     * @throws net.sf.ehcache.CacheException
      */
-    void init(Map properties) throws CacheException;
+    void init(Map properties);
 
-    Cache createCache(String name) throws CacheException;
+    Cache createCache(String name);
 
     void shutdown();
 //
