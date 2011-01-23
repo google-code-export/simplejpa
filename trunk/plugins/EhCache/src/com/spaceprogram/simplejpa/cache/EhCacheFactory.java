@@ -29,7 +29,7 @@ public class EhCacheFactory implements CacheFactory{
     private boolean initializing;
     private List<CacheEventListener> listeners = new ArrayList<CacheEventListener>();
 
-    public synchronized void init(Map properties) throws CacheException {
+    public synchronized void init(Map properties) {
         if (manager != null) {
             log.warning("Attempt to restart an already started CacheFactory. Using previously created EhCacheFactory.");
             return;
@@ -67,11 +67,11 @@ public class EhCacheFactory implements CacheFactory{
     }
 
 
-    public Cache createCache(Map env) throws CacheException {
+    public Cache createCache(Map env) {
         throw new UnsupportedOperationException("Use createCache(String name) instead.");
     }
 
-    public synchronized EhcacheWrapper createCache(String name) throws CacheException {
+    public synchronized EhcacheWrapper createCache(String name) {
         if (manager == null) {
             throw new CacheException("CacheFactory was not initialized. Call init() before creating a cache.");
         }

@@ -11,9 +11,7 @@ public class KittyCacheFactory implements CacheFactory {
 
     public static KittyCacheWrapper singletonCache = new KittyCacheWrapper(10000);
 
-    public void init(Map properties) {
-
-    }
+    public void init(Map properties) { }
 
     /**
      * Bad naming due to ehcache stuff. Should be called getCache.
@@ -24,11 +22,9 @@ public class KittyCacheFactory implements CacheFactory {
         return singletonCache;
     }
 
-    public Cache getCache(String name){
+    public Cache getCache(String name) {
         return singletonCache;
     }
 
-    public void shutdown() {
-
-    }
+    public void shutdown() { }
 }
