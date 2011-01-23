@@ -1,7 +1,5 @@
 package com.spaceprogram.simplejpa.cache;
 
-import net.sf.ehcache.CacheException;
-
 import java.util.Map;
 import java.util.Collection;
 

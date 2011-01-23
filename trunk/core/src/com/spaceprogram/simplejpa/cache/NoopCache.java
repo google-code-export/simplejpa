@@ -1,8 +1,5 @@
 package com.spaceprogram.simplejpa.cache;
 
-
-import net.sf.ehcache.CacheException;
-
 import java.util.Set;
 import java.util.Map;
 import java.util.Collection;
@@ -49,7 +46,7 @@ public class NoopCache implements Cache {
         return null;
     }
 
-    public Map getAll(Collection collection) throws CacheException {
+    public Map getAll(Collection collection) {
         return null;
     }
 
