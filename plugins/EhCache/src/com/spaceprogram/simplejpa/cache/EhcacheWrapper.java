@@ -76,20 +76,20 @@ public class EhcacheWrapper implements Ehcache, com.spaceprogram.simplejpa.cache
         cache.evictExpiredElements();
     }
 
-    public void flush() throws IllegalStateException, CacheException {
+    public void flush() {
         cache.flush();
     }
 
 
-    public Element get(Object key) throws IllegalStateException, CacheException {
+    public Element get(Object key) {
         return cache.get(key);
     }
 
-    public Element get(Serializable serializable) throws IllegalStateException, CacheException {
+    public Element get(Serializable serializable) {
         return cache.get(serializable);
     }
 
-    public Map getAllWithLoader(Collection collection, Object o) throws CacheException {
+    public Map getAllWithLoader(Collection collection, Object o) {
         return cache.getAllWithLoader(collection, o);
     }
 
@@ -117,7 +117,7 @@ public class EhcacheWrapper implements Ehcache, com.spaceprogram.simplejpa.cache
         return cache.getCacheManager();
     }
 
-    public int getDiskStoreSize() throws IllegalStateException {
+    public int getDiskStoreSize() {
         return cache.getDiskStoreSize();
     }
 
@@ -130,20 +130,20 @@ public class EhcacheWrapper implements Ehcache, com.spaceprogram.simplejpa.cache
         return cache.getInternalContext();
     }
 
-    public List getKeys() throws IllegalStateException, CacheException {
+    public List getKeys() {
         return cache.getKeys();
     }
 
-    public List getKeysNoDuplicateCheck() throws IllegalStateException {
+    public List getKeysNoDuplicateCheck() {
         return cache.getKeysNoDuplicateCheck();
     }
 
-    public List getKeysWithExpiryCheck() throws IllegalStateException, CacheException {
+    public List getKeysWithExpiryCheck() {
         return cache.getKeysWithExpiryCheck();
     }
 
 
-    public LiveCacheStatistics getLiveCacheStatistics() throws IllegalStateException {
+    public LiveCacheStatistics getLiveCacheStatistics() {
         return cache.getLiveCacheStatistics();
     }
 
@@ -151,7 +151,7 @@ public class EhcacheWrapper implements Ehcache, com.spaceprogram.simplejpa.cache
         return cache.getMemoryStoreEvictionPolicy();
     }
 
-    public long getMemoryStoreSize() throws IllegalStateException {
+    public long getMemoryStoreSize() {
         return cache.getMemoryStoreSize();
     }
 
@@ -159,16 +159,16 @@ public class EhcacheWrapper implements Ehcache, com.spaceprogram.simplejpa.cache
         return cache.getName();
     }
 
-    public Object getObj(Object o) throws IllegalStateException, CacheException {
+    public Object getObj(Object o) {
         Element elem = cache.get(o);
         return elem == null ? null : elem.getValue();
     }
 
-    public Element getQuiet(Object o) throws IllegalStateException, CacheException {
+    public Element getQuiet(Object o) {
         return cache.getQuiet(o);
     }
 
-    public Element getQuiet(Serializable serializable) throws IllegalStateException, CacheException {
+    public Element getQuiet(Serializable serializable) {
         return cache.getQuiet(serializable);
     }
 
@@ -190,16 +190,16 @@ public class EhcacheWrapper implements Ehcache, com.spaceprogram.simplejpa.cache
         return cache.getSampledCacheStatistics();
     }
 
-    public int getSize() throws IllegalStateException, CacheException {
+    public int getSize() {
         return cache.getSize();
     }
 
 
-    public int getSizeBasedOnAccuracy(int arg0) throws IllegalArgumentException, IllegalStateException, CacheException {
+    public int getSizeBasedOnAccuracy(int arg0) {
         return cache.getSizeBasedOnAccuracy(arg0);
     }
 
-    public Statistics getStatistics() throws IllegalStateException {
+    public Statistics getStatistics() {
         return cache.getStatistics();
     }
 
@@ -211,7 +211,7 @@ public class EhcacheWrapper implements Ehcache, com.spaceprogram.simplejpa.cache
         return cache.getStatus();
     }
 
-    public Element getWithLoader(Object o, CacheLoader cacheLoader, Object o1) throws CacheException {
+    public Element getWithLoader(Object o, CacheLoader cacheLoader, Object o1) {
         return cache.getWithLoader(o, cacheLoader, o1);
     }
 
@@ -254,7 +254,7 @@ public class EhcacheWrapper implements Ehcache, com.spaceprogram.simplejpa.cache
         return cache.isElementOnDisk(serializable);
     }
 
-    public boolean isExpired(Element element) throws IllegalStateException, NullPointerException {
+    public boolean isExpired(Element element) {
         return cache.isExpired(element);
     }
 
@@ -267,7 +267,7 @@ public class EhcacheWrapper implements Ehcache, com.spaceprogram.simplejpa.cache
         return cache.isNodeCoherent();
     }
 
-    public void setNodeCoherent(boolean b) throws UnsupportedOperationException {
+    public void setNodeCoherent(boolean b) {
         //To change body of implemented methods use File | Settings | File Templates.
     }
 
@@ -289,15 +289,15 @@ public class EhcacheWrapper implements Ehcache, com.spaceprogram.simplejpa.cache
         cache.load(o);
     }
 
-    public void loadAll(Collection collection, Object o) throws CacheException {
+    public void loadAll(Collection collection, Object o) {
         cache.loadAll(collection, o);
     }
 
-    public void put(Element element) throws IllegalArgumentException, IllegalStateException, CacheException {
+    public void put(Element element) {
         cache.put(element);
     }
 
-    public void put(Element element, boolean b) throws IllegalArgumentException, IllegalStateException, CacheException {
+    public void put(Element element, boolean b) {
         cache.put(element, b);
     }
 
@@ -305,28 +305,28 @@ public class EhcacheWrapper implements Ehcache, com.spaceprogram.simplejpa.cache
         cache.put(new Element(o, o1));
     }
 
-    public void putQuiet(Element element) throws IllegalArgumentException, IllegalStateException, CacheException {
+    public void putQuiet(Element element) {
         cache.putQuiet(element);
     }
 
 
-    public void putWithWriter(Element arg0) throws IllegalArgumentException, IllegalStateException, CacheException {
+    public void putWithWriter(Element arg0) {
         cache.putWithWriter(arg0);
     }
 
-    public Element putIfAbsent(Element element) throws NullPointerException {
+    public Element putIfAbsent(Element element) {
         return cache.putIfAbsent(element);
     }
 
-    public boolean removeElement(Element element) throws NullPointerException {
+    public boolean removeElement(Element element) {
         return removeElement(element);
     }
 
-    public boolean replace(Element element, Element element1) throws NullPointerException, IllegalArgumentException {
+    public boolean replace(Element element, Element element1) {
         return cache.replace(element, element1);
     }
 
-    public Element replace(Element element) throws NullPointerException {
+    public Element replace(Element element) {
         return cache.replace(element);
     }
 
@@ -339,7 +339,7 @@ public class EhcacheWrapper implements Ehcache, com.spaceprogram.simplejpa.cache
     }
 
 
-    public void registerCacheUsageListener(CacheUsageListener arg0) throws IllegalStateException {
+    public void registerCacheUsageListener(CacheUsageListener arg0) {
         cache.registerCacheUsageListener(arg0);
     }
 
@@ -348,49 +348,49 @@ public class EhcacheWrapper implements Ehcache, com.spaceprogram.simplejpa.cache
         cache.registerCacheWriter(arg0);
     }
 
-    public boolean remove(Object o) throws IllegalStateException {
+    public boolean remove(Object o) {
         return cache.remove(o);
     }
 
-    public boolean remove(Object o, boolean b) throws IllegalStateException {
+    public boolean remove(Object o, boolean b) {
         return cache.remove(o, b);
     }
 
-    public boolean remove(Serializable serializable) throws IllegalStateException {
+    public boolean remove(Serializable serializable) {
         return cache.remove(serializable);
     }
 
-    public boolean remove(Serializable serializable, boolean b) throws IllegalStateException {
+    public boolean remove(Serializable serializable, boolean b) {
         return cache.remove(serializable, b);
     }
 
-    public void removeAll() throws IllegalStateException, CacheException {
+    public void removeAll() {
         cache.removeAll();
     }
 
-    public void removeAll(boolean b) throws IllegalStateException, CacheException {
+    public void removeAll(boolean b) {
         cache.removeAll(b);
     }
 
 
-    public void removeCacheUsageListener(CacheUsageListener arg0) throws IllegalStateException {
+    public void removeCacheUsageListener(CacheUsageListener arg0) {
         cache.removeCacheUsageListener(arg0);
     }
 
-    public boolean removeQuiet(Object o) throws IllegalStateException {
+    public boolean removeQuiet(Object o) {
         return cache.removeQuiet(o);
     }
 
-    public boolean removeQuiet(Serializable serializable) throws IllegalStateException {
+    public boolean removeQuiet(Serializable serializable) {
         return cache.removeQuiet(serializable);
     }
 
 
-    public boolean removeWithWriter(Object arg0) throws IllegalStateException {
+    public boolean removeWithWriter(Object arg0) {
         return cache.removeWithWriter(arg0);
     }
 
-    public void setBootstrapCacheLoader(BootstrapCacheLoader bootstrapCacheLoader) throws CacheException {
+    public void setBootstrapCacheLoader(BootstrapCacheLoader bootstrapCacheLoader) {
         cache.setBootstrapCacheLoader(bootstrapCacheLoader);
     }
 
@@ -406,7 +406,7 @@ public class EhcacheWrapper implements Ehcache, com.spaceprogram.simplejpa.cache
         cache.setDisabled(b);
     }
 
-    public void setDiskStorePath(String s) throws CacheException {
+    public void setDiskStorePath(String s) {
         cache.setDiskStorePath(s);
     }
 
@@ -414,11 +414,11 @@ public class EhcacheWrapper implements Ehcache, com.spaceprogram.simplejpa.cache
         cache.setMemoryStoreEvictionPolicy(policy);
     }
 
-    public void setName(String s) throws IllegalArgumentException {
+    public void setName(String s) {
         cache.setName(s);
     }
 
-    public void setNodeCoherence(boolean arg0) throws UnsupportedOperationException {
+    public void setNodeCoherence(boolean arg0) {
         cache.setNodeCoherent(arg0);
     }
 
@@ -472,7 +472,7 @@ public class EhcacheWrapper implements Ehcache, com.spaceprogram.simplejpa.cache
     }
 
 
-    public void waitUntilClusterCoherent() throws UnsupportedOperationException {
+    public void waitUntilClusterCoherent() {
         cache.waitUntilClusterCoherent();
     }
 }
