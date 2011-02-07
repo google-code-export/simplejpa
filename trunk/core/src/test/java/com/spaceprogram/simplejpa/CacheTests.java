@@ -24,6 +24,7 @@ public class CacheTests extends BaseTestClass{
         EntityManager em = factory.createEntityManager();
         // create MyTestObject1 and a 2 with a reference from 1 to 2.
         MyTestObject4 o4 = new MyTestObject4();
+        o4.setName4("04");
         em.persist(o4);
         MyTestObject2 o2 = new MyTestObject2("ob2", 123);
         o2.setMyTestObject4(o4);
