@@ -9,7 +9,7 @@
     <dependency>
       <groupId>commons-lang</groupId>
       <artifactId>commons-lang</artifactId>
-      <version>2.5</version>
+      <version>2.6</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
@@ -44,7 +44,7 @@
     <dependency>
       <groupId>com.amazonaws</groupId>
       <artifactId>aws-java-sdk</artifactId>
-      <version>1.0.008</version>
+      <version>1.1.5</version>
     </dependency>    
   </dependencies>
   <build>
