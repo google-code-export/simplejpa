@@ -5,8 +5,6 @@ import org.junit.Test;
 
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceException;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * User: treeder

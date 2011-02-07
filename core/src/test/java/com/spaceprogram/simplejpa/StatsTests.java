@@ -3,7 +3,6 @@ package com.spaceprogram.simplejpa;
 import org.junit.Test;
 import org.junit.Assert;
 
-import javax.persistence.EntityManager;
 import java.util.Date;
 
 /**

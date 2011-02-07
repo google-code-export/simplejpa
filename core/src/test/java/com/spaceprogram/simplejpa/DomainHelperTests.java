@@ -2,8 +2,6 @@ package com.spaceprogram.simplejpa;
 
 import java.util.List;
 
-import javax.persistence.EntityManager;
-
 import junit.framework.Assert;
 
 import org.junit.Test;
