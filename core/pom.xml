@@ -5,6 +5,11 @@
   <version>1.6-SNAPSHOT</version>
   <name>SimpleJPA</name>
   <url>http://code.google.com/p/simplejpa</url>
+  <scm>
+    <connection>scm:svn:http://simplejpa.googlecode.com/svn/trunk</connection>
+    <developerConnection>scm:svn:https://simplejpa.googlecode.com/svn/trunk</developerConnection>
+    <url>http://code.google.com/p/simplejpa/source/browse/trunk</url>
+  </scm>
   <dependencies>
     <dependency>
       <groupId>commons-lang</groupId>
