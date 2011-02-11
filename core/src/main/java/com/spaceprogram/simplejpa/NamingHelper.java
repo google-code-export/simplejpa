@@ -3,6 +3,7 @@ package com.spaceprogram.simplejpa;
 import org.apache.commons.lang.StringUtils;
 
 import javax.persistence.Column;
+import javax.persistence.Id;
 import javax.persistence.Lob;
 import javax.persistence.ManyToOne;
 import java.lang.reflect.Method;
@@ -15,6 +16,8 @@ import java.lang.reflect.Method;
  * Time: 6:28:19 PM
  */
 public class NamingHelper {
+    
+    public static final String NAME_FIELD_REF = "itemName()";
 
     /**
      * Use this method to get the name of the attribute for SimpleDB.
@@ -34,6 +37,9 @@ public class NamingHelper {
         }
         if (getter.getAnnotation(Lob.class) != null) {
             return NamingHelper.lobKeyAttributeName(getter);
+        }
+        if (getter.getAnnotation(Id.class) != null) {
+            return NAME_FIELD_REF;
         }
         return NamingHelper.attributeName(getter);
     }

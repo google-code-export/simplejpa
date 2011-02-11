@@ -464,7 +464,14 @@ public class QueryImpl implements SimpleQuery {
         if (not) {
             sb.append("not ");
         }
-        sb.append("`").append(field).append("`");
+        boolean quoteField = !NamingHelper.NAME_FIELD_REF.equals(field); 
+        if (quoteField) {
+            sb.append("`");
+        }
+        sb.append(field);
+        if (quoteField) {
+            sb.append("`");
+        }
         sb.append(" ");
         sb.append(comparator);
         sb.append(" ");
