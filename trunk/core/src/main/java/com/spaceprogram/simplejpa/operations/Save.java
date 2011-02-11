@@ -205,15 +205,18 @@ public class Save implements Callable {
             }
         }
 
-        // and now finally send it for storage
+        // Now finally send it for storage (If have attributes to add)
         long start2 = System.currentTimeMillis();
-        this.em.getSimpleDb().putAttributes(new PutAttributesRequest()
-        	.withDomainName(domainName)
-        	.withItemName(id)
-        	.withAttributes(attsToPut));
-        long duration2 = System.currentTimeMillis() - start2;
-        if(logger.isLoggable(Level.FINE))logger.fine("putAttributes time=" + (duration2));
-        em.statsAttsPut(attsToPut.size(), duration2);
+        long duration2;
+        if (!attsToPut.isEmpty()) {        
+            this.em.getSimpleDb().putAttributes(new PutAttributesRequest()
+               .withDomainName(domainName)
+               .withItemName(id)
+               .withAttributes(attsToPut));
+            duration2 = System.currentTimeMillis() - start2;
+            if(logger.isLoggable(Level.FINE))logger.fine("putAttributes time=" + (duration2));
+            em.statsAttsPut(attsToPut.size(), duration2);
+        }
 
         /*
          Check for nulled attributes so we can send a delete call.
