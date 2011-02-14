@@ -418,8 +418,12 @@ public class QueryImpl implements SimpleQuery {
                 param = AmazonSimpleDBUtil.encodeRealNumberRange(new BigDecimal(x), AmazonSimpleDBUtil.LONG_DIGITS, EntityManagerSimpleJPA.OFFSET_VALUE).toString();
             } else if (Double.class.isAssignableFrom(retType)) {
                 Double x = (Double) paramOb;
-                param = AmazonSimpleDBUtil.encodeRealNumberRange(new BigDecimal(x), AmazonSimpleDBUtil.LONG_DIGITS, AmazonSimpleDBUtil.LONG_DIGITS,
-                        EntityManagerSimpleJPA.OFFSET_VALUE).toString();
+                if (!x.isInfinite() && !x.isNaN()) {
+                    param = AmazonSimpleDBUtil.encodeRealNumberRange(new BigDecimal(x), AmazonSimpleDBUtil.LONG_DIGITS, AmazonSimpleDBUtil.LONG_DIGITS,
+                            EntityManagerSimpleJPA.OFFSET_VALUE).toString();
+                } else {
+                    param = x.toString();
+                }
             } else if (BigDecimal.class.isAssignableFrom(retType)) {
                 BigDecimal x = (BigDecimal) paramOb;
                 param = AmazonSimpleDBUtil.encodeRealNumberRange(x, AmazonSimpleDBUtil.LONG_DIGITS, AmazonSimpleDBUtil.LONG_DIGITS,
