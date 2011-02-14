@@ -130,7 +130,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
         if (ob instanceof Integer || ob instanceof Long) {
             // then pad
             return AmazonSimpleDBUtil.encodeRealNumberRange(new BigDecimal(ob.toString()), AmazonSimpleDBUtil.LONG_DIGITS, OFFSET_VALUE);
-        } else if (ob instanceof Double || ob instanceof Float) {
+        } else if ((ob instanceof Double && !((Double) ob).isInfinite() && !((Double) ob).isNaN()) || (ob instanceof Float && !((Float) ob).isInfinite() && !((Float) ob).isNaN())) {
             // then pad
             return AmazonSimpleDBUtil.encodeRealNumberRange(new BigDecimal(ob.toString()), AmazonSimpleDBUtil.LONG_DIGITS, AmazonSimpleDBUtil.LONG_DIGITS,
                     OFFSET_VALUE);
@@ -146,7 +146,6 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
         }
         return ob.toString();
     }
-
 
     /**
      * Get's the identifier for the object based on @Id
@@ -464,8 +463,18 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
                 val = AmazonSimpleDBUtil.decodeRealNumberRange(val, EntityManagerSimpleJPA.OFFSET_VALUE).toString();
                 if (retType == long.class)
                 	retType = Long.class;
+            } else if (Float.class.isAssignableFrom(retType) || retType == float.class) {
+                // Ignore NaN and Infinity
+                if (!val.matches(".*Infinity|NaN")) {
+                    val = AmazonSimpleDBUtil.decodeRealNumberRange(val, AmazonSimpleDBUtil.LONG_DIGITS, EntityManagerSimpleJPA.OFFSET_VALUE).toString();
+                }
+                if (retType == float.class)
+                    retType = Float.class;                            
             } else if (Double.class.isAssignableFrom(retType) || retType == double.class) {
-                val = AmazonSimpleDBUtil.decodeRealNumberRange(val, AmazonSimpleDBUtil.LONG_DIGITS, EntityManagerSimpleJPA.OFFSET_VALUE).toString();
+                // Ignore NaN and Infinity
+                if (!val.matches(".*Infinity|NaN")) {
+                    val = AmazonSimpleDBUtil.decodeRealNumberRange(val, AmazonSimpleDBUtil.LONG_DIGITS, EntityManagerSimpleJPA.OFFSET_VALUE).toString();
+                }
                 if (retType == double.class)
                 	retType = Double.class;
             } else if (BigDecimal.class.isAssignableFrom(retType)) {
