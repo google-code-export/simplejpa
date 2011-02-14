@@ -51,13 +51,15 @@ import java.util.regex.Pattern;
  * Time: 7:33:20 PM
  */
 public class QueryImpl implements SimpleQuery {
+    public static final int MAX_RESULTS_PER_REQUEST = 2500;
+    
     private static Logger logger = Logger.getLogger(QueryImpl.class.getName());
     private EntityManagerSimpleJPA em;
     private JPAQuery q;
     private Map<String, Object> parameters = new HashMap<String, Object>();
 
     public static String conditionRegex = "(<>)|(>=)|(<=)|=|>|<|\\band\\b|\\bor\\b|\\bis\\b|\\blike\\b";
-    private Integer maxResults;
+    private int maxResults = -1;
     private String qString;
     private Class tClass;
     //    private AmazonQueryString amazonQuery;
@@ -141,7 +143,6 @@ public class QueryImpl implements SimpleQuery {
                 return Arrays.asList(count);
             } else {
                 LazyList ret = new LazyList(em, tClass, this);
-                ret.setMaxResults(maxResults);
                 return ret;
             }
         } 
@@ -152,8 +153,12 @@ public class QueryImpl implements SimpleQuery {
             throw new PersistenceException(e);
         }
     }
-
+    
     public AmazonQueryString createAmazonQuery() throws NoResultsException, AmazonClientException {
+        return createAmazonQuery(true);
+    }
+
+    public AmazonQueryString createAmazonQuery(boolean appendLimit) throws NoResultsException, AmazonClientException {
         String select = q.getResult();
         boolean count = false;
         if (select != null && select.contains("count")) {
@@ -226,8 +231,8 @@ public class QueryImpl implements SimpleQuery {
             System.out.println(logString);
         }
 
-        if (maxResults != null) {
-            fullQuery.append(" limit ").append(Math.min(250, maxResults));
+        if (appendLimit && maxResults >= 0) {
+            fullQuery.append(" limit ").append(maxResults);
         }
         return new AmazonQueryString(fullQuery.toString(), count);
     }
@@ -521,13 +526,18 @@ public class QueryImpl implements SimpleQuery {
         }
         return null;
     }
+    
+    public int getMaxResults() {
+        return maxResults;
+    }
 
     public int executeUpdate() {
         throw new NotImplementedException("TODO");
     }
 
     public Query setMaxResults(int maxResults) {
-        this.maxResults = maxResults;
+        // SimpleDB currently has a maximum limit of 2500
+        this.maxResults = Math.min(MAX_RESULTS_PER_REQUEST, maxResults);
         return this;
     }
 
