@@ -22,8 +22,6 @@ import java.util.logging.Logger;
  */
 @SuppressWarnings("unchecked")
 public class LazyList<E> extends AbstractList<E> implements Serializable {
-    private static final int MAX_RESULTS_PER_REQUEST = 2500;
-
     private static Logger logger = Logger.getLogger(LazyList.class.getName());
 
     private transient EntityManagerSimpleJPA em;
@@ -41,10 +39,6 @@ public class LazyList<E> extends AbstractList<E> implements Serializable {
     private int maxResults = -1;
 
     public LazyList(EntityManagerSimpleJPA em, Class tClass, QueryImpl query) {
-        this(em, tClass, query, -1);
-    }
-
-    public LazyList(EntityManagerSimpleJPA em, Class tClass, QueryImpl query, int maxResults) {
         this.em = em;
         this.genericReturnType = tClass;
         this.origQuery = query;
@@ -55,8 +49,9 @@ public class LazyList<E> extends AbstractList<E> implements Serializable {
                 logger.warning("Domain does not exist for " + ai.getRootClass());
                 backingList = new GrowthList(0);
             } else {
-                realQuery = query.createAmazonQuery().getValue();
-                this.maxResults = maxResults;
+                // Do not include the limit in the query since will specify in loadAtLeastItems()
+                realQuery = query.createAmazonQuery(false).getValue();
+                maxResults = query.getMaxResults();
             }
         }
         catch (Exception e) {
@@ -88,7 +83,7 @@ public class LazyList<E> extends AbstractList<E> implements Serializable {
                 if (logger.isLoggable(Level.FINER))
                     logger.finer("Got:" + resultCount);
 
-                if (maxResults > -1 && resultCount > maxResults) {
+                if (maxResults >= 0 && resultCount > maxResults) {
                     if (logger.isLoggable(Level.FINER))
                         logger.finer("Too much, adjusting to maxResults: " +
                                 maxResults);
@@ -124,7 +119,7 @@ public class LazyList<E> extends AbstractList<E> implements Serializable {
     }
 
     private synchronized void loadAtleastItems(int index) {
-        if (backingList != null && nextToken == null) {
+        if ((backingList != null && nextToken == null) || (!noLimit() && index >= maxResults)) {
             return;
         }
 
@@ -141,9 +136,7 @@ public class LazyList<E> extends AbstractList<E> implements Serializable {
                 int limit = maxResults - backingList.size();
                 String limitQuery = realQuery
                         + " limit "
-                        + (noLimit() ? MAX_RESULTS_PER_REQUEST :
-                        (limit > MAX_RESULTS_PER_REQUEST ? MAX_RESULTS_PER_REQUEST
-                                : limit));
+                        + (noLimit() ? QueryImpl.MAX_RESULTS_PER_REQUEST : limit);
                 if (em.getFactory().isPrintQueries())
                     System.out.println("query in lazylist=" + limitQuery);
                 qr = DomainHelper.selectItems(this.em.getSimpleDb(), limitQuery, nextToken);
@@ -175,17 +168,12 @@ public class LazyList<E> extends AbstractList<E> implements Serializable {
     }
 
     private boolean noLimit() {
-        return maxResults == -1;
-
+        return maxResults < 0;
     }
 
     @Override
     public Iterator<E> iterator() {
         return new LazyListIterator();
-    }
-
-    public void setMaxResults(Integer maxResults) {
-        // this.maxResults = maxResults;
     }
 
     private class LazyListIterator implements Iterator<E> {
