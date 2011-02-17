@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.annotation.Annotation;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -20,12 +19,7 @@ import javax.persistence.Entity;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.PersistenceException;
-import javax.persistence.Table;
 import javax.persistence.spi.PersistenceUnitInfo;
-
-import org.apache.commons.collections.MapUtils;
-import org.scannotation.AnnotationDB;
-import org.scannotation.ClasspathUrlFinder;
 
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.ClientConfiguration;
@@ -46,14 +40,14 @@ import com.spaceprogram.simplejpa.cache.NoopCache;
 import com.spaceprogram.simplejpa.cache.NoopCacheFactory;
 import com.spaceprogram.simplejpa.stats.OpStats;
 
+import org.apache.commons.collections.MapUtils;
+import org.scannotation.AnnotationDB;
+import org.scannotation.ClasspathUrlFinder;
+
 /**
- * User: treeder
- * Date: Feb 10, 2008
- * Time: 6:20:23 PM
- *
- * Additional Contributions
- *   - Eric Molitor eric@molitor.org
- *   - Eric Wei e.pwei84@gmail.com
+ * User: treeder Date: Feb 10, 2008 Time: 6:20:23 PM
+ * 
+ * Additional Contributions - Eric Molitor eric@molitor.org - Eric Wei e.pwei84@gmail.com
  */
 public class EntityManagerFactoryImpl implements EntityManagerFactory {
     private static Logger logger = Logger.getLogger(EntityManagerFactoryImpl.class.getName());
@@ -91,8 +85,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
      */
     private AnnotationManager annotationManager;
     /**
-     * for all the concurrent action.
-     * todo: It might make sense to have two executors, one fast one for queries, and one slow one used for slow things like puts/deletes
+     * for all the concurrent action. todo: It might make sense to have two executors, one fast one for queries, and one slow one used for slow things like puts/deletes
      */
     private ExecutorService executor;
     /**
@@ -142,10 +135,11 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     private String lobBucketName;
     private Cache cache;
     private String cacheClassname;
+    private boolean consistentRead = true;
 
     /**
      * This one is generally called via the PersistenceProvider.
-     *
+     * 
      * @param persistenceUnitInfo only using persistenceUnitName for now
      * @param props
      */
@@ -155,9 +149,9 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 
     /**
      * Use this if you want to construct this directly.
-     *
+     * 
      * @param persistenceUnitName used to prefix the SimpleDB domains
-     * @param props               should have accessKey and secretKey
+     * @param props should have accessKey and secretKey
      */
     public EntityManagerFactoryImpl(String persistenceUnitName, Map props) {
         this(persistenceUnitName, props, null);
@@ -165,10 +159,10 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 
     /**
      * Use this one in web applications, see: http://code.google.com/p/simplejpa/wiki/WebApplications
-     *
+     * 
      * @param persistenceUnitName
      * @param props
-     * @param libsToScan          a set of
+     * @param libsToScan a set of
      */
     public EntityManagerFactoryImpl(String persistenceUnitName, Map props, Set<String> libsToScan) {
         if (persistenceUnitName == null) {
@@ -197,16 +191,14 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         if (credentialsFile != null) {
             logger.info("Loading credentials from AwsCredentials.properties");
             try {
-            	awsCredentials = new PropertiesCredentials(credentialsFile);
+                awsCredentials = new PropertiesCredentials(credentialsFile);
+            } catch (IOException e) {
+                throw new PersistenceException("Failed loading credentials from AwsCredentials.properties.", e);
             }
-            catch(IOException e) {
-            	throw new PersistenceException("Failed loading credentials from AwsCredentials.properties.", e);
-            }
-        }
-        else {
-        	logger.info("Loading credentials from simplejpa.properties");
-        	String awsAccessKey = (String)this.props.get(AWSACCESS_KEY_PROP_NAME);
-        	String awsSecretKey = (String)this.props.get(AWSSECRET_KEY_PROP_NAME);
+        } else {
+            logger.info("Loading credentials from simplejpa.properties");
+            String awsAccessKey = (String) this.props.get(AWSACCESS_KEY_PROP_NAME);
+            String awsSecretKey = (String) this.props.get(AWSSECRET_KEY_PROP_NAME);
             if (awsAccessKey == null || awsAccessKey.length() == 0) {
                 throw new PersistenceException("AWS Access Key not found. It is a required property.");
             }
@@ -217,31 +209,31 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
             awsCredentials = new BasicAWSCredentials(awsAccessKey, awsSecretKey);
         }
 
-    	this.simpleDbClient = new AmazonSimpleDBClient(awsCredentials, createConfiguration(sdbSecure));
-    	this.simpleDbClient.setEndpoint(sdbEndpoint);
+        this.simpleDbClient = new AmazonSimpleDBClient(awsCredentials, createConfiguration(sdbSecure));
+        this.simpleDbClient.setEndpoint(sdbEndpoint);
 
-    	this.s3Client = new AmazonS3Client(awsCredentials, createConfiguration(s3Secure));
-    	this.s3Client.setEndpoint(s3Endpoint);
+        this.s3Client = new AmazonS3Client(awsCredentials, createConfiguration(s3Secure));
+        this.s3Client.setEndpoint(s3Endpoint);
     }
 
     private ClientConfiguration createConfiguration(boolean isSecure) {
-    	ClientConfiguration config = new ClientConfiguration();
-    	config.setUserAgent(USER_AGENT);
-    	Protocol protocol = isSecure ? Protocol.HTTPS : Protocol.HTTP;
-    	config.setProtocol(protocol);
-    	return config;
+        ClientConfiguration config = new ClientConfiguration();
+        config.setUserAgent(USER_AGENT);
+        Protocol protocol = isSecure ? Protocol.HTTPS : Protocol.HTTP;
+        config.setProtocol(protocol);
+        return config;
     }
 
     /**
-     *  * SimpleJPA entity manager, which gets classes names instead of "libs-to-scan".
+     * * SimpleJPA entity manager, which gets classes names instead of "libs-to-scan".
      * @author Yair Ben-Meir
      * @param persistenceUnitName
      * @param props
      * @param classNames
      * @throws PersistenceException
      */
-    public static EntityManagerFactoryImpl newInstanceWithClassNames(String persistenceUnitName,
-                                           Map<String, String> props, Set<String> classNames) throws PersistenceException {
+    public static EntityManagerFactoryImpl newInstanceWithClassNames(String persistenceUnitName, Map<String, String> props, Set<String> classNames)
+            throws PersistenceException {
         return new EntityManagerFactoryImpl(persistenceUnitName, props, getLibsToScan(classNames));
     }
 
@@ -258,10 +250,8 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
                 } else {
                     throw new PersistenceException("Unknown protocol in URL: " + resource);
                 }
-            }
-            catch (Throwable e) {
-                throw new PersistenceException("Failed getting lib of class: "
-                        + className, e);
+            } catch (Throwable e) {
+                throw new PersistenceException("Failed getting lib of class: " + className, e);
             }
         }
         return libs;
@@ -279,8 +269,11 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
             sessionless = Boolean.parseBoolean(s1);
         }
         config.setGroovyBeans(Boolean.parseBoolean((String) props.get("groovyBeans")));
+        String consistentRead = (String) props.get("consistentRead");
+        this.consistentRead = consistentRead == null ? true : Boolean.parseBoolean((String) props.get("groovyBeans"));
         String prop = (String) props.get("threads");
-        if (prop != null) numExecutorThreads = Integer.parseInt(prop);
+        if (prop != null)
+            numExecutorThreads = Integer.parseInt(prop);
 
         sdbEndpoint = MapUtils.getString(props, "sdbEndpoint", DEFAULT_SDB_ENDPOINT);
         sdbSecure = MapUtils.getBoolean(props, "sdbSecure", false);
@@ -289,7 +282,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         s3Secure = MapUtils.getBoolean(props, "s3Secure", false);
 
         try {
-        	logger.info("Scanning for entity classes...");
+            logger.info("Scanning for entity classes...");
             URL[] urls;
             try {
                 urls = ClasspathUrlFinder.findClassPaths();
@@ -301,7 +294,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
             if (libsToScan != null) {
                 URL[] urls2 = new URL[urls.length + libsToScan.size()];
                 System.arraycopy(urls, 0, urls2, 0, urls.length);
-//                urls = new URL[libsToScan.size()];
+// urls = new URL[libsToScan.size()];
                 int count = 0;
                 for (String s : libsToScan) {
                     logger.fine("libinset=" + s);
@@ -364,10 +357,9 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         }
     }
 
-
     /**
      * Call this to load the props from a file in the root of our classpath called: sdb.properties
-     *
+     * 
      * @throws IOException
      * @deprecated don't use this.
      */
@@ -384,7 +376,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         }
         props2.load(stream);
         props = props2;
-        logger.info("Properties loaded from [" + propsFileName + "]."); 
+        logger.info("Properties loaded from [" + propsFileName + "].");
         stream.close();
     }
 
@@ -443,7 +435,8 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     }
 
     public boolean doesDomainExist(String domainName) {
-        if (domainSet == null) loadDomains();
+        if (domainSet == null)
+            loadDomains();
         return domainSet.contains(domainName);
     }
 
@@ -458,25 +451,25 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     }
 
     public String getOrCreateDomain(Class c) {
-    	String domainName = getDomainName(c);
+        String domainName = getDomainName(c);
         createIfNotExistDomain(domainName);
         return domainName;
     }
 
     private synchronized void loadDomains() {
-        if (domainSet != null) return;
+        if (domainSet != null)
+            return;
 
         try {
-        	domainSet = new HashSet<String>();
+            domainSet = new HashSet<String>();
             logger.info("getting all domains");
             AmazonSimpleDB db = getSimpleDb();
             ListDomainsResult listDomainsResult = db.listDomains();
-        	domainSet.addAll(listDomainsResult.getDomainNames());
+            domainSet.addAll(listDomainsResult.getDomainNames());
             while (listDomainsResult.getNextToken() != null) {
-            	ListDomainsRequest request = new ListDomainsRequest()
-            		.withNextToken(listDomainsResult.getNextToken());
+                ListDomainsRequest request = new ListDomainsRequest().withNextToken(listDomainsResult.getNextToken());
                 listDomainsResult = db.listDomains(request);
-            	domainSet.addAll(listDomainsResult.getDomainNames());
+                domainSet.addAll(listDomainsResult.getDomainNames());
             }
         } catch (AmazonClientException e) {
             throw new PersistenceException(e);
@@ -484,7 +477,7 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     }
 
     public AmazonSimpleDB getSimpleDb() {
-    	return this.simpleDbClient;
+        return this.simpleDbClient;
     }
 
     public AnnotationManager getAnnotationManager() {
@@ -492,17 +485,17 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     }
 
     public String getDomainName(Class<? extends Object> aClass) {
-		String className = getRootClassName(aClass);
+        String className = getRootClassName(aClass);
         AnnotationInfo ai = getAnnotationManager().getAnnotationInfo(aClass);
         String domainName = ai.getDomainName();
-        if(domainName == null || domainName.length() <= 0)
-			domainName = getDomainName(className);
-    	createIfNotExistDomain(domainName);
-    	return domainName;
+        if (domainName == null || domainName.length() <= 0)
+            domainName = getDomainName(className);
+        createIfNotExistDomain(domainName);
+        return domainName;
     }
 
     public String getDomainName(String className) {
-		String domainName = getPersistenceUnitName() + "-" + className;
+        String domainName = getPersistenceUnitName() + "-" + className;
         return domainName;
     }
 
@@ -524,16 +517,15 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
         return sdbEndpoint;
     }
 
-
     public Cache getCache(Class aClass) {
         AnnotationInfo ai = getAnnotationManager().getAnnotationInfo(aClass);
         return cacheFactory.createCache(ai.getRootClass().getName());
     }
 
     /**
-     * This will turn on sessionless mode which means that you do not need to keep EntityManager's open, nor do
-     * you need to close them. But you should ALWAYS use the second level cache in this case.
-     *
+     * This will turn on sessionless mode which means that you do not need to keep EntityManager's open, nor do you need to close them. But you should ALWAYS use the second level
+     * cache in this case.
+     * 
      * @param sessionless
      */
     public void setSessionless(boolean sessionless) {
@@ -545,25 +537,23 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     }
 
     public void clearSecondLevelCache() {
-    	if(cache != null)
-    		cache.clear();
+        if (cache != null)
+            cache.clear();
     }
 
-
     /**
-     * Turns off caches. Useful for testing.
-     * This will also shutdown and recreate any existing cache if cacheless is true.
-     *
+     * Turns off caches. Useful for testing. This will also shutdown and recreate any existing cache if cacheless is true.
+     * 
      * @param cacheless
      */
     public void setCacheless(boolean cacheless) {
         this.cacheless = cacheless;
         if (cacheless) {
             cache = new NoopCache();
-//            cacheFactory.shutdown();
-//            cacheFactory = new NoopCacheFactory();
+// cacheFactory.shutdown();
+// cacheFactory = new NoopCacheFactory();
         } else {
-//            cacheFactory.shutdown();
+// cacheFactory.shutdown();
             initSecondLevelCache();
         }
     }
@@ -573,28 +563,35 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
     }
 
     public synchronized String getS3BucketName() {
-    	String bucketName;
-        if(lobBucketName != null){
-        	bucketName = lobBucketName;
-        }
-        else {
-        	bucketName = getPersistenceUnitName() + "-lobs"; 
+        String bucketName;
+        if (lobBucketName != null) {
+            bucketName = lobBucketName;
+        } else {
+            bucketName = getPersistenceUnitName() + "-lobs";
         }
 
         // See if we have checked if the bucket already exists.
-        if(!this.bucketSet.contains(bucketName)) {
+        if (!this.bucketSet.contains(bucketName)) {
 
-        	// If the bucket doesn't already exist then we need to add it.
-        	if(!this.s3Client.doesBucketExist(bucketName)) {
-        		this.s3Client.createBucket(bucketName);
-        	}
-        	this.bucketSet.add(bucketName);
+            // If the bucket doesn't already exist then we need to add it.
+            if (!this.s3Client.doesBucketExist(bucketName)) {
+                this.s3Client.createBucket(bucketName);
+            }
+            this.bucketSet.add(bucketName);
         }
 
         return bucketName;
     }
 
-    public OpStats getGlobalStats(){
+    public OpStats getGlobalStats() {
         return stats;
+    }
+
+    public void setConsistentRead(boolean consistentRead) {
+        this.consistentRead = consistentRead;
+    }
+
+    public boolean isConsistentRead() {
+        return consistentRead;
     }
 }
