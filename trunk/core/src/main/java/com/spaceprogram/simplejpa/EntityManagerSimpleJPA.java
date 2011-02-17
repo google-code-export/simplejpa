@@ -24,11 +24,6 @@ import javax.persistence.LockModeType;
 import javax.persistence.PersistenceException;
 import javax.persistence.Query;
 
-import net.sf.cglib.proxy.Factory;
-
-import org.apache.commons.lang.NotImplementedException;
-import org.apache.commons.lang.StringUtils;
-
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.S3Object;
@@ -51,14 +46,15 @@ import com.spaceprogram.simplejpa.stats.OpStats;
 import com.spaceprogram.simplejpa.util.AmazonSimpleDBUtil;
 import com.spaceprogram.simplejpa.util.ConcurrentRetriever;
 
+import net.sf.cglib.proxy.Factory;
+
+import org.apache.commons.lang.NotImplementedException;
+import org.apache.commons.lang.StringUtils;
+
 /**
- * User: treeder
- * Date: Feb 8, 2008
- * Time: 12:59:38 PM
+ * User: treeder Date: Feb 8, 2008 Time: 12:59:38 PM
  * 
- * Additional Contributions
- *   - Eric Molitor eric@molitor.org
- *   - Eric Wei e.pwei84@gmail.com
+ * Additional Contributions - Eric Molitor eric@molitor.org - Eric Wei e.pwei84@gmail.com
  */
 public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseManager {
 
@@ -66,6 +62,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
     private boolean closed = false;
     public EntityManagerFactoryImpl factory;
     private boolean sessionless;
+    private boolean consistentRead = true;
     /**
      * cache is used to store objects retrieved in this EntityManager session
      */
@@ -80,9 +77,10 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
     EntityManagerSimpleJPA(EntityManagerFactoryImpl factory, boolean sessionless) {
         this.factory = factory;
         this.sessionless = sessionless;
-        if(!sessionless){
+        if (!sessionless) {
             sessionCache = new ConcurrentHashMap();
         }
+        this.consistentRead = factory.isConsistentRead();
     }
 
     public void persist(Object o) {
@@ -115,7 +113,6 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
         lastOpStats = new OpStats();
     }
 
-
     public <T> T merge(T t) {
         // todo: should probably behave a bit different
         persist(t);
@@ -130,14 +127,14 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
         if (ob instanceof Integer || ob instanceof Long) {
             // then pad
             return AmazonSimpleDBUtil.encodeRealNumberRange(new BigDecimal(ob.toString()), AmazonSimpleDBUtil.LONG_DIGITS, OFFSET_VALUE);
-        } else if ((ob instanceof Double && !((Double) ob).isInfinite() && !((Double) ob).isNaN()) || (ob instanceof Float && !((Float) ob).isInfinite() && !((Float) ob).isNaN())) {
+        } else if ((ob instanceof Double && !((Double) ob).isInfinite() && !((Double) ob).isNaN())
+                || (ob instanceof Float && !((Float) ob).isInfinite() && !((Float) ob).isNaN())) {
             // then pad
             return AmazonSimpleDBUtil.encodeRealNumberRange(new BigDecimal(ob.toString()), AmazonSimpleDBUtil.LONG_DIGITS, AmazonSimpleDBUtil.LONG_DIGITS,
                     OFFSET_VALUE);
         } else if (ob instanceof BigDecimal) {
             // then pad
-            return AmazonSimpleDBUtil.encodeRealNumberRange((BigDecimal) ob, AmazonSimpleDBUtil.LONG_DIGITS, AmazonSimpleDBUtil.LONG_DIGITS,
-                    OFFSET_VALUE);
+            return AmazonSimpleDBUtil.encodeRealNumberRange((BigDecimal) ob, AmazonSimpleDBUtil.LONG_DIGITS, AmazonSimpleDBUtil.LONG_DIGITS, OFFSET_VALUE);
         } else if (ob instanceof Date) {
             Date d = (Date) ob;
             return AmazonSimpleDBUtil.encodeDate(d);
@@ -149,7 +146,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
 
     /**
      * Get's the identifier for the object based on @Id
-     *
+     * 
      * @param o
      * @return
      * @throws IllegalAccessException
@@ -157,7 +154,8 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
      */
     public String getId(Object o) {
         AnnotationInfo ai = factory.getAnnotationManager().getAnnotationInfo(o);
-        if (ai == null) return null; // todo: should it throw?
+        if (ai == null)
+            return null; // todo: should it throw?
         String id = null;
         try {
             id = (String) ai.getIdMethod().invoke(o);
@@ -172,15 +170,14 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
     public String getDomainName(Class<? extends Object> aClass) {
         return factory.getDomainName(aClass);
     }
-    
+
     public String getOrCreateDomain(Class c) {
-    	return factory.getOrCreateDomain(c);
+        return factory.getOrCreateDomain(c);
     }
 
-
     public void checkEntity(Object o) {
-//        String className = o.getClass().getName();
-//        ensureClassIsEntity(className); THIS IS DONE IN getAnnotationInfo now
+// String className = o.getClass().getName();
+// ensureClassIsEntity(className); THIS IS DONE IN getAnnotationInfo now
         // now if it the reflection data hasn't been cached, do it now
         AnnotationInfo ai = factory.getAnnotationManager().getAnnotationInfo(o);
         String domainName = getDomainName(o.getClass());
@@ -188,19 +185,18 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
     }
 
     public Class ensureClassIsEntity(String className) {
-//        System.out.println("className=" + className);
+// System.out.println("className=" + className);
         className = factory.getAnnotationManager().stripEnhancerClass(className);
         String fullClassName = factory.getEntityMap().get(className);
         if (fullClassName == null) {
-//            throw new PersistenceException("Class not marked as an Entity: " + className);
+// throw new PersistenceException("Class not marked as an Entity: " + className);
             fullClassName = className;
         }
-//        System.out.println("fullclassName=" + fullClassName);
+// System.out.println("fullclassName=" + fullClassName);
         Class tClass = factory.getAnnotationManager().getClass(fullClassName, null);
         AnnotationInfo ai = factory.getAnnotationManager().getAnnotationInfo(tClass); // sets up metadata if not already done
         return tClass;
     }
-
 
     public AmazonSimpleDB getSimpleDb() {
         return factory.getSimpleDb();
@@ -208,11 +204,12 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
 
     /**
      * Deletes an object from SimpleDB.
-     *
+     * 
      * @param o
      */
     public void remove(Object o) {
-        if (o == null) return;
+        if (o == null)
+            return;
         try {
             Delete d = new Delete(this, o);
             d.call();
@@ -223,18 +220,20 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
 
     /**
      * Finds an object by id.
-     *
+     * 
      * @param tClass
      * @param id
      * @return
      */
     public <T> T find(Class<T> tClass, Object id) {
-        if (!sessionless && closed) throw new PersistenceException("EntityManager already closed.");
-        if (id == null) throw new IllegalArgumentException("Id value must not be null.");
+        if (!sessionless && closed)
+            throw new PersistenceException("EntityManager already closed.");
+        if (id == null)
+            throw new IllegalArgumentException("Id value must not be null.");
         try {
             T ob = cacheGet(tClass, id);
             if (ob != null) {
-                if(logger.isLoggable(Level.FINEST)){
+                if (logger.isLoggable(Level.FINEST)) {
                     logger.finest("found in cache: " + ob);
                 }
                 return ob;
@@ -247,10 +246,12 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
 
     private <T> T findInDb(Class<T> tClass, Object id) throws AmazonClientException {
         String domainName = getDomainName(tClass);
-        if(domainName == null) return null;
-        Item iraw = DomainHelper.findItemById(factory.getSimpleDb(), domainName, id.toString());
-//            logger.fine("got back item=" + item);
-        if(iraw == null) return null;
+        if (domainName == null)
+            return null;
+        Item iraw = DomainHelper.findItemById(factory.getSimpleDb(), domainName, id.toString(), consistentRead);
+// logger.fine("got back item=" + item);
+        if (iraw == null)
+            return null;
         SdbItem item = new SdbItemImpl2(iraw);
         return getItemAttributesBuildAndCache(tClass, id, item);
 
@@ -267,7 +268,8 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
     public <T> T getItemAttributesBuildAndCache(Class<T> tClass, Object id, SdbItem item) throws AmazonClientException {
         // todo: update stats for this get
         List<Attribute> atts = item.getAttributes();
-        if (atts == null || atts.size() == 0) return null;
+        if (atts == null || atts.size() == 0)
+            return null;
         return buildObject(tClass, id, atts);
     }
 
@@ -319,57 +321,49 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
     }
 
     private void putNewValue(String domainName, List<Item> items, String dtype, String newClassName) throws AmazonClientException {
-    	AmazonSimpleDB db = factory.getSimpleDb();
+        AmazonSimpleDB db = factory.getSimpleDb();
         for (Item item : items) {
             List<ReplaceableAttribute> atts = new ArrayList<ReplaceableAttribute>();
-            
+
             atts.add(new ReplaceableAttribute(dtype, newClassName, true));
             db.putAttributes(new PutAttributesRequest(domainName, item.getName(), atts));
         }
     }
 
-    private SelectResult executeQueryForRenameSubclass(String oldClassName, Class newClass, String domainName, String nextToken) throws AmazonClientException {    	
-    	SelectResult result = DomainHelper.selectItems(factory.getSimpleDb(), domainName, "'DTYPE' = '" + oldClassName + "'", nextToken);
-    	return result;
+    private SelectResult executeQueryForRenameSubclass(String oldClassName, Class newClass, String domainName, String nextToken) throws AmazonClientException {
+        SelectResult result = DomainHelper.selectItems(factory.getSimpleDb(), domainName, "'DTYPE' = '" + oldClassName + "'", nextToken, consistentRead);
+        return result;
     }
 
-    private SelectResult executeQueryForRename(String oldAttributeName, String newAttributeName, String domainName, String nextToken) throws AmazonClientException {    	
-    	SelectResult result = DomainHelper.selectItems(factory.getSimpleDb(), domainName, "['" + oldAttributeName + "' starts-with ''] intersection not ['" + newAttributeName + "' starts-with ''] ", nextToken);
+    private SelectResult executeQueryForRename(String oldAttributeName, String newAttributeName, String domainName, String nextToken)
+            throws AmazonClientException {
+        SelectResult result = DomainHelper.selectItems(factory.getSimpleDb(), domainName, "['" + oldAttributeName + "' starts-with ''] intersection not ['"
+                + newAttributeName + "' starts-with ''] ", nextToken, consistentRead);
         return result;
     }
 
     private void putAndDelete(String domainName, String oldAttributeName, String newAttributeName, List<Item> items) throws AmazonClientException {
-    	AmazonSimpleDB db = factory.getSimpleDb();
+        AmazonSimpleDB db = factory.getSimpleDb();
         for (Item item : items) {
-        	GetAttributesResult getOldResults = db.getAttributes(new GetAttributesRequest()
-        	.withDomainName(domainName)
-        	.withConsistentRead(true)
-        	.withItemName(item.getName())
-        	.withAttributeNames(oldAttributeName));
-        	
+            GetAttributesResult getOldResults = db.getAttributes(new GetAttributesRequest().withDomainName(domainName).withConsistentRead(true).withItemName(
+                    item.getName()).withAttributeNames(oldAttributeName));
+
             List<Attribute> oldAtts = getOldResults.getAttributes();
             if (oldAtts.size() > 0) {
-            	Attribute oldAtt = oldAtts.get(0);
+                Attribute oldAtt = oldAtts.get(0);
                 List<ReplaceableAttribute> atts = new ArrayList<ReplaceableAttribute>();
                 atts.add(new ReplaceableAttribute(newAttributeName, oldAtt.getValue(), true));
-                
-                db.putAttributes(new PutAttributesRequest()
-                	.withDomainName(domainName)
-                	.withItemName(item.getName())
-                	.withAttributes(atts));
-                	
-                db.deleteAttributes(new DeleteAttributesRequest()
-            	.withDomainName(domainName)
-            	.withItemName(item.getName())
-            	.withAttributes(oldAtts));                
+
+                db.putAttributes(new PutAttributesRequest().withDomainName(domainName).withItemName(item.getName()).withAttributes(atts));
+
+                db.deleteAttributes(new DeleteAttributesRequest().withDomainName(domainName).withItemName(item.getName()).withAttributes(oldAtts));
             }
         }
     }
 
-
     /**
      * This method puts together an object from the SimpleDB data.
-     *
+     * 
      * @param tClass
      * @param id
      * @param atts
@@ -378,7 +372,6 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
     public <T> T buildObject(Class<T> tClass, Object id, List<Attribute> atts) {
         return ObjectBuilder.buildObject(this, tClass, id, atts);
     }
-
 
     public <T> T cacheGet(Class<T> aClass, Object id) {
         String key = cacheKey(aClass, id);
@@ -401,7 +394,8 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
     public void cachePut(Object id, Object newInstance) {
         String key = cacheKey(newInstance.getClass(), id);
         logger.finest("putting item in cache with cachekey=" + key + " - " + newInstance);
-        if (sessionCache != null) sessionCache.put(key, newInstance);
+        if (sessionCache != null)
+            sessionCache.put(key, newInstance);
         Cache c = getFactory().getCache(newInstance.getClass());
         if (c != null) {
             c.put(id, newInstance);
@@ -420,7 +414,8 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
         Cache c = getFactory().getCache(aClass);
         if (c != null) {
             Object o2 = c.remove(id);
-            if(o == null) o = o2;
+            if (o == null)
+                o = o2;
         }
         logger.finest("removed object from cache=" + o);
         return o;
@@ -440,7 +435,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
 
     /**
      * Sets the value on an object field after applying any necessary conversions from SimpleDB strings.
-     *
+     * 
      * @param tClass
      * @param newInstance
      * @param getter
@@ -451,32 +446,32 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
             // need param type
             String attName = NamingHelper.attributeName(getter);
             Class retType = getter.getReturnType();
-//            logger.fine("getter in setFieldValue = " + attName + " - valAsString=" + valAsString + " rettype=" + retType);
+// logger.fine("getter in setFieldValue = " + attName + " - valAsString=" + valAsString + " rettype=" + retType);
             Method setMethod = tClass.getMethod("set" + StringUtils.capitalize(attName), retType);
             Object newField = null;
             if (Integer.class.isAssignableFrom(retType) || retType == int.class) {
-//                logger.fine("setting int val " + val + " on field " + attName);
+// logger.fine("setting int val " + val + " on field " + attName);
                 val = AmazonSimpleDBUtil.decodeRealNumberRange(val, EntityManagerSimpleJPA.OFFSET_VALUE).toString();
                 if (retType == int.class)
-                	retType = Integer.class;
+                    retType = Integer.class;
             } else if (Long.class.isAssignableFrom(retType) || retType == long.class) {
                 val = AmazonSimpleDBUtil.decodeRealNumberRange(val, EntityManagerSimpleJPA.OFFSET_VALUE).toString();
                 if (retType == long.class)
-                	retType = Long.class;
+                    retType = Long.class;
             } else if (Float.class.isAssignableFrom(retType) || retType == float.class) {
                 // Ignore NaN and Infinity
                 if (!val.matches(".*Infinity|NaN")) {
                     val = AmazonSimpleDBUtil.decodeRealNumberRange(val, AmazonSimpleDBUtil.LONG_DIGITS, EntityManagerSimpleJPA.OFFSET_VALUE).toString();
                 }
                 if (retType == float.class)
-                    retType = Float.class;                            
+                    retType = Float.class;
             } else if (Double.class.isAssignableFrom(retType) || retType == double.class) {
                 // Ignore NaN and Infinity
                 if (!val.matches(".*Infinity|NaN")) {
                     val = AmazonSimpleDBUtil.decodeRealNumberRange(val, AmazonSimpleDBUtil.LONG_DIGITS, EntityManagerSimpleJPA.OFFSET_VALUE).toString();
                 }
                 if (retType == double.class)
-                	retType = Double.class;
+                    retType = Double.class;
             } else if (BigDecimal.class.isAssignableFrom(retType)) {
                 val = AmazonSimpleDBUtil.decodeRealNumberRange(val, AmazonSimpleDBUtil.LONG_DIGITS, EntityManagerSimpleJPA.OFFSET_VALUE).toString();
             } else if (byte[].class.isAssignableFrom(retType)) {
@@ -484,7 +479,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
             } else if (Date.class.isAssignableFrom(retType)) {
                 newField = AmazonSimpleDBUtil.decodeDate(val);
             }
-            //If newField has not been created yet then we create it from val.
+            // If newField has not been created yet then we create it from val.
             if (newField == null) {
                 // We build a new field object here because we may get an argument mismatch otherwise, eg: BigDecimal for an Integer field.
                 // todo: getConstructor throws a NoSuchMethodException here, should ensure that these are second class object fields
@@ -496,8 +491,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
             }
             setMethod.invoke(newInstance, newField);
         } catch (Exception e) {
-	          throw new PersistenceException("Failed setting field of getter: " + getter.getName() +
-	          		", using value: " + val, e);
+            throw new PersistenceException("Failed setting field of getter: " + getter.getName() + ", using value: " + val, e);
         }
     }
 
@@ -507,7 +501,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
 
     public void flush() {
         // we're always flushed in the current version so this doesn't have to do anything
-//        throw new NotImplementedException("TODO");
+// throw new NotImplementedException("TODO");
     }
 
     public void setFlushMode(FlushModeType flushModeType) {
@@ -529,13 +523,13 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
     public void clear() {
         checkClosed();
         // this is really only useful with transactions
-        if(sessionCache != null){
+        if (sessionCache != null) {
             sessionCache = new ConcurrentHashMap();
         }
     }
 
     private void checkClosed() {
-        if(!isOpen()) {
+        if (!isOpen()) {
             throw new IllegalStateException("EntityManager has been closed.");
         }
     }
@@ -600,13 +594,12 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
         S3Object s3o = s3.getObject(factory.getS3BucketName(), idOnS3);
         logger.fine("got s3object=" + s3o);
         Object ret = null;
-    	try {        	  
+        try {
             ObjectInputStream reader = new ObjectInputStream(new BufferedInputStream((s3o.getObjectContent())));
             ret = reader.readObject();
-    	}
-    	finally {
-    		s3o.getObjectContent().close();
-    	}
+        } finally {
+            s3o.getObjectContent().close();
+        }
 
         statsS3Get(System.currentTimeMillis() - start);
         return ret;
@@ -626,19 +619,18 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
     }
 
     /**
-     * This is mainly for debugging purposes. Will print to system out all of the items in the domain represented
-     * by the class parameter.
-     *
+     * This is mainly for debugging purposes. Will print to system out all of the items in the domain represented by the class parameter.
+     * 
      * @param c
      * @throws AmazonClientException
      * @throws ExecutionException
      * @throws InterruptedException
      */
     public void listAllObjectsRaw(Class c) throws AmazonClientException, ExecutionException, InterruptedException {
-    	
-    	String domainName = factory.getDomainName(c);    	    	
-    	List<Item> items = DomainHelper.listAllItems(factory.getSimpleDb(), domainName);
-    	        
+
+        String domainName = factory.getDomainName(c);
+        List<Item> items = DomainHelper.listAllItems(factory.getSimpleDb(), domainName, consistentRead);
+
         List<ItemAndAttributes> ia = ConcurrentRetriever.getAttributesFromSdb(toSdbItem(items), getExecutor(), this);
         for (ItemAndAttributes itemAndAttributes : ia) {
             System.out.println("item=" + itemAndAttributes.getItem().getIdentifier());
@@ -658,10 +650,10 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
     }
 
     public void invokeEntityListener(Object o, Class event) {
-//        System.out.println("invoking entity listeners on " + o + " for " + event);
+// System.out.println("invoking entity listeners on " + o + " for " + event);
         Map<Class, List<ClassMethodEntry>> listeners = getAnnotationManager().getAnnotationInfo(o).getEntityListeners();
         if (listeners != null && listeners.containsKey(event)) {
-//            System.out.println("founder listeners: " + listeners);
+// System.out.println("founder listeners: " + listeners);
             List<ClassMethodEntry> listenerList = listeners.get(event);
             if (listenerList != null) {
                 for (ClassMethodEntry listener : listenerList) {
@@ -695,7 +687,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
         }
     }
 
-    public void statsS3Get(long duration){
+    public void statsS3Get(long duration) {
         getLastOpStats().s3Get(duration);
         totalOpStats.s3Get(duration);
         factory.getGlobalStats().s3Get(duration);
@@ -723,7 +715,7 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
         return totalOpStats;
     }
 
-    public OpStats getGlobalOpStats(){
+    public OpStats getGlobalOpStats() {
         return factory.getGlobalStats();
     }
 
@@ -733,13 +725,19 @@ public class EntityManagerSimpleJPA implements SimpleEntityManager, DatabaseMana
         factory.getGlobalStats().got(numItems, duration2);
     }
 
-
     public String getS3BucketName() {
         return factory.getS3BucketName();
     }
 
-
     public AmazonS3 getS3Service() {
         return factory.getS3Service();
+    }
+
+    public void setConsistentRead(boolean consistentRead) {
+        this.consistentRead = consistentRead;
+    }
+
+    public boolean isConsistentRead() {
+        return consistentRead;
     }
 }
